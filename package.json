@@ -1,4 +1,19 @@
-{\n  \"name\": \"love-story-website\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"scripts\": {\n    \"dev\": \"vite\",\n    \"build\": \"run-p type-check \\\"build-only {@}\\\" --\",\n    \"preview\": \"vite preview\",\n    \"test:unit\": \"vitest\",\n    \"test:e2e\": \"playwright test\",\n    \"build-only\": \"vite build\",\n    \"type-check\": \"vue-tsc --build --force\",\n    \"lint\": \"eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix\",\n    \"format\": \"prettier --write src/\"\n  },
+{
+  "name": "love-story-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "test:unit": "vitest",
+    "test:e2e": "playwright test",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build --force",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
+    "format": "prettier --write src/"
+  },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.13",
     "@types/axios": "^0.14.4",
