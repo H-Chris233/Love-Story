@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 
 // 定义记忆数据类型
 interface Memory {
-  id: number
+  id: number | string
   title: string
   date: string
   content: string
@@ -15,6 +15,12 @@ const props = defineProps<{
   memory: Memory
 }>()
 
+// 定义组件Emits
+const emit = defineEmits<{
+  (e: 'edit', memory: Memory): void
+  (e: 'delete', id: number | string): void
+}>()
+
 // 格式化日期
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -23,6 +29,18 @@ const formatDate = (dateString: string) => {
     month: 'long',
     day: 'numeric'
   })
+}
+
+// 处理编辑事件
+const handleEdit = () => {
+  emit('edit', props.memory)
+}
+
+// 处理删除事件
+const handleDelete = () => {
+  if (confirm('确定要删除这个回忆吗？')) {
+    emit('delete', props.memory.id)
+  }
 }
 </script>
 
@@ -44,10 +62,10 @@ const formatDate = (dateString: string) => {
       </div>
       
       <div class="card-actions">
-        <button class="action-button">
+        <button class="action-button" @click="handleEdit">
           编辑
         </button>
-        <button class="action-button delete-button">
+        <button class="action-button delete-button" @click="handleDelete">
           删除
         </button>
       </div>

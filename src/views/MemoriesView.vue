@@ -1,44 +1,71 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import MemoryCard from '../components/MemoryCard.vue'
+import MemoryForm from '../components/MemoryForm.vue'
+import { memoryAPI } from '../services/api'
+import type { Memory } from '../types/api'
 
-// 定义记忆数据类型
-interface Memory {
-  id: number
-  title: string
-  date: string
-  content: string
-  image?: string
+// 记忆数据
+const memories = ref<Memory[]>([])
+const loading = ref(true)
+const error = ref('')
+const showForm = ref(false)
+const editingMemory = ref<Memory | null>(null)
+
+// 获取记忆数据
+const fetchMemories = async () => {
+  try {
+    loading.value = true
+    const response = await memoryAPI.getAll()
+    memories.value = response.data
+  } catch (err) {
+    console.error('获取记忆数据失败:', err)
+    error.value = '获取记忆数据失败'
+  } finally {
+    loading.value = false
+  }
 }
 
-// 模拟记忆数据
-const memories = ref<Memory[]>([
-  {
-    id: 1,
-    title: '初次相遇',
-    date: '2020-01-01',
-    content: '那是一个阳光明媚的下午，在咖啡厅里我们第一次相遇。你穿着白色的毛衣，笑容如花。',
-    image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470'
-  },
-  {
-    id: 2,
-    title: '第一次约会',
-    date: '2020-01-15',
-    content: '我们第一次约会去了公园，一起喂鸭子，一起看夕阳。那是我最美好的回忆之一。',
-    image: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963'
-  },
-  {
-    id: 3,
-    title: '第一次旅行',
-    date: '2020-03-20',
-    content: '我们第一次一起旅行，去了海边城市。在沙滩上我们一起堆沙堡，看日出。',
-    image: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470'
-  }
-])
+// 处理添加记忆
+const handleAddMemory = () => {
+  editingMemory.value = null
+  showForm.value = true
+}
 
-// 页面加载时的处理
+// 处理编辑记忆
+const handleEditMemory = (memory: Memory) => {
+  editingMemory.value = memory
+  showForm.value = true
+}
+
+// 处理保存记忆（添加或编辑）
+const handleSaveMemory = (memory: Memory) => {
+  showForm.value = false
+  editingMemory.value = null
+  fetchMemories()
+}
+
+// 处理删除记忆
+const handleDeleteMemory = async (id: string) => {
+  try {
+    await memoryAPI.delete(id)
+    // 从本地状态中移除已删除的记忆
+    memories.value = memories.value.filter(memory => memory._id !== id)
+  } catch (err) {
+    console.error('删除记忆失败:', err)
+    error.value = '删除记忆失败'
+  }
+}
+
+// 处理取消表单
+const handleCancelForm = () => {
+  showForm.value = false
+  editingMemory.value = null
+}
+
+// 页面加载时获取数据
 onMounted(() => {
-  console.log('Memories page loaded')
+  fetchMemories()
 })
 </script>
 
@@ -49,17 +76,59 @@ onMounted(() => {
       <p class="text-center text-gray-600 mb-10">记录我们在一起的每一个美好时刻</p>
     </header>
 
-    <div class="memory-timeline">
-      <div v-for="memory in memories" :key="memory.id" class="memory-item">
-        <MemoryCard :memory="memory" />
+    <div v-if="loading" class="text-center py-10">
+      <div class="loading-spinner"></div>
+      <p class="mt-2">加载中...</p>
+    </div>
+
+    <div v-else-if="error" class="text-center py-10">
+      <p class="text-red-500">{{ error }}</p>
+      <button 
+        @click="fetchMemories" 
+        class="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+      >
+        重新加载
+      </button>
+    </div>
+
+    <div v-else>
+      <div class="memory-timeline">
+        <div 
+          v-for="memory in memories" 
+          :key="memory._id" 
+          class="memory-item"
+        >
+          <MemoryCard 
+            :memory="{
+              id: memory._id,
+              title: memory.title,
+              date: memory.date,
+              content: memory.description,
+              image: memory.images && memory.images.length > 0 ? memory.images[0].url : undefined
+            }" 
+            @edit="handleEditMemory(memory)"
+            @delete="handleDeleteMemory"
+          />
+        </div>
+      </div>
+
+      <div class="text-center mt-10">
+        <button 
+          @click="handleAddMemory"
+          class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+        >
+          添加新的回忆
+        </button>
       </div>
     </div>
 
-    <div class="text-center mt-10">
-      <button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300">
-        添加新的回忆
-      </button>
-    </div>
+    <!-- 记忆表单模态框 -->
+    <MemoryForm 
+      v-if="showForm"
+      :memory="editingMemory"
+      @save="handleSaveMemory"
+      @cancel="handleCancelForm"
+    />
   </div>
 </template>
 
@@ -152,6 +221,22 @@ onMounted(() => {
   .text-center {
     margin-top: 2rem;
   }
+}
+
+/* 加载动画 */
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ec4899;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 480px) {
