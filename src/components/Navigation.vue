@@ -347,6 +347,16 @@ onMounted(() => {
             </RouterLink>
           </li>
           <li>
+            <RouterLink 
+              to="/admin" 
+              @click="closeMenu"
+              class="romantic-menu-link"
+              active-class="romantic-menu-link-active"
+            >
+              管理
+            </RouterLink>
+          </li>
+          <li>
             <button 
               @click="logout" 
               class="romantic-logout-button"
@@ -464,6 +474,16 @@ onMounted(() => {
             active-class="romantic-mobile-menu-link-active"
           >
             用户
+          </RouterLink>
+        </li>
+        <li class="romantic-mobile-menu-item">
+          <RouterLink 
+            to="/admin" 
+            @click="closeMenu"
+            class="romantic-mobile-menu-link"
+            active-class="romantic-mobile-menu-link-active"
+          >
+            管理
           </RouterLink>
         </li>
         <li class="romantic-mobile-menu-item">
