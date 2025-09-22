@@ -1,57 +1,58 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { memoryAPI } from '../services/api'
+import type { Memory } from '../types/api'
 
 // 定义照片数据类型
 interface Photo {
-  id: number
+  id: string
   url: string
   title: string
   date: string
 }
 
-// 模拟照片数据
-const photos = ref<Photo[]>([
-  {
-    id: 1,
-    url: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470',
-    title: '海边日出',
-    date: '2020-05-01'
-  },
-  {
-    id: 2,
-    url: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963',
-    title: '山间小径',
-    date: '2020-06-15'
-  },
-  {
-    id: 3,
-    url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05',
-    title: '森林漫步',
-    date: '2020-07-20'
-  },
-  {
-    id: 4,
-    url: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e',
-    title: '湖边黄昏',
-    date: '2020-08-10'
-  },
-  {
-    id: 5,
-    url: 'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1',
-    title: '城市夜景',
-    date: '2020-09-05'
-  },
-  {
-    id: 6,
-    url: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891',
-    title: '音乐节',
-    date: '2020-10-12'
-  }
-])
+// 照片数据
+const photos = ref<Photo[]>([])
+const loading = ref(true)
+const error = ref('')
 
-// 页面加载时的处理
+// 从回忆数据中提取照片
+const extractPhotosFromMemories = (memories: Memory[]): Photo[] => {
+  const extractedPhotos: Photo[] = []
+  
+  memories.forEach(memory => {
+    if (memory.images && memory.images.length > 0) {
+      memory.images.forEach((image, index) => {
+        extractedPhotos.push({
+          id: `${memory._id}-${index}`,
+          url: image.url,
+          title: memory.title,
+          date: memory.date
+        })
+      })
+    }
+  })
+  
+  return extractedPhotos
+}
+
+// 获取照片数据
+const fetchPhotos = async () => {
+  try {
+    loading.value = true
+    const response = await memoryAPI.getAll()
+    photos.value = extractPhotosFromMemories(response.data)
+  } catch (err) {
+    console.error('获取照片数据失败:', err)
+    error.value = '获取照片数据失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+// 页面加载时获取数据
 onMounted(() => {
-  console.log('Photos page loaded')
+  fetchPhotos()
 })
 
 // 格式化日期
@@ -72,32 +73,53 @@ const formatDate = (dateString: string) => {
       <p class="text-center text-gray-600 mb-10">珍藏我们一起度过的美好时光</p>
     </header>
 
-    <div class="photo-grid">
-      <div 
-        v-for="photo in photos" 
-        :key="photo.id" 
-        class="photo-card"
+    <div v-if="loading" class="text-center py-10">
+      <div class="loading-spinner"></div>
+      <p class="mt-2">加载中...</p>
+    </div>
+
+    <div v-else-if="error" class="text-center py-10">
+      <p class="text-red-500">{{ error }}</p>
+      <button 
+        @click="fetchPhotos" 
+        class="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
       >
-        <div class="photo-wrapper">
-          <img 
-            :src="photo.url" 
-            :alt="photo.title" 
-            class="photo-image"
-          >
-          <div class="photo-overlay">
-            <div class="photo-info">
-              <h3 class="photo-title">{{ photo.title }}</h3>
-              <p class="photo-date">{{ formatDate(photo.date) }}</p>
+        重新加载
+      </button>
+    </div>
+
+    <div v-else>
+      <div class="photo-grid">
+        <div 
+          v-for="photo in photos" 
+          :key="photo.id" 
+          class="photo-card"
+        >
+          <div class="photo-wrapper">
+            <img 
+              :src="photo.url" 
+              :alt="photo.title" 
+              class="photo-image"
+            >
+            <div class="photo-overlay">
+              <div class="photo-info">
+                <h3 class="photo-title">{{ photo.title }}</h3>
+                <p class="photo-date">{{ formatDate(photo.date) }}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="text-center mt-10">
-      <button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300">
-        上传新照片
-      </button>
+      <div v-if="photos.length === 0" class="text-center py-10">
+        <p class="text-gray-500">暂无照片，请先添加一些包含照片的回忆</p>
+      </div>
+
+      <div class="text-center mt-10">
+        <button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300">
+          上传新照片
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -192,6 +214,22 @@ const formatDate = (dateString: string) => {
 .photo-date {
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+/* 加载动画 */
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ec4899;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 响应式设计 */
