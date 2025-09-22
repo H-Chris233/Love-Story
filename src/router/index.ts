@@ -41,6 +41,16 @@ const routes: RouteRecordRaw[] = [
     name: 'register',
     component: () => import('../views/RegisterView.vue'),
   },
+  {
+    path: '/demo',
+    name: 'demo',
+    component: () => import('../views/RomanticDemoView.vue'),
+  },
+  {
+    path: '/lightning-css-test',
+    name: 'lightningCssTest',
+    component: () => import('../components/LightningCSSTest.vue'),
+  },
 ]
 
 const router = createRouter({

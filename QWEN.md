@@ -6,6 +6,12 @@
 
 ## 最近更新
 
+### 集成 Lightning CSS
+- 使用 Lightning CSS 替代 PostCSS 和 autoprefixer 作为 CSS 处理器
+- 更新了 Vite 配置以支持 Lightning CSS
+- 修复了与 Lightning CSS 不兼容的 CSS 语法
+- 优化了 CSS 样式以提高构建性能
+
 ### 回忆管理功能完善
 - 实现了回忆的添加、编辑和删除功能
 - 创建了MemoryForm.vue组件用于添加和编辑回忆
@@ -19,6 +25,7 @@
 - **Vue 3**: 最新的Vue.js版本，使用Composition API
 - **TypeScript**: 全局使用TypeScript进行类型安全开发
 - **Vite**: 快速构建工具，提供极速的开发服务器启动
+- **Lightning CSS**: 高性能CSS解析器、转换器和优化器
 - **Tailwind CSS**: 实用优先的CSS框架，快速构建自定义UI
 - **Pinia**: 新一代状态管理库
 - **Vue Router**: 单页面应用路由管理
@@ -160,6 +167,41 @@ EMAILJS_USER_ID=your_user_id
 5. **云服务集成**: Cloudinary图片存储，EmailJS邮件服务
 6. **安全性**: JWT认证，Helmet安全头，CORS跨域支持
 7. **开发体验**: Vite热重载，ESLint代码检查，Prettier代码格式化
+
+## Lightning CSS 集成
+
+### 简介
+Lightning CSS 是一个用 Rust 编写的 CSS 解析器、转换器和优化器。它提供了比传统工具更快的处理速度，并支持现代 CSS 特性。
+
+### 配置
+在 `vite.config.ts` 中添加以下配置：
+
+```ts
+export default defineConfig({
+  css: {
+    transformer: 'lightningcss',
+    lightningcss: {
+      targets: {
+        chrome: 80,
+        firefox: 70,
+        safari: 13,
+        edge: 80
+      }
+    }
+  }
+})
+```
+
+### 特性支持
+1. **自动浏览器前缀**: Lightning CSS 会自动为需要的 CSS 属性添加浏览器前缀，无需额外配置。
+2. **CSS 嵌套 (Nesting)**: 支持 CSS 嵌套语法。
+3. **CSS 变量优化**: Lightning CSS 会优化 CSS 变量的使用，提高性能。
+
+### 移除冲突的工具
+在使用 Lightning CSS 时，应该移除其他 CSS 处理工具以避免冲突：
+```bash
+pnpm remove postcss autoprefixer
+```
 
 ## 后续优化建议
 

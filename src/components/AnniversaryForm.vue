@@ -92,7 +92,7 @@ const cancelForm = () => {
   <div class="anniversary-form-overlay">
     <div class="anniversary-form">
       <div class="form-header">
-        <h2 class="text-2xl font-bold">{{ props.anniversary ? '编辑纪念日' : '添加纪念日' }}</h2>
+        <h2 class="form-title">{{ props.anniversary ? '编辑纪念日' : '添加纪念日' }}</h2>
         <button 
           @click="cancelForm"
           class="close-button"
@@ -132,7 +132,7 @@ const cancelForm = () => {
         <div class="form-group">
           <label for="reminderDays" class="form-label">
             提前提醒天数
-            <span class="text-sm text-gray-500">(默认1天)</span>
+            <span class="reminder-days-help">(默认1天)</span>
           </label>
           <select
             id="reminderDays"
@@ -202,6 +202,11 @@ const cancelForm = () => {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.form-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
 .close-button {
   background: none;
   border: none;
@@ -237,6 +242,11 @@ const cancelForm = () => {
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: #374151;
+}
+
+.reminder-days-help {
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .form-input {

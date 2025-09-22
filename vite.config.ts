@@ -43,5 +43,16 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173
+  },
+  css: {
+    transformer: 'lightningcss',
+    lightningcss: {
+      targets: {
+        chrome: 80,
+        firefox: 70,
+        safari: 13,
+        edge: 80
+      }
+    }
   }
 })

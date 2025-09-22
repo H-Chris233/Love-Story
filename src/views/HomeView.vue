@@ -11,22 +11,22 @@ const goToMemories = () => {
 </script>
 
 <template>
-  <div class="home-page">
-    <section class="hero-section">
-      <div class="hero-content">
-        <div class="heart-animation">
-          <div class="heart">❤️</div>
+  <div class="romantic-home">
+    <section class="romantic-home-section">
+      <div class="romantic-home-container">
+        <div class="romantic-heart-container">
+          <div class="romantic-heart">❤️</div>
         </div>
         
-        <h1 class="hero-title">我们的爱情故事</h1>
-        <p class="hero-subtitle">记录我们在一起的每一个美好瞬间</p>
+        <h1 class="romantic-title">我们的爱情故事</h1>
+        <p class="romantic-subtitle">记录我们在一起的每一个美好瞬间</p>
         
         <!-- 恋爱天数计数器 -->
         <LoveTimer />
         
         <button 
           @click="goToMemories" 
-          class="cta-button"
+          class="romantic-button"
         >
           查看我们的回忆
         </button>
@@ -36,99 +36,86 @@ const goToMemories = () => {
 </template>
 
 <style scoped>
-.home-page {
-  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+.romantic-home {
   min-height: calc(100vh - 60px);
+  background: var(--romantic-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--romantic-spacing-4);
 }
 
-.hero-section {
-  padding: 2rem 1rem;
-  text-align: center;
+.romantic-home-section {
   width: 100%;
 }
 
-.hero-content {
+.romantic-home-container {
   max-width: 800px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
-  padding: 2rem 1rem;
+  gap: var(--romantic-spacing-8);
+  padding: var(--romantic-spacing-8) var(--romantic-spacing-12);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: var(--romantic-radius);
+  box-shadow: var(--romantic-shadow);
+  backdrop-filter: blur(10px);
 }
 
-.heart-animation {
-  animation: heartbeat 1.5s ease-in-out infinite;
+.romantic-heart-container {
+  animation: romanticHeartbeat 1.5s ease-in-out infinite;
 }
 
-.heart {
-  font-size: 3rem;
+.romantic-heart {
+  font-size: var(--romantic-font-size-4xl);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  color: #db2777; /* pink-600 */
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+.romantic-title {
+  font-size: var(--romantic-font-size-3xl);
+  font-weight: var(--romantic-font-weight-bold);
+  margin-bottom: var(--romantic-spacing-4);
+  color: var(--romantic-primary-dark);
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.hero-subtitle {
-  font-size: 1.25rem;
-  margin-bottom: 2rem;
-  color: #7e22ce; /* purple-700 */
+.romantic-subtitle {
+  font-size: var(--romantic-font-size-xl);
+  margin-bottom: var(--romantic-spacing-8);
+  color: var(--romantic-secondary);
+  text-align: center;
   line-height: 1.6;
 }
 
-.cta-button {
-  background: #ec4899; /* pink-500 */
-  color: white;
-  font-size: 1.25rem;
-  font-weight: 600;
-  padding: 1rem 2.5rem;
+.romantic-button {
+  background: var(--romantic-primary);
+  color: var(--romantic-white);
+  font-size: var(--romantic-font-size-lg);
+  font-weight: var(--romantic-font-weight-semibold);
+  padding: var(--romantic-spacing-4) var(--romantic-spacing-12);
   border: none;
   border-radius: 50px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: var(--romantic-transition);
+  box-shadow: var(--romantic-shadow);
   position: relative;
   overflow: hidden;
 }
 
-.cta-button:hover {
-  background: #db2777; /* pink-600 */
+.romantic-button:hover {
+  background: var(--romantic-primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--romantic-shadow-hover);
 }
 
-.cta-button:active {
+.romantic-button:active {
   transform: translateY(0);
 }
 
-/* 按钮点击波纹效果 */
-.cta-button::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.5);
-  opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%);
-  transform-origin: 50% 50%;
-}
-
-.cta-button:focus:not(:active)::after {
-  animation: ripple 1s ease-out;
-}
-
 /* 心跳动画 */
-@keyframes heartbeat {
+@keyframes romanticHeartbeat {
   0% {
     transform: scale(1);
   }
@@ -149,8 +136,27 @@ const goToMemories = () => {
   }
 }
 
+/* 按钮点击波纹效果 */
+.romantic-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.romantic-button:focus:not(:active)::after {
+  animation: romanticRipple 1s ease-out;
+}
+
 /* 波纹动画 */
-@keyframes ripple {
+@keyframes romanticRipple {
   0% {
     transform: scale(0, 0);
     opacity: 0.5;
@@ -161,88 +167,58 @@ const goToMemories = () => {
   }
 }
 
-/* 平板设备优化 */
-@media (min-width: 768px) {
-  .hero-section {
-    padding: 4rem 1rem;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .romantic-home {
+    padding: var(--romantic-spacing-2);
   }
   
-  .hero-content {
-    padding: 3rem 2rem;
+  .romantic-home-container {
+    padding: var(--romantic-spacing-6) var(--romantic-spacing-4);
+    gap: var(--romantic-spacing-6);
   }
   
-  .heart {
-    font-size: 4rem;
-  }
-  
-  .hero-title {
-    font-size: 3rem;
-  }
-  
-  .hero-subtitle {
-    font-size: 1.5rem;
-  }
-  
-  .cta-button {
-    font-size: 1.25rem;
-    padding: 1rem 2.5rem;
-  }
-}
-
-/* 大屏幕优化 */
-@media (min-width: 1024px) {
-  .hero-title {
-    font-size: 3.5rem;
-  }
-  
-  .hero-subtitle {
-    font-size: 1.75rem;
-  }
-  
-  .cta-button {
-    font-size: 1.35rem;
-    padding: 1.25rem 3rem;
-  }
-}
-
-/* 小屏手机优化 */
-@media (max-width: 480px) {
-  .hero-content {
-    padding: 1.5rem 1rem;
-    gap: 1.5rem;
-  }
-  
-  .heart {
+  .romantic-heart {
     font-size: 2.5rem;
   }
   
-  .hero-title {
+  .romantic-title {
     font-size: 1.8rem;
+    margin-bottom: var(--romantic-spacing-3);
   }
   
-  .hero-subtitle {
-    font-size: 1rem;
+  .romantic-subtitle {
+    font-size: var(--romantic-font-size-lg);
+    margin-bottom: var(--romantic-spacing-6);
   }
   
-  .cta-button {
-    font-size: 1rem;
-    padding: 0.8rem 2rem;
+  .romantic-button {
+    font-size: var(--romantic-font-size-base);
+    padding: var(--romantic-spacing-3) var(--romantic-spacing-8);
   }
 }
 
-/* 超小屏手机优化 */
-@media (max-width: 360px) {
-  .hero-title {
+@media (max-width: 480px) {
+  .romantic-home-container {
+    padding: var(--romantic-spacing-4) var(--romantic-spacing-2);
+    gap: var(--romantic-spacing-4);
+  }
+  
+  .romantic-heart {
+    font-size: 2rem;
+  }
+  
+  .romantic-title {
     font-size: 1.5rem;
   }
   
-  .hero-subtitle {
-    font-size: 0.9rem;
+  .romantic-subtitle {
+    font-size: var(--romantic-font-size-base);
   }
   
-  .cta-button {
-    font-size: 0.9rem;
-    padding: 0.7rem 1.5rem;
+  .romantic-button {
+    font-size: var(--romantic-font-size-sm);
+    padding: var(--romantic-spacing-3) var(--romantic-spacing-6);
   }
 }
 </style>

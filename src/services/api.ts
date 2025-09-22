@@ -61,11 +61,25 @@ export const memoryAPI = {
   getById: (id: string): Promise<AxiosResponse<Memory>> => 
     apiClient.get<Memory>(`/memories/${id}`),
     
-  create: (data: Omit<Memory, '_id' | 'createdAt' | 'user'>): Promise<AxiosResponse<Memory>> => 
+  create: (data: Omit<Memory, '_id' | 'createdAt' | 'user' | 'images'> & { images?: Array<{ url: string; publicId: string }> }): Promise<AxiosResponse<Memory>> => 
     apiClient.post<Memory>('/memories', data),
     
-  update: (id: string, data: Partial<Omit<Memory, '_id' | 'user' | 'createdAt'>>): Promise<AxiosResponse<Memory>> => 
+  createWithImages: (formData: FormData): Promise<AxiosResponse<Memory>> => 
+    apiClient.post<Memory>('/memories', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+    
+  update: (id: string, data: Partial<Omit<Memory, '_id' | 'user' | 'createdAt' | 'images'>> & { images?: Array<{ url: string; publicId: string }> }): Promise<AxiosResponse<Memory>> => 
     apiClient.put<Memory>(`/memories/${id}`, data),
+    
+  updateWithImages: (id: string, formData: FormData): Promise<AxiosResponse<Memory>> => 
+    apiClient.put<Memory>(`/memories/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
     
   delete: (id: string): Promise<AxiosResponse<void>> => 
     apiClient.delete<void>(`/memories/${id}`),

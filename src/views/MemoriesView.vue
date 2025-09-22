@@ -46,11 +46,11 @@ const handleSaveMemory = (memory: Memory) => {
 }
 
 // 处理删除记忆
-const handleDeleteMemory = async (id: string) => {
+const handleDeleteMemory = async (id: string | number) => {
   try {
-    await memoryAPI.delete(id)
+    await memoryAPI.delete(id.toString())
     // 从本地状态中移除已删除的记忆
-    memories.value = memories.value.filter(memory => memory._id !== id)
+    memories.value = memories.value.filter(memory => memory._id !== id.toString())
   } catch (err) {
     console.error('删除记忆失败:', err)
     error.value = '删除记忆失败'
@@ -70,14 +70,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="memories-page">
-    <header class="page-header">
-      <h1 class="text-3xl font-bold text-center mb-8">我们的爱情回忆</h1>
-      <p class="text-center text-gray-600 mb-10">记录我们在一起的每一个美好时刻</p>
+  <div class="p-8 max-w-800px mx-auto md:p-8">
+    <header class="mb-8 md:mb-8">
+      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">我们的爱情回忆</h1>
+      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">记录我们在一起的每一个美好时刻</p>
     </header>
 
     <div v-if="loading" class="text-center py-10">
-      <div class="loading-spinner"></div>
+      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
       <p class="mt-2">加载中...</p>
     </div>
 
@@ -92,11 +92,11 @@ onMounted(() => {
     </div>
 
     <div v-else>
-      <div class="memory-timeline">
+      <div class="relative">
         <div 
           v-for="memory in memories" 
           :key="memory._id" 
-          class="memory-item"
+          class="mb-8 last:mb-0 md:mb-8"
         >
           <MemoryCard 
             :memory="{
@@ -133,130 +133,55 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.memories-page {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-}
-
-.page-header p {
-  font-size: 1.1rem;
-}
-
-.memory-timeline {
-  position: relative;
-}
-
-/* 时间轴线 */
-.memory-timeline::before {
-  content: '';
-  position: absolute;
-  left: 20px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #ec4899; /* pink-500 */
-}
-
-.memory-item {
-  margin-bottom: 2rem;
-}
-
-.memory-item:last-child {
-  margin-bottom: 0;
-}
-
-/* 响应式设计 */
-@media (min-width: 768px) {
-  .memory-timeline::before {
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  
-  .memories-page {
-    padding: 2rem;
-  }
-  
-  .page-header h1 {
-    font-size: 2.5rem;
-  }
-}
-
-/* 小屏手机优化 */
-@media (max-width: 768px) {
-  .memories-page {
-    padding: 1rem;
-  }
-  
-  .page-header {
-    margin-bottom: 1rem;
-  }
-  
-  .page-header h1 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .page-header p {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .memory-timeline::before {
-    left: 15px;
-  }
-  
-  .memory-item {
-    margin-bottom: 1.5rem;
-  }
-  
-  .text-center {
-    margin-top: 2rem;
-  }
-}
-
 /* 加载动画 */
-.loading-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #ec4899;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
+/* 小屏手机优化 */
+@media (max-width: 768px) {
+  .p-8.max-w-800px.mx-auto.md\:p-8 {
+    padding: 1rem;
+  }
+  
+  .mb-8.md\:mb-8 {
+    margin-bottom: 1rem;
+  }
+  
+  .text-2xl.font-bold.text-center.mb-4.md\:text-3xl.md\:mb-8 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .text-center.text-gray-600.mb-6.md\:mb-10.md\:text-lg {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .mb-8.last\:mb-0.md\:mb-8 {
+    margin-bottom: 1.5rem;
+  }
+  
+  .text-center.mt-10 {
+    margin-top: 2rem;
+  }
+}
+
 @media (max-width: 480px) {
-  .memories-page {
+  .p-8.max-w-800px.mx-auto.md\:p-8 {
     padding: 0.5rem;
   }
   
-  .page-header h1 {
+  .text-2xl.font-bold.text-center.mb-4.md\:text-3xl.md\:mb-8 {
     font-size: 1.5rem;
   }
   
-  .page-header p {
+  .text-center.text-gray-600.mb-6.md\:mb-10.md\:text-lg {
     font-size: 0.9rem;
   }
   
-  .memory-timeline::before {
-    left: 12px;
-  }
-  
-  .memory-item {
+  .mb-8.last\:mb-0.md\:mb-8 {
     margin-bottom: 1rem;
   }
 }

@@ -35,150 +35,63 @@ onMounted(() => {
 })
 </script>
 
-<template>
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="nav-logo">
-        <RouterLink to="/" @click="closeMenu">❤️ Love Story</RouterLink>
-      </div>
-      
-      <!-- 桌面端导航菜单 -->
-      <ul class="nav-menu desktop-menu">
-        <li class="nav-item">
-          <RouterLink to="/" @click="closeMenu" active-class="active">首页</RouterLink>
-        </li>
-        <li class="nav-item">
-          <RouterLink to="/memories" @click="closeMenu" active-class="active">回忆</RouterLink>
-        </li>
-        <li class="nav-item">
-          <RouterLink to="/photos" @click="closeMenu" active-class="active">相册</RouterLink>
-        </li>
-        <li class="nav-item">
-          <RouterLink to="/anniversaries" @click="closeMenu" active-class="active">纪念日</RouterLink>
-        </li>
-        <li class="nav-item">
-          <RouterLink to="/about" @click="closeMenu" active-class="active">关于</RouterLink>
-        </li>
-        <template v-if="!userStore.isLoggedIn">
-          <li class="nav-item">
-            <RouterLink to="/login" @click="closeMenu" active-class="active">登录</RouterLink>
-          </li>
-          <li class="nav-item">
-            <RouterLink to="/register" @click="closeMenu" active-class="active">注册</RouterLink>
-          </li>
-        </template>
-        <template v-else>
-          <li class="nav-item">
-            <button @click="logout" class="logout-button">退出</button>
-          </li>
-        </template>
-      </ul>
-      
-      <!-- 移动端菜单按钮 -->
-      <div class="nav-toggle" @click="toggleMenu">
-        <span class="bar"></span>
-        <span class="bar"></span>
-        <span class="bar"></span>
-      </div>
-    </div>
-    
-    <!-- 移动端导航菜单 -->
-    <ul class="nav-menu mobile-menu" :class="{ 'active': isMenuOpen }">
-      <li class="nav-item">
-        <RouterLink to="/" @click="closeMenu" active-class="active">首页</RouterLink>
-      </li>
-      <li class="nav-item">
-        <RouterLink to="/memories" @click="closeMenu" active-class="active">回忆</RouterLink>
-      </li>
-      <li class="nav-item">
-        <RouterLink to="/photos" @click="closeMenu" active-class="active">相册</RouterLink>
-      </li>
-      <li class="nav-item">
-        <RouterLink to="/anniversaries" @click="closeMenu" active-class="active">纪念日</RouterLink>
-      </li>
-      <li class="nav-item">
-        <RouterLink to="/about" @click="closeMenu" active-class="active">关于</RouterLink>
-      </li>
-      <template v-if="!userStore.isLoggedIn">
-        <li class="nav-item">
-          <RouterLink to="/login" @click="closeMenu" active-class="active">登录</RouterLink>
-        </li>
-        <li class="nav-item">
-          <RouterLink to="/register" @click="closeMenu" active-class="active">注册</RouterLink>
-        </li>
-      </template>
-      <template v-else>
-        <li class="nav-item">
-          <button @click="logout" class="logout-button">退出</button>
-        </li>
-      </template>
-    </ul>
-  </nav>
-</template>
-
 <style scoped>
-.navbar {
-  background: white;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+.romantic-navigation {
+  background: var(--romantic-white);
+  box-shadow: var(--romantic-shadow);
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 50;
   width: 100%;
 }
 
-.nav-container {
+.romantic-navigation-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 var(--romantic-spacing-6);
   display: flex;
   justify-content: space-between;
   align-items: center;
   height: 70px;
 }
 
-.nav-logo a {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #ec4899; /* pink-500 */
+.romantic-logo-link {
+  font-size: 28px;
+  font-weight: var(--romantic-font-weight-bold);
+  color: var(--romantic-primary);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: var(--romantic-transition);
 }
 
-.nav-logo a:hover {
-  color: #db2777; /* pink-600 */
+.romantic-logo-link:hover {
+  color: var(--romantic-primary-dark);
 }
 
-.nav-menu {
-  display: flex;
-  list-style: none;
+.romantic-desktop-menu {
+  display: none;
 }
 
-.desktop-menu {
-  gap: 2rem;
-}
-
-.nav-item a {
+.romantic-menu-link {
   text-decoration: none;
-  color: #4b5563; /* gray-600 */
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+  color: var(--romantic-dark);
+  font-weight: var(--romantic-font-weight-medium);
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+  border-radius: var(--romantic-radius);
+  transition: var(--romantic-transition);
   position: relative;
 }
 
-.nav-item a:hover {
-  color: #ec4899; /* pink-500 */
-  background: #fdf2f8; /* pink-50 */
+.romantic-menu-link:hover {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
 }
 
-.nav-item a.active {
-  color: #ec4899; /* pink-500 */
-  background: #fdf2f8; /* pink-50 */
+.romantic-menu-link-active {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
 }
 
-/* 活跃链接底部指示器 */
-.nav-item a.active::after {
+.romantic-menu-link-active::after {
   content: '';
   position: absolute;
   bottom: -10px;
@@ -186,28 +99,28 @@ onMounted(() => {
   transform: translateX(-50%);
   width: 40%;
   height: 3px;
-  background: #ec4899; /* pink-500 */
+  background: var(--romantic-primary);
   border-radius: 3px;
 }
 
-.logout-button {
+.romantic-logout-button {
   background: none;
   border: none;
-  color: #4b5563; /* gray-600 */
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+  color: var(--romantic-dark);
+  font-weight: var(--romantic-font-weight-medium);
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+  border-radius: var(--romantic-radius);
+  transition: var(--romantic-transition);
   cursor: pointer;
 }
 
-.logout-button:hover {
-  color: #ef4444; /* red-500 */
-  background: #fef2f2; /* red-50 */
+.romantic-logout-button:hover {
+  color: var(--romantic-danger);
+  background: var(--romantic-gray);
 }
 
-.nav-toggle {
-  display: none;
+.romantic-mobile-menu-button {
+  display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 30px;
@@ -215,132 +128,353 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.bar {
+.romantic-menu-bar {
   height: 3px;
   width: 100%;
-  background-color: #ec4899; /* pink-500 */
+  background: var(--romantic-primary);
   border-radius: 10px;
-  transition: all 0.3s ease;
+  transition: var(--romantic-transition);
 }
 
-/* 移动端菜单样式 */
-.mobile-menu {
+.romantic-mobile-menu {
+  position: absolute;
+  top: 70px;
+  left: 0;
+  width: 100%;
+  background: var(--romantic-white);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--romantic-spacing-4);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-150%);
+  transition: transform 0.3s ease;
+  z-index: 50;
+}
+
+.romantic-mobile-menu-open {
+  transform: translateY(0);
+  display: flex;
+}
+
+.romantic-mobile-menu-closed {
   display: none;
 }
 
-/* 平板及以下设备 */
-@media (max-width: 1024px) {
-  .nav-container {
-    padding: 0 1rem;
-  }
-  
-  .desktop-menu {
-    gap: 1.5rem;
-  }
-  
-  .nav-item a {
-    font-size: 0.95rem;
-    padding: 0.4rem 0.8rem;
-  }
-  
-  .nav-logo a {
-    font-size: 1.6rem;
-  }
+.romantic-mobile-menu-item {
+  width: 100%;
+  text-align: center;
+  margin: var(--romantic-spacing-1) 0;
 }
 
-/* 手机横屏及以下设备 */
-@media (max-width: 768px) {
-  .desktop-menu {
+.romantic-mobile-menu-link {
+  display: block;
+  padding: var(--romantic-spacing-4);
+  font-size: var(--romantic-font-size-lg);
+  text-decoration: none;
+  color: var(--romantic-dark);
+  font-weight: var(--romantic-font-weight-medium);
+  border-radius: 0;
+  transition: var(--romantic-transition);
+  position: relative;
+}
+
+.romantic-mobile-menu-link:hover {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
+}
+
+.romantic-mobile-menu-link-active {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
+}
+
+.romantic-mobile-menu-link-active::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 3px;
+  background: var(--romantic-primary);
+  border-radius: 3px;
+}
+
+.romantic-mobile-logout-button {
+  display: block;
+  width: 100%;
+  padding: var(--romantic-spacing-4);
+  font-size: var(--romantic-font-size-lg);
+  background: none;
+  border: none;
+  color: var(--romantic-dark);
+  font-weight: var(--romantic-font-weight-medium);
+  border-radius: 0;
+  transition: var(--romantic-transition);
+  cursor: pointer;
+}
+
+.romantic-mobile-logout-button:hover {
+  color: var(--romantic-danger);
+  background: var(--romantic-gray);
+}
+
+/* Desktop styles */
+@media (min-width: 768px) {
+  .romantic-desktop-menu {
+    display: flex;
+    gap: var(--romantic-spacing-8);
+    list-style: none;
+  }
+  
+  .romantic-mobile-menu-button {
     display: none;
   }
   
-  .nav-toggle {
-    display: flex;
-  }
-  
-  .nav-toggle.active .bar:nth-child(2) {
-    opacity: 0;
-  }
-  
-  .nav-toggle.active .bar:nth-child(1) {
-    transform: translateY(9px) rotate(45deg);
-  }
-  
-  .nav-toggle.active .bar:nth-child(3) {
-    transform: translateY(-9px) rotate(-45deg);
-  }
-  
-  .mobile-menu {
-    position: absolute;
-    top: 70px;
-    left: 0;
-    width: 100%;
-    background: white;
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem 0;
-    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
-    transform: translateY(-150%);
-    transition: transform 0.3s ease;
-    z-index: 999;
-  }
-  
-  .mobile-menu.active {
-    transform: translateY(0);
-    display: flex;
-  }
-  
-  .mobile-menu .nav-item {
-    width: 100%;
-    text-align: center;
-    margin: 0.25rem 0;
-  }
-  
-  .mobile-menu .nav-item a {
-    display: block;
-    padding: 1rem;
-    font-size: 1.1rem;
-    border-radius: 0;
-  }
-  
-  .nav-container {
-    height: 65px;
-  }
-  
-  .nav-logo a {
-    font-size: 1.5rem;
-  }
-}
-
-/* 小屏手机 */
-@media (max-width: 480px) {
-  .nav-container {
-    padding: 0 0.75rem;
-  }
-  
-  .nav-logo a {
-    font-size: 1.4rem;
-  }
-  
-  .mobile-menu .nav-item a {
-    font-size: 1rem;
-    padding: 0.8rem;
-  }
-}
-
-/* 超小屏手机 */
-@media (max-width: 360px) {
-  .nav-container {
-    padding: 0 0.5rem;
-  }
-  
-  .nav-logo a {
-    font-size: 1.3rem;
-  }
-  
-  .mobile-menu .nav-item a {
-    font-size: 0.95rem;
-    padding: 0.7rem;
+  .romantic-mobile-menu {
+    display: none;
   }
 }
 </style>
+
+<template>
+  <nav class="romantic-navigation">
+    <div class="romantic-navigation-container">
+      <div>
+        <RouterLink 
+          to="/" 
+          @click="closeMenu"
+          class="romantic-logo-link"
+        >
+          ❤️ Love Story
+        </RouterLink>
+      </div>
+      
+      <!-- 桌面端导航菜单 -->
+      <ul class="romantic-desktop-menu">
+        <li>
+          <RouterLink 
+            to="/" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            首页
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/memories" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            回忆
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/photos" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            相册
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/anniversaries" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            纪念日
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/about" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            关于
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/demo" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            样式演示
+          </RouterLink>
+        </li>
+        <li>
+          <RouterLink 
+            to="/lightning-css-test" 
+            @click="closeMenu"
+            class="romantic-menu-link"
+            active-class="romantic-menu-link-active"
+          >
+            Lightning CSS 测试
+          </RouterLink>
+        </li>
+        <template v-if="!userStore.isLoggedIn">
+          <li>
+            <RouterLink 
+              to="/login" 
+              @click="closeMenu"
+              class="romantic-menu-link"
+              active-class="romantic-menu-link-active"
+            >
+              登录
+            </RouterLink>
+          </li>
+          <li>
+            <RouterLink 
+              to="/register" 
+              @click="closeMenu"
+              class="romantic-menu-link"
+              active-class="romantic-menu-link-active"
+            >
+              注册
+            </RouterLink>
+          </li>
+        </template>
+        <template v-else>
+          <li>
+            <button 
+              @click="logout" 
+              class="romantic-logout-button"
+            >
+              退出
+            </button>
+          </li>
+        </template>
+      </ul>
+      
+      <!-- 移动端菜单按钮 -->
+      <div 
+        class="romantic-mobile-menu-button"
+        @click="toggleMenu"
+      >
+        <span class="romantic-menu-bar"></span>
+        <span class="romantic-menu-bar"></span>
+        <span class="romantic-menu-bar"></span>
+      </div>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <ul 
+      class="romantic-mobile-menu"
+      :class="{ 'romantic-mobile-menu-open': isMenuOpen, 'romantic-mobile-menu-closed': !isMenuOpen }"
+    >
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          首页
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/memories" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          回忆
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/photos" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          相册
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/anniversaries" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          纪念日
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/about" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          关于
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/demo" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          样式演示
+        </RouterLink>
+      </li>
+      <li class="romantic-mobile-menu-item">
+        <RouterLink 
+          to="/lightning-css-test" 
+          @click="closeMenu"
+          class="romantic-mobile-menu-link"
+          active-class="romantic-mobile-menu-link-active"
+        >
+          Lightning CSS 测试
+        </RouterLink>
+      </li>
+      <template v-if="!userStore.isLoggedIn">
+        <li class="romantic-mobile-menu-item">
+          <RouterLink 
+            to="/login" 
+            @click="closeMenu"
+            class="romantic-mobile-menu-link"
+            active-class="romantic-mobile-menu-link-active"
+          >
+            登录
+          </RouterLink>
+        </li>
+        <li class="romantic-mobile-menu-item">
+          <RouterLink 
+            to="/register" 
+            @click="closeMenu"
+            class="romantic-mobile-menu-link"
+            active-class="romantic-mobile-menu-link-active"
+          >
+            注册
+          </RouterLink>
+        </li>
+      </template>
+      <template v-else>
+        <li class="romantic-mobile-menu-item">
+          <button 
+            @click="logout" 
+            class="romantic-mobile-logout-button"
+          >
+            退出
+          </button>
+        </li>
+      </template>
+    </ul>
+  </nav>
+</template>

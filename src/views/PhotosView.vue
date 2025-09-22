@@ -67,14 +67,14 @@ const formatDate = (dateString: string) => {
 </script>
 
 <template>
-  <div class="photos-page">
-    <header class="page-header">
-      <h1 class="text-3xl font-bold text-center mb-8">我们的照片相册</h1>
-      <p class="text-center text-gray-600 mb-10">珍藏我们一起度过的美好时光</p>
+  <div class="p-8 max-w-1200px mx-auto md:p-8">
+    <header class="mb-8 md:mb-8">
+      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">我们的照片相册</h1>
+      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">珍藏我们一起度过的美好时光</p>
     </header>
 
     <div v-if="loading" class="text-center py-10">
-      <div class="loading-spinner"></div>
+      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
       <p class="mt-2">加载中...</p>
     </div>
 
@@ -89,22 +89,22 @@ const formatDate = (dateString: string) => {
     </div>
 
     <div v-else>
-      <div class="photo-grid">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         <div 
           v-for="photo in photos" 
           :key="photo.id" 
-          class="photo-card"
+          class="rounded-12px overflow-hidden shadow-md transition-transform duration-300 hover:translate-y--5"
         >
-          <div class="photo-wrapper">
+          <div class="relative overflow-hidden">
             <img 
               :src="photo.url" 
               :alt="photo.title" 
-              class="photo-image"
+              class="w-full h-60 object-cover block transition-transform duration-300 hover:scale-105 md:h-60"
             >
-            <div class="photo-overlay">
-              <div class="photo-info">
-                <h3 class="photo-title">{{ photo.title }}</h3>
-                <p class="photo-date">{{ formatDate(photo.date) }}</p>
+            <div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-70 flex items-end p-4 opacity-0 transition-opacity duration-300 hover:opacity-100">
+              <div class="text-white transform translate-y-10 transition-transform duration-300 hover:translate-y-0">
+                <h3 class="text-1.1rem font-600 mb-1 md:text-1.1rem">{{ photo.title }}</h3>
+                <p class="text-0.9rem opacity-80 md:text-0.9rem">{{ formatDate(photo.date) }}</p>
               </div>
             </div>
           </div>
@@ -125,108 +125,7 @@ const formatDate = (dateString: string) => {
 </template>
 
 <style scoped>
-.photos-page {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-}
-
-.page-header p {
-  font-size: 1.1rem;
-}
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
-}
-
-.photo-card {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.photo-card:hover {
-  transform: translateY(-5px);
-}
-
-.photo-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-
-.photo-image {
-  width: 100%;
-  height: 250px;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.3s ease;
-}
-
-.photo-card:hover .photo-image {
-  transform: scale(1.05);
-}
-
-.photo-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: flex-end;
-  padding: 1rem;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.photo-card:hover .photo-overlay {
-  opacity: 1;
-}
-
-.photo-info {
-  color: white;
-  transform: translateY(10px);
-  transition: transform 0.3s ease;
-}
-
-.photo-card:hover .photo-info {
-  transform: translateY(0);
-}
-
-.photo-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.photo-date {
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
-
 /* 加载动画 */
-.loading-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #ec4899;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -234,78 +133,78 @@ const formatDate = (dateString: string) => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .photo-grid {
+  .md\:grid-cols-4 {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 1rem;
   }
   
-  .photo-image {
+  .md\:h-60 {
     height: 150px;
   }
   
-  .photos-page {
+  .md\:p-8 {
     padding: 1rem;
   }
   
-  .page-header {
+  .md\:mb-8 {
     margin-bottom: 1rem;
   }
   
-  .page-header h1 {
+  .md\:text-3xl {
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
   }
   
-  .page-header p {
+  .md\:mb-10 {
     font-size: 1rem;
     margin-bottom: 1rem;
   }
   
-  .photo-title {
+  .md\:text-1\.1rem {
     font-size: 1rem;
   }
   
-  .photo-date {
+  .md\:text-0\.9rem {
     font-size: 0.8rem;
   }
   
-  .text-center {
+  .mt-10 {
     margin-top: 2rem;
   }
 }
 
 /* 小屏手机优化 */
 @media (max-width: 480px) {
-  .photo-grid {
+  .md\:grid-cols-4 {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 0.75rem;
   }
   
-  .photo-image {
+  .md\:h-60 {
     height: 120px;
   }
   
-  .photos-page {
+  .md\:p-8 {
     padding: 0.5rem;
   }
   
-  .page-header h1 {
+  .md\:text-3xl {
     font-size: 1.5rem;
   }
   
-  .page-header p {
+  .md\:mb-10 {
     font-size: 0.9rem;
   }
   
-  .photo-overlay {
+  .p-4 {
     padding: 0.75rem;
   }
   
-  .photo-title {
+  .md\:text-1\.1rem {
     font-size: 0.9rem;
   }
   
-  .photo-date {
+  .md\:text-0\.9rem {
     font-size: 0.75rem;
   }
 }

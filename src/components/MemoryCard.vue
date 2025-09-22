@@ -17,8 +17,8 @@ const props = defineProps<{
 
 // 定义组件Emits
 const emit = defineEmits<{
-  (e: 'edit', memory: Memory): void
-  (e: 'delete', id: number | string): void
+  edit: [memory: Memory]
+  delete: [id: number | string]
 }>()
 
 // 格式化日期
@@ -45,29 +45,29 @@ const handleDelete = () => {
 </script>
 
 <template>
-  <div class="memory-card">
-    <div class="card-content">
-      <div class="date-tag">
+  <div class="romantic-memory-card">
+    <div class="romantic-card-content">
+      <div class="romantic-date-tag">
         {{ formatDate(memory.date) }}
       </div>
       
-      <h2 class="memory-title">{{ memory.title }}</h2>
+      <h2 class="romantic-memory-title">{{ memory.title }}</h2>
       
-      <p class="memory-content">
+      <p class="romantic-memory-content">
         {{ memory.content }}
       </p>
       
-      <div v-if="memory.images && memory.images.length > 0" class="memory-images">
-        <div v-for="(image, index) in memory.images" :key="index" class="memory-image">
-          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`" class="rounded-lg shadow-md">
+      <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images">
+        <div v-for="(image, index) in memory.images" :key="index" class="romantic-memory-image">
+          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`">
         </div>
       </div>
       
-      <div class="card-actions">
-        <button class="action-button" @click="handleEdit">
+      <div class="romantic-card-actions">
+        <button class="romantic-action-button" @click="handleEdit">
           编辑
         </button>
-        <button class="action-button delete-button" @click="handleDelete">
+        <button class="romantic-action-button romantic-delete-button" @click="handleDelete">
           删除
         </button>
       </div>
@@ -76,104 +76,112 @@ const handleDelete = () => {
 </template>
 
 <style scoped>
-.memory-card {
+.romantic-memory-card {
   position: relative;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: var(--romantic-white);
+  border-radius: var(--romantic-radius);
+  box-shadow: var(--romantic-shadow);
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: var(--romantic-transition);
   margin-left: 40px;
+  border: 1px solid rgba(255, 107, 157, 0.1);
 }
 
-.memory-card:hover {
+.romantic-memory-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--romantic-shadow-hover);
 }
 
-.card-content {
-  padding: 1.5rem;
+.romantic-card-content {
+  padding: var(--romantic-spacing-6);
 }
 
-.date-tag {
+.romantic-date-tag {
   position: absolute;
   top: -12px;
   left: -12px;
-  background: #ec4899; /* pink-500 */
-  color: white;
-  font-weight: bold;
-  padding: 0.25rem 0.75rem;
+  background: var(--romantic-primary);
+  color: var(--romantic-white);
+  font-weight: var(--romantic-font-weight-bold);
+  padding: var(--romantic-spacing-1) var(--romantic-spacing-3);
   border-radius: 20px;
-  font-size: 0.875rem;
+  font-size: var(--romantic-font-size-sm);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.memory-title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 0.75rem;
-  color: #333;
+.romantic-memory-title {
+  font-size: var(--romantic-font-size-2xl);
+  font-weight: var(--romantic-font-weight-bold);
+  margin-bottom: var(--romantic-spacing-3);
+  color: var(--romantic-dark);
 }
 
-.memory-content {
-  color: #666;
+.romantic-memory-content {
+  color: var(--romantic-dark);
   line-height: 1.6;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--romantic-spacing-5);
 }
 
-.memory-image {
-  margin-bottom: 1.25rem;
+.romantic-memory-image {
+  margin-bottom: var(--romantic-spacing-5);
+  border-radius: var(--romantic-radius);
+  overflow: hidden;
 }
 
-.memory-image img {
+.romantic-memory-image img {
   width: 100%;
   height: auto;
   max-height: 300px;
   object-fit: cover;
+  transition: var(--romantic-transition);
 }
 
-.card-actions {
+.romantic-memory-image img:hover {
+  transform: scale(1.02);
+}
+
+.romantic-card-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--romantic-spacing-3);
 }
 
-.action-button {
-  padding: 0.5rem 1rem;
-  background: #f3f4f6; /* gray-100 */
+.romantic-action-button {
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+  background: var(--romantic-gray);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background 0.2s ease;
+  font-weight: var(--romantic-font-weight-medium);
+  transition: var(--romantic-transition);
 }
 
-.action-button:hover {
-  background: #e5e7eb; /* gray-200 */
+.romantic-action-button:hover {
+  background: var(--romantic-light);
 }
 
-.delete-button {
+.romantic-delete-button {
+  background: var(--romantic-gray);
+  color: var(--romantic-danger);
+}
+
+.romantic-delete-button:hover {
   background: #fee2e2; /* red-100 */
-  color: #ef4444; /* red-500 */
-}
-
-.delete-button:hover {
-  background: #fecaca; /* red-200 */
 }
 
 /* 在大屏幕上，记忆卡片居中显示 */
 @media (min-width: 768px) {
-  .memory-card {
+  .romantic-memory-card {
     margin-left: auto;
     margin-right: auto;
     width: 80%;
   }
   
-  .memory-card:nth-child(odd) {
+  .romantic-memory-card:nth-child(odd) {
     margin-right: 40px;
     margin-left: auto;
   }
   
-  .memory-card:nth-child(even) {
+  .romantic-memory-card:nth-child(even) {
     margin-left: 40px;
     margin-right: auto;
   }
@@ -181,91 +189,91 @@ const handleDelete = () => {
 
 /* 小屏手机优化 */
 @media (max-width: 768px) {
-  .memory-card {
+  .romantic-memory-card {
     margin-left: 30px;
     margin-right: 1rem;
   }
   
-  .card-content {
-    padding: 1rem;
+  .romantic-card-content {
+    padding: var(--romantic-spacing-4);
   }
   
-  .date-tag {
+  .romantic-date-tag {
     top: -10px;
     left: -10px;
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
   }
   
-  .memory-title {
+  .romantic-memory-title {
     font-size: 1.3rem;
     margin-bottom: 0.5rem;
   }
   
-  .memory-content {
+  .romantic-memory-content {
     font-size: 0.95rem;
     margin-bottom: 1rem;
   }
   
-  .memory-image {
+  .romantic-memory-image {
     margin-bottom: 1rem;
   }
   
-  .memory-image img {
+  .romantic-memory-image img {
     max-height: 200px;
   }
   
-  .card-actions {
+  .romantic-card-actions {
     gap: 0.5rem;
   }
   
-  .action-button {
+  .romantic-action-button {
     padding: 0.4rem 0.8rem;
     font-size: 0.9rem;
   }
 }
 
 @media (max-width: 480px) {
-  .memory-card {
+  .romantic-memory-card {
     margin-left: 25px;
     margin-right: 0.5rem;
   }
   
-  .card-content {
+  .romantic-card-content {
     padding: 0.75rem;
   }
   
-  .date-tag {
+  .romantic-date-tag {
     top: -8px;
     left: -8px;
     padding: 0.15rem 0.5rem;
     font-size: 0.7rem;
   }
   
-  .memory-title {
+  .romantic-memory-title {
     font-size: 1.1rem;
     margin-bottom: 0.4rem;
   }
   
-  .memory-content {
+  .romantic-memory-content {
     font-size: 0.9rem;
     margin-bottom: 0.75rem;
     line-height: 1.5;
   }
   
-  .memory-image {
+  .romantic-memory-image {
     margin-bottom: 0.75rem;
   }
   
-  .memory-image img {
+  .romantic-memory-image img {
     max-height: 150px;
   }
   
-  .card-actions {
+  .romantic-card-actions {
     gap: 0.4rem;
   }
   
-  .action-button {
+  .romantic-action-button {
     padding: 0.3rem 0.6rem;
     font-size: 0.8rem;
   }

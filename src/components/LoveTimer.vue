@@ -58,7 +58,7 @@ onBeforeUnmount(() => {
     </div>
     
     <div class="timer-content">
-      <div class="time-display">
+      <div class="time-units">
         <div class="time-unit">
           <span class="time-value">{{ daysTogether }}</span>
           <span class="time-label">天</span>
@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .love-timer {
-  background: linear-gradient(135deg, #f0f9ff 0%, #fdf2f8 100%);
+  background: linear-gradient(to bottom right, #f0f9ff, #fdf2f8);
   border-radius: 16px;
   padding: 2rem;
   text-align: center;
@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
   gap: 1.5rem;
 }
 
-.time-display {
+.time-units {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -131,15 +131,15 @@ onBeforeUnmount(() => {
   font-weight: 800;
   color: #ec4899; /* pink-500 */
   background: white;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   border-radius: 12px;
   min-width: 80px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .time-label {
   font-size: 1rem;
-  color: #666;
+  color: #4b5563; /* gray-600 */
   margin-top: 0.5rem;
 }
 
@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
     font-size: 1rem;
   }
   
-  .time-display {
+  .time-units {
     gap: 0.75rem;
   }
 }
@@ -190,7 +190,7 @@ onBeforeUnmount(() => {
     margin-bottom: 1rem;
   }
   
-  .time-display {
+  .time-units {
     gap: 0.5rem;
   }
   

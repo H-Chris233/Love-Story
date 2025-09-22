@@ -106,14 +106,14 @@ const getDaysUntilText = (days: number) => {
 </script>
 
 <template>
-  <div class="anniversaries-page">
-    <header class="page-header">
-      <h1 class="text-3xl font-bold text-center mb-8">重要纪念日</h1>
-      <p class="text-center text-gray-600 mb-10">记录我们的重要日子，不再错过任何美好时刻</p>
+  <div class="p-8 max-w-800px mx-auto md:p-8">
+    <header class="mb-8 md:mb-8">
+      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">重要纪念日</h1>
+      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">记录我们的重要日子，不再错过任何美好时刻</p>
     </header>
 
     <div v-if="loading" class="text-center py-10">
-      <div class="loading-spinner"></div>
+      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
       <p class="mt-2">加载中...</p>
     </div>
 
@@ -128,25 +128,25 @@ const getDaysUntilText = (days: number) => {
     </div>
 
     <div v-else>
-      <div class="anniversaries-list">
+      <div class="flex flex-col gap-6">
         <div 
           v-for="anniversary in anniversaries" 
           :key="anniversary._id" 
-          class="anniversary-card"
+          class="bg-white rounded-12px shadow-md p-6 transition-all duration-300 hover:translate-y--3px hover:shadow-lg"
         >
-          <div class="card-header">
-            <h2 class="anniversary-title">{{ anniversary.title }}</h2>
-            <div class="card-actions">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-1.5rem font-700 text-gray-800 md:text-1.5rem">{{ anniversary.title }}</h2>
+            <div class="flex gap-2">
               <button 
                 @click="handleEditAnniversary(anniversary)"
-                class="action-button edit-button"
+                class="p-1 text-0.875rem cursor-pointer transition bg-blue-100 text-blue-700 border-1 border-blue-300 rounded hover:bg-blue-200 md:p-1 md:text-0.875rem"
                 title="编辑"
               >
                 编辑
               </button>
               <button 
                 @click="handleDeleteAnniversary(anniversary._id)"
-                class="action-button delete-button"
+                class="p-1 text-0.875rem cursor-pointer transition bg-red-100 text-red-700 border-1 border-red-300 rounded hover:bg-red-200 md:p-1 md:text-0.875rem"
                 title="删除"
               >
                 删除
@@ -154,9 +154,16 @@ const getDaysUntilText = (days: number) => {
             </div>
           </div>
           
-          <div class="card-body">
-            <p class="anniversary-date">{{ formatDate(anniversary.date) }}</p>
-            <p class="days-until" :class="{ 'today': calculateDaysUntil(anniversary.date) === 0, 'past': calculateDaysUntil(anniversary.date) < 0 }">
+          <div class="flex justify-between items-center md:flex-row md:items-center">
+            <p class="text-1.1rem text-gray-600 md:text-1.1rem">{{ formatDate(anniversary.date) }}</p>
+            <p 
+              class="text-1.1rem font-600 md:text-1.1rem"
+              :class="{
+                'text-green-500': calculateDaysUntil(anniversary.date) === 0,
+                'text-red-500': calculateDaysUntil(anniversary.date) < 0,
+                'text-blue-500': calculateDaysUntil(anniversary.date) > 0
+              }"
+            >
               {{ getDaysUntilText(calculateDaysUntil(anniversary.date)) }}
             </p>
           </div>
@@ -188,125 +195,7 @@ const getDaysUntilText = (days: number) => {
 </template>
 
 <style scoped>
-.anniversaries-page {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-}
-
-.page-header p {
-  font-size: 1.1rem;
-}
-
-.anniversaries-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.anniversary-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  padding: 1.5rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.anniversary-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.anniversary-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #333;
-}
-
-.card-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.action-button {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.edit-button {
-  background: #dbeafe; /* blue-100 */
-  color: #1d4ed8; /* blue-700 */
-  border: 1px solid #93c5fd; /* blue-300 */
-}
-
-.edit-button:hover {
-  background: #bfdbfe; /* blue-200 */
-}
-
-.delete-button {
-  background: #fee2e2; /* red-100 */
-  color: #b91c1c; /* red-700 */
-  border: 1px solid #fca5a5; /* red-300 */
-}
-
-.delete-button:hover {
-  background: #fecaca; /* red-200 */
-}
-
-.card-body {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.anniversary-date {
-  font-size: 1.1rem;
-  color: #666;
-}
-
-.days-until {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #3b82f6; /* blue-500 */
-}
-
-.days-until.today {
-  color: #10b981; /* green-500 */
-}
-
-.days-until.past {
-  color: #ef4444; /* red-500 */
-}
-
 /* 加载动画 */
-.loading-spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #ec4899;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -314,87 +203,79 @@ const getDaysUntilText = (days: number) => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .card-body {
+  .md\:flex-row {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
   
-  .anniversary-date {
+  .md\:text-1\.1rem {
     font-size: 1rem;
   }
   
-  .days-until {
-    font-size: 1rem;
-  }
-  
-  .anniversaries-page {
+  .md\:p-8 {
     padding: 1rem;
   }
   
-  .page-header {
+  .md\:mb-8 {
     margin-bottom: 1rem;
   }
   
-  .page-header h1 {
+  .md\:text-3xl {
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
   }
   
-  .page-header p {
+  .md\:mb-10 {
     font-size: 1rem;
     margin-bottom: 1rem;
   }
   
-  .anniversary-card {
+  .md\:p-6 {
     padding: 1rem;
   }
   
-  .anniversary-title {
+  .md\:text-1\.5rem {
     font-size: 1.3rem;
   }
   
-  .action-button {
+  .md\:p-1 {
     padding: 0.2rem 0.4rem;
     font-size: 0.8rem;
   }
   
-  .text-center {
+  .mt-10 {
     margin-top: 2rem;
   }
 }
 
 /* 小屏手机优化 */
 @media (max-width: 480px) {
-  .anniversaries-page {
+  .md\:p-8 {
     padding: 0.5rem;
   }
   
-  .page-header h1 {
+  .md\:text-3xl {
     font-size: 1.5rem;
   }
   
-  .page-header p {
+  .md\:mb-10 {
     font-size: 0.9rem;
   }
   
-  .anniversary-card {
+  .md\:p-6 {
     padding: 0.75rem;
   }
   
-  .card-header {
+  .mb-4 {
     margin-bottom: 0.75rem;
   }
   
-  .anniversary-title {
+  .md\:text-1\.5rem {
     font-size: 1.2rem;
   }
   
-  .anniversary-date {
-    font-size: 0.9rem;
-  }
-  
-  .days-until {
+  .md\:text-1\.1rem {
     font-size: 0.9rem;
   }
 }

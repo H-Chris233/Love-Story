@@ -1,4 +1,6 @@
 import './assets/main.css'
+import './assets/romantic-theme.css'
+import './assets/test-lightning.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

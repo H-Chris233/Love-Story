@@ -1,0 +1,96 @@
+/* 测试 Lightning CSS 功能 */
+.test-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+  padding: 2rem;
+}
+
+.test-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.2);
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  transition: all 0.3s ease;
+}
+
+.test-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(255, 107, 157, 0.3);
+}
+
+.test-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #5a3e4d;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.test-button {
+  background: #ff6b9d;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  margin: 1rem auto 0;
+}
+
+.test-button:hover {
+  background: #e6518e;
+  transform: translateY(-2px);
+}
+
+/* 测试 CSS 嵌套 (Nesting) */
+.nested-test {
+  background: #f8f0f4;
+  padding: 1rem;
+  border-radius: 8px;
+  
+  & .nested-item {
+    color: #ff6b9d;
+    font-weight: 500;
+    
+    &:hover {
+      color: #e6518e;
+      text-decoration: underline;
+    }
+  }
+  
+  & .nested-list {
+    margin-top: 0.5rem;
+    
+    & li {
+      margin-bottom: 0.25rem;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+/* 媒体查询 - 使用标准语法 */
+@media (width >= 768px) {
+  .test-container {
+    padding: 4rem;
+  }
+  
+  .test-card {
+    padding: 3rem;
+  }
+  
+  .test-title {
+    font-size: 2rem;
+  }
+}

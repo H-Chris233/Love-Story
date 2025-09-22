@@ -94,29 +94,50 @@ const handleSubmit = async () => {
   error.value = ''
 
   try {
-    const formData = new FormData()
-    formData.append('title', title.value)
-    formData.append('date', date.value)
-    formData.append('description', description.value)
-    
-    // 添加新上传的图片
-    images.value.forEach(image => {
-      formData.append('images', image)
-    })
-    
-    // 如果有要删除的图片，添加到formData中
-    if (imagesToDelete.value.length > 0) {
-      formData.append('imagesToDelete', JSON.stringify(imagesToDelete.value))
-    }
+    // Check if we have images to upload or images to delete
+    if (images.value.length > 0 || imagesToDelete.value.length > 0) {
+      // Use FormData for file uploads
+      const formData = new FormData()
+      formData.append('title', title.value)
+      formData.append('date', date.value)
+      formData.append('description', description.value)
+      
+      // Add new images
+      images.value.forEach(image => {
+        formData.append('images', image)
+      })
+      
+      // Add images to delete
+      if (imagesToDelete.value.length > 0) {
+        formData.append('imagesToDelete', JSON.stringify(imagesToDelete.value))
+      }
 
-    if (props.memory) {
-      // 编辑模式
-      const response = await memoryAPI.update(props.memory._id, formData)
-      emit('save', response.data)
+      if (props.memory) {
+        // 编辑模式
+        const response = await memoryAPI.updateWithImages(props.memory._id, formData)
+        emit('save', response.data)
+      } else {
+        // 添加模式
+        const response = await memoryAPI.createWithImages(formData)
+        emit('save', response.data)
+      }
     } else {
-      // 添加模式
-      const response = await memoryAPI.create(formData)
-      emit('save', response.data)
+      // No file uploads needed, use regular JSON
+      const memoryData = {
+        title: title.value,
+        date: date.value,
+        description: description.value
+      }
+
+      if (props.memory) {
+        // 编辑模式
+        const response = await memoryAPI.update(props.memory._id, memoryData)
+        emit('save', response.data)
+      } else {
+        // 添加模式
+        const response = await memoryAPI.create(memoryData)
+        emit('save', response.data)
+      }
     }
   } catch (err) {
     console.error('保存记忆时出错:', err)
@@ -131,7 +152,7 @@ const handleSubmit = async () => {
   <div class="memory-form-overlay" @click="emit('cancel')">
     <div class="memory-form" @click.stop>
       <div class="form-header">
-        <h2 class="text-2xl font-bold">{{ memory ? '编辑回忆' : '添加回忆' }}</h2>
+        <h2 class="form-title">{{ memory ? '编辑回忆' : '添加回忆' }}</h2>
         <button class="close-button" @click="emit('cancel')">×</button>
       </div>
       
@@ -256,6 +277,11 @@ const handleSubmit = async () => {
   align-items: center;
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.form-title {
+  font-size: 1.5rem;
+  font-weight: bold;
 }
 
 .close-button {
