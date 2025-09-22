@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import User from '../models/User';
-import config from '../config';
+import * as config from '../config';
 
 interface JwtPayload {
   id: string;
@@ -20,7 +20,7 @@ const protect = async (req: Request, res: Response, next: NextFunction): Promise
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+      const decoded = jwt.verify(token as string, config.default.jwtSecret) as JwtPayload;
 
       // Get user from token
       (req as any).user = await User.findById(decoded.id).select('-password');

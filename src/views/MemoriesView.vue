@@ -104,7 +104,7 @@ onMounted(() => {
               title: memory.title,
               date: memory.date,
               content: memory.description,
-              image: memory.images && memory.images.length > 0 ? memory.images[0].url : undefined
+              images: memory.images ? memory.images.map(img => img.url) : []
             }" 
             @edit="handleEditMemory(memory)"
             @delete="handleDeleteMemory"

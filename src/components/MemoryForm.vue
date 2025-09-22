@@ -25,6 +25,8 @@ const date = ref('')
 const description = ref('')
 const images = ref<File[]>([])
 const imagePreviews = ref<string[]>([])
+const existingImages = ref<{url: string, publicId: string}[]>([]) // 用于存储已存在的图片信息
+const imagesToDelete = ref<string[]>([]) // 用于跟踪要删除的图片publicId
 const isSubmitting = ref(false)
 const error = ref('')
 
@@ -34,7 +36,11 @@ onMounted(() => {
     title.value = props.memory.title
     date.value = new Date(props.memory.date).toISOString().split('T')[0]
     description.value = props.memory.description
-    // 图片预览在编辑模式下不显示原始图片，因为需要完整的文件对象才能上传
+    // 在编辑模式下显示已有的图片
+    if (props.memory.images) {
+      existingImages.value = [...props.memory.images]
+      imagePreviews.value = props.memory.images.map(img => img.url)
+    }
   }
 })
 
@@ -43,10 +49,9 @@ const handleImageChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files) {
     const files = Array.from(target.files)
-    images.value = files
+    images.value = [...images.value, ...files] // 添加到现有文件列表中
     
-    // 生成图片预览
-    imagePreviews.value = []
+    // 生成新图片预览（追加到现有预览后面）
     files.forEach(file => {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -61,8 +66,21 @@ const handleImageChange = (event: Event) => {
 
 // 移除图片预览
 const removeImage = (index: number) => {
-  imagePreviews.value.splice(index, 1)
-  images.value.splice(index, 1)
+  // 检查是否是已存在的图片（编辑模式下）
+  if (props.memory && props.memory.images && index < existingImages.value.length) {
+    // 这是已存在的图片，标记为删除
+    const imageToDelete = existingImages.value[index]
+    imagesToDelete.value.push(imageToDelete.publicId)
+    imagePreviews.value.splice(index, 1)
+    existingImages.value.splice(index, 1)
+  } else {
+    // 这是新添加的图片
+    const newIndex = props.memory && props.memory.images ? index - (props.memory.images.length - imagesToDelete.value.length) : index
+    if (newIndex >= 0 && newIndex < images.value.length) {
+      imagePreviews.value.splice(index, 1)
+      images.value.splice(newIndex, 1)
+    }
+  }
 }
 
 // 提交表单
@@ -81,9 +99,15 @@ const handleSubmit = async () => {
     formData.append('date', date.value)
     formData.append('description', description.value)
     
+    // 添加新上传的图片
     images.value.forEach(image => {
       formData.append('images', image)
     })
+    
+    // 如果有要删除的图片，添加到formData中
+    if (imagesToDelete.value.length > 0) {
+      formData.append('imagesToDelete', JSON.stringify(imagesToDelete.value))
+    }
 
     if (props.memory) {
       // 编辑模式

@@ -10,7 +10,7 @@ cloudinary.config({
 });
 
 // Create multer instance with Cloudinary storage
-const upload = multer({ storage: cloudinary.uploader });
+const upload = multer({ storage: cloudinary.uploader as any });
 
 // Upload image to Cloudinary
 const uploadImage = async (fileBuffer: Buffer): Promise<{ url: string; publicId: string }> => {

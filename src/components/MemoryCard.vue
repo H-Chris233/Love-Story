@@ -7,7 +7,7 @@ interface Memory {
   title: string
   date: string
   content: string
-  image?: string
+  images?: string[]
 }
 
 // 定义组件Props
@@ -57,8 +57,10 @@ const handleDelete = () => {
         {{ memory.content }}
       </p>
       
-      <div v-if="memory.image" class="memory-image">
-        <img :src="memory.image" :alt="memory.title" class="rounded-lg shadow-md">
+      <div v-if="memory.images && memory.images.length > 0" class="memory-images">
+        <div v-for="(image, index) in memory.images" :key="index" class="memory-image">
+          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`" class="rounded-lg shadow-md">
+        </div>
       </div>
       
       <div class="card-actions">

@@ -1,6 +1,18 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import Navigation from './components/Navigation.vue'
+import { useUserStore } from './stores/user'
+import { onMounted } from 'vue'
+
+// Initialize user store
+const userStore = useUserStore()
+
+// Check if user is logged in on app start
+onMounted(() => {
+  if (userStore.token) {
+    userStore.fetchUserProfile()
+  }
+})
 </script>
 
 <template>

@@ -28,7 +28,7 @@ const getAnniversary = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns anniversary
-    if (anniversary.user.toString() !== (req as any).user._id.toString()) {
+    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -66,7 +66,7 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
   const { title, date, reminderDays } = req.body;
 
   try {
-    let anniversary = await Anniversary.findById(req.params.id);
+    const anniversary = await Anniversary.findById(req.params.id);
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
@@ -74,18 +74,18 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Check if user owns anniversary
-    if (anniversary.user.toString() !== (req as any).user._id.toString()) {
+    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
 
-    anniversary = await Anniversary.findByIdAndUpdate(
+    const updatedAnniversary = await Anniversary.findByIdAndUpdate(
       req.params.id,
       { title, date, reminderDays },
       { new: true, runValidators: true }
     );
 
-    res.json(anniversary);
+    res.json(updatedAnniversary);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -104,7 +104,7 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Check if user owns anniversary
-    if (anniversary.user.toString() !== (req as any).user._id.toString()) {
+    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -130,15 +130,15 @@ const sendReminder = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns anniversary
-    if (anniversary.user.toString() !== (req as any).user._id.toString()) {
+    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
 
     // Send email reminder
     await sendAnniversaryReminder(
-      (anniversary.user as any).email,
-      (anniversary.user as any).name,
+      (anniversary as any).user.email,
+      (anniversary as any).user.name,
       anniversary.title,
       anniversary.date
     );

@@ -28,7 +28,7 @@ const getMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== (req as any).user._id.toString()) {
+    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -75,6 +75,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
 const updateMemory = async (req: Request, res: Response): Promise<void> => {
   const { title, description, date } = req.body;
   let images: { url: string; publicId: string }[] = [];
+  let imagesToDelete: string[] = [];
 
   try {
     let memory = await Memory.findById(req.params.id);
@@ -85,10 +86,27 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== (req as any).user._id.toString()) {
+    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
+
+    // Get images to delete if provided
+    if (req.body.imagesToDelete) {
+      try {
+        imagesToDelete = JSON.parse(req.body.imagesToDelete);
+      } catch (e) {
+        console.error('Error parsing imagesToDelete:', e);
+      }
+    }
+
+    // Delete specified images from Cloudinary
+    for (const publicId of imagesToDelete) {
+      await deleteImage(publicId);
+    }
+
+    // Filter out deleted images from existing images
+    let existingImages = memory.images.filter(img => !imagesToDelete.includes(img.publicId));
 
     // Upload new images if provided
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
@@ -98,15 +116,8 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Delete old images from Cloudinary if new images are uploaded
-    if (images.length > 0) {
-      for (const image of memory.images) {
-        await deleteImage(image.publicId);
-      }
-    } else {
-      // Keep existing images if no new images are uploaded
-      images = memory.images;
-    }
+    // Combine existing images (excluding deleted ones) with new images
+    images = [...existingImages, ...images];
 
     memory = await Memory.findByIdAndUpdate(
       req.params.id,
@@ -133,7 +144,7 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== (req as any).user._id.toString()) {
+    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }

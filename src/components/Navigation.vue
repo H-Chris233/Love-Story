@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
+
+// User store
+const userStore = useUserStore()
+const router = useRouter()
 
 // 移动端菜单开关状态
 const isMenuOpen = ref(false)
@@ -14,6 +19,20 @@ const toggleMenu = () => {
 const closeMenu = () => {
   isMenuOpen.value = false
 }
+
+// Logout function
+const logout = () => {
+  userStore.logout()
+  router.push('/login')
+  closeMenu()
+}
+
+// Fetch user profile on component mount
+onMounted(() => {
+  if (userStore.token) {
+    userStore.fetchUserProfile()
+  }
+})
 </script>
 
 <template>
@@ -40,6 +59,19 @@ const closeMenu = () => {
         <li class="nav-item">
           <RouterLink to="/about" @click="closeMenu" active-class="active">关于</RouterLink>
         </li>
+        <template v-if="!userStore.isLoggedIn">
+          <li class="nav-item">
+            <RouterLink to="/login" @click="closeMenu" active-class="active">登录</RouterLink>
+          </li>
+          <li class="nav-item">
+            <RouterLink to="/register" @click="closeMenu" active-class="active">注册</RouterLink>
+          </li>
+        </template>
+        <template v-else>
+          <li class="nav-item">
+            <button @click="logout" class="logout-button">退出</button>
+          </li>
+        </template>
       </ul>
       
       <!-- 移动端菜单按钮 -->
@@ -67,6 +99,19 @@ const closeMenu = () => {
       <li class="nav-item">
         <RouterLink to="/about" @click="closeMenu" active-class="active">关于</RouterLink>
       </li>
+      <template v-if="!userStore.isLoggedIn">
+        <li class="nav-item">
+          <RouterLink to="/login" @click="closeMenu" active-class="active">登录</RouterLink>
+        </li>
+        <li class="nav-item">
+          <RouterLink to="/register" @click="closeMenu" active-class="active">注册</RouterLink>
+        </li>
+      </template>
+      <template v-else>
+        <li class="nav-item">
+          <button @click="logout" class="logout-button">退出</button>
+        </li>
+      </template>
     </ul>
   </nav>
 </template>
@@ -143,6 +188,22 @@ const closeMenu = () => {
   height: 3px;
   background: #ec4899; /* pink-500 */
   border-radius: 3px;
+}
+
+.logout-button {
+  background: none;
+  border: none;
+  color: #4b5563; /* gray-600 */
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  color: #ef4444; /* red-500 */
+  background: #fef2f2; /* red-50 */
 }
 
 .nav-toggle {

@@ -1,8 +1,8 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
+import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
-import config from '../config';
+import * as config from '../config';
 
 interface JwtPayload {
   id: string;
@@ -10,7 +10,7 @@ interface JwtPayload {
 
 // Generate JWT token
 const generateToken = (id: string): string => {
-  return jwt.sign({ id }, config.jwtSecret, {
+  return jwt.sign({ id }, config.default.jwtSecret, {
     expiresIn: '30d',
   });
 };
@@ -30,7 +30,7 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password as string, salt);
 
     // Create user
     const user = await User.create({
@@ -41,16 +41,16 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
 
     if (user) {
       res.status(201).json({
-        _id: user._id,
+        _id: (user as any)._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id),
+        token: generateToken((user as any)._id.toString()),
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: (error as Error).message });
   }
 };
 
@@ -63,18 +63,18 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
     const user = await User.findOne({ email });
 
     // Check if user exists and password is correct
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (user && (await bcrypt.compare(password as string, user.password as string))) {
       res.json({
-        _id: user._id,
+        _id: (user as any)._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id),
+        token: generateToken((user as any)._id.toString()),
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: (error as Error).message });
   }
 };
 
@@ -94,7 +94,7 @@ const getUserProfile = async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: (error as Error).message });
   }
 };
 
