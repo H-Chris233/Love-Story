@@ -102,7 +102,7 @@ const login = async () => {
       </form>
       
       <div class="form-footer">
-        <p>还没有账户？ <a href="/register" class="text-pink-500 hover:underline">立即注册</a></p>
+        <p>还没有账户？请联系管理员获取注册邀请</p>
       </div>
     </div>
   </div>

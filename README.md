@@ -24,7 +24,6 @@
 - **MongoDB**: NoSQL文档数据库
 - **Mongoose**: MongoDB对象建模工具
 - **JWT**: 身份认证令牌
-- **Cloudinary**: 专业的媒体存储和管理
 - **EmailJS**: 邮件发送服务
 - **Multer**: 文件上传中间件
 
@@ -107,11 +106,6 @@ MONGODB_URI=mongodb://localhost:27017/love-story
 
 # JWT密钥
 JWT_SECRET=your_jwt_secret_key
-
-# Cloudinary配置
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
 
 # EmailJS配置
 EMAILJS_SERVICE_ID=your_service_id
@@ -196,11 +190,10 @@ EMAILJS_USER_ID=your_user_id
 - [x] 查看记忆详情
 - [x] 时间排序
 
-### 照片相册
-- [x] 上传照片
-- [x] 照片管理
-- [x] 照片浏览
-- [x] 照片删除
+### 3. 照片相册
+- 图片上传与管理
+- MongoDB GridFS 存储
+- 照片浏览与删除
 
 ### 纪念日提醒
 - [x] 创建纪念日

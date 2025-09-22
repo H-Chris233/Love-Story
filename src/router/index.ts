@@ -37,19 +37,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/LoginView.vue'),
   },
   {
-    path: '/register',
-    name: 'register',
-    component: () => import('../views/RegisterView.vue'),
-  },
-  {
     path: '/demo',
     name: 'demo',
     component: () => import('../views/RomanticDemoView.vue'),
   },
   {
-    path: '/lightning-css-test',
-    name: 'lightningCssTest',
-    component: () => import('../components/LightningCSSTest.vue'),
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/ProfileView.vue'),
   },
 ]
 

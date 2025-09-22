@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Memory, { IMemory } from '../models/Memory';
 import User from '../models/User';
-import { uploadImage, deleteImage } from '../utils/cloudinary';
+import { uploadImage, deleteImage } from '../utils/imageUpload';
 
 // @desc    Get all memories for a user
 // @route   GET /api/memories
@@ -50,7 +50,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
     // Upload images if provided
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
       for (const file of req.files as Express.Multer.File[]) {
-        const uploadedImage = await uploadImage(file.buffer);
+        const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
         images.push(uploadedImage);
       }
     }
@@ -100,7 +100,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Delete specified images from Cloudinary
+    // Delete specified images from MongoDB GridFS
     for (const publicId of imagesToDelete) {
       await deleteImage(publicId);
     }
@@ -111,7 +111,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     // Upload new images if provided
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
       for (const file of req.files as Express.Multer.File[]) {
-        const uploadedImage = await uploadImage(file.buffer);
+        const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
         images.push(uploadedImage);
       }
     }
@@ -149,7 +149,7 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Delete images from Cloudinary
+    // Delete images from MongoDB GridFS
     for (const image of memory.images) {
       await deleteImage(image.publicId);
     }

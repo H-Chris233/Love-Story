@@ -334,18 +334,18 @@ onMounted(() => {
               登录
             </RouterLink>
           </li>
+        </template>
+        <template v-else>
           <li>
             <RouterLink 
-              to="/register" 
+              to="/profile" 
               @click="closeMenu"
               class="romantic-menu-link"
               active-class="romantic-menu-link-active"
             >
-              注册
+              用户
             </RouterLink>
           </li>
-        </template>
-        <template v-else>
           <li>
             <button 
               @click="logout" 
@@ -454,18 +454,18 @@ onMounted(() => {
             登录
           </RouterLink>
         </li>
+      </template>
+      <template v-else>
         <li class="romantic-mobile-menu-item">
           <RouterLink 
-            to="/register" 
+            to="/profile" 
             @click="closeMenu"
             class="romantic-mobile-menu-link"
             active-class="romantic-mobile-menu-link-active"
           >
-            注册
+            用户
           </RouterLink>
         </li>
-      </template>
-      <template v-else>
         <li class="romantic-mobile-menu-item">
           <button 
             @click="logout" 

@@ -7,7 +7,7 @@ import {
   deleteMemory,
 } from '../controllers/memoryController';
 import { protect } from '../middleware/authMiddleware';
-import { upload } from '../utils/cloudinary';
+import { upload } from '../utils/imageUpload';
 
 const router = express.Router();
 

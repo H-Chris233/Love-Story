@@ -41,7 +41,6 @@
 - **MongoDB**: NoSQL文档数据库
 - **Mongoose**: MongoDB对象建模工具
 - **JWT**: 身份认证令牌
-- **Cloudinary**: 专业的媒体存储和管理
 - **EmailJS**: 邮件发送服务
 - **Multer**: 文件上传中间件
 
@@ -92,7 +91,7 @@ love-story-website/
 
 ### 3. 照片相册
 - 图片上传与管理
-- Cloudinary云存储
+- MongoDB GridFS 存储
 - 照片浏览与删除
 
 ### 4. 纪念日提醒
@@ -133,11 +132,6 @@ MONGODB_URI=mongodb://localhost:27017/love-story
 # JWT密钥
 JWT_SECRET=your_jwt_secret_key
 
-# Cloudinary配置
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-
 # EmailJS配置
 EMAILJS_SERVICE_ID=your_service_id
 EMAILJS_TEMPLATE_ID=your_template_id
@@ -164,7 +158,7 @@ EMAILJS_USER_ID=your_user_id
 2. **响应式设计**: 适配各种设备屏幕尺寸
 3. **PWA支持**: 可安装为手机应用
 4. **类型安全**: 全局使用TypeScript，提供完整的类型检查
-5. **云服务集成**: Cloudinary图片存储，EmailJS邮件服务
+5. **简化架构**: 图片存储在 MongoDB 中，无需额外云存储服务
 6. **安全性**: JWT认证，Helmet安全头，CORS跨域支持
 7. **开发体验**: Vite热重载，ESLint代码检查，Prettier代码格式化
 

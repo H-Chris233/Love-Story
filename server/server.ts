@@ -14,6 +14,7 @@ import connectDB from './config/db';
 import authRoutes from './routes/authRoutes';
 import memoryRoutes from './routes/memoryRoutes';
 import anniversaryRoutes from './routes/anniversaryRoutes';
+import imageRoutes from './routes/imageRoutes';
 
 // Create Express app
 const app: Application = express();
@@ -32,6 +33,7 @@ app.use(express.json()); // Parse JSON bodies
 app.use('/api/auth', authRoutes);
 app.use('/api/memories', memoryRoutes);
 app.use('/api/anniversaries', anniversaryRoutes);
+app.use('/api/images', imageRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Love Story API is running!' });
