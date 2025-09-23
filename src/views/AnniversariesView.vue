@@ -106,177 +106,429 @@ const getDaysUntilText = (days: number) => {
 </script>
 
 <template>
-  <div class="p-8 max-w-800px mx-auto md:p-8">
-    <header class="mb-8 md:mb-8">
-      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">重要纪念日</h1>
-      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">记录我们的重要日子，不再错过任何美好时刻</p>
-    </header>
+  <div class="romantic-home romantic-fade-in">
+    <div class="romantic-container">
+      <header class="anniversary-header">
+        <div class="header-icon">💕</div>
+        <h1 class="romantic-title romantic-title-md">重要纪念日</h1>
+        <p class="romantic-subtitle">记录我们的重要日子，不再错过任何美好时刻</p>
+      </header>
 
-    <div v-if="loading" class="text-center py-10">
-      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
-      <p class="mt-2">加载中...</p>
-    </div>
+      <div v-if="loading" class="loading-container">
+        <div class="romantic-spinner"></div>
+        <p class="loading-text">加载纪念日中...</p>
+      </div>
 
-    <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
-      <button 
-        @click="fetchAnniversaries" 
-        class="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
-      >
-        重新加载
-      </button>
-    </div>
-
-    <div v-else>
-      <div class="flex flex-col gap-6">
-        <div 
-          v-for="anniversary in anniversaries" 
-          :key="anniversary._id" 
-          class="bg-white rounded-12px shadow-md p-6 transition-all duration-300 hover:translate-y--3px hover:shadow-lg"
+      <div v-else-if="error" class="error-container">
+        <div class="error-icon">⚠️</div>
+        <p class="error-message">{{ error }}</p>
+        <button 
+          @click="fetchAnniversaries" 
+          class="romantic-button romantic-button-sm"
         >
-          <div class="flex justify-between items-center mb-4">
-            <h2 class="text-1.5rem font-700 text-gray-800 md:text-1.5rem">{{ anniversary.title }}</h2>
-            <div class="flex gap-2">
+          重新加载
+        </button>
+      </div>
+
+      <div v-else class="anniversaries-content">
+        <div class="anniversaries-grid" v-if="anniversaries.length > 0">
+          <div 
+            v-for="(anniversary, index) in anniversaries" 
+            :key="anniversary._id" 
+            class="anniversary-card"
+            :style="{ animationDelay: `${index * 0.1}s` }"
+          >
+            <!-- 操作按钮 -->
+            <div class="card-actions">
               <button 
                 @click="handleEditAnniversary(anniversary)"
-                class="p-1 text-0.875rem cursor-pointer transition bg-blue-100 text-blue-700 border-1 border-blue-300 rounded hover:bg-blue-200 md:p-1 md:text-0.875rem"
+                class="action-btn edit-btn"
                 title="编辑"
               >
                 编辑
               </button>
               <button 
                 @click="handleDeleteAnniversary(anniversary._id)"
-                class="p-1 text-0.875rem cursor-pointer transition bg-red-100 text-red-700 border-1 border-red-300 rounded hover:bg-red-200 md:p-1 md:text-0.875rem"
+                class="action-btn delete-btn"
                 title="删除"
               >
                 删除
               </button>
             </div>
+            
+            <!-- 卡片内容 -->
+            <div class="card-content">
+              <h3 class="card-title">{{ anniversary.title }}</h3>
+              
+              <div class="card-info">
+                <div class="date-info">
+                  <span class="date-label">日期</span>
+                  <span class="date-value">{{ formatDate(anniversary.date) }}</span>
+                </div>
+                
+                <div class="countdown-info">
+                  <span 
+                    class="countdown-badge"
+                    :class="{
+                      'badge-today': calculateDaysUntil(anniversary.date) === 0,
+                      'badge-past': calculateDaysUntil(anniversary.date) < 0,
+                      'badge-future': calculateDaysUntil(anniversary.date) > 0
+                    }"
+                  >
+                    {{ getDaysUntilText(calculateDaysUntil(anniversary.date)) }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          <div class="flex justify-between items-center md:flex-row md:items-center">
-            <p class="text-1.1rem text-gray-600 md:text-1.1rem">{{ formatDate(anniversary.date) }}</p>
-            <p 
-              class="text-1.1rem font-600 md:text-1.1rem"
-              :class="{
-                'text-green-500': calculateDaysUntil(anniversary.date) === 0,
-                'text-red-500': calculateDaysUntil(anniversary.date) < 0,
-                'text-blue-500': calculateDaysUntil(anniversary.date) > 0
-              }"
-            >
-              {{ getDaysUntilText(calculateDaysUntil(anniversary.date)) }}
-            </p>
-          </div>
+        </div>
+
+        <div v-else class="empty-state">
+          <div class="empty-icon">💝</div>
+          <h3 class="empty-title">还没有纪念日</h3>
+          <p class="empty-description">添加一个对你们来说特别的日子吧</p>
+        </div>
+
+        <div class="add-anniversary-section">
+          <button 
+            @click="handleAddAnniversary"
+            class="romantic-button romantic-button-lg romantic-ripple add-button"
+          >
+            <span class="button-icon">➕</span>
+            添加纪念日
+          </button>
         </div>
       </div>
 
-      <div v-if="anniversaries.length === 0" class="text-center py-10">
-        <p class="text-gray-500">暂无纪念日，请添加一个重要的日子</p>
-      </div>
-
-      <div class="text-center mt-10">
-        <button 
-          @click="handleAddAnniversary"
-          class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
-        >
-          添加纪念日
-        </button>
-      </div>
+      <!-- 纪念日表单模态框 -->
+      <AnniversaryForm 
+        v-if="showForm"
+        :anniversary="editingAnniversary"
+        @save="handleSaveAnniversary"
+        @cancel="handleCancelForm"
+      />
     </div>
-
-    <!-- 纪念日表单模态框 -->
-    <AnniversaryForm 
-      v-if="showForm"
-      :anniversary="editingAnniversary"
-      @save="handleSaveAnniversary"
-      @cancel="handleCancelForm"
-    />
   </div>
 </template>
 
 <style scoped>
-/* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.romantic-home {
+  min-height: calc(100vh - 70px);
+  background: var(--romantic-gradient);
+  padding: var(--romantic-spacing-6);
+}
+
+.anniversary-header {
+  text-align: center;
+  margin-bottom: var(--romantic-spacing-10);
+}
+
+.header-icon {
+  font-size: 3rem;
+  margin-bottom: var(--romantic-spacing-4);
+  animation: romanticHeartbeat 2s ease-in-out infinite;
+}
+
+.loading-container {
+  text-align: center;
+  padding: var(--romantic-spacing-12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--romantic-spacing-4);
+}
+
+.loading-text {
+  color: var(--romantic-dark-medium);
+  font-size: var(--romantic-font-size-lg);
+  margin: 0;
+}
+
+.error-container {
+  text-align: center;
+  padding: var(--romantic-spacing-12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--romantic-spacing-4);
+}
+
+.error-icon {
+  font-size: 3rem;
+  margin-bottom: var(--romantic-spacing-2);
+}
+
+.error-message {
+  color: var(--romantic-danger);
+  font-size: var(--romantic-font-size-lg);
+  margin: 0;
+}
+
+.anniversaries-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.anniversaries-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--romantic-spacing-4);
+  margin-bottom: var(--romantic-spacing-8);
+}
+
+.anniversary-card {
+  position: relative;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-radius: var(--romantic-radius);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  overflow: hidden;
+  transition: var(--romantic-transition);
+  animation: romanticFadeInUp 0.6s ease-out forwards;
+}
+
+.anniversary-card:hover {
+  border-color: rgba(255, 107, 157, 0.5);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.1);
+}
+
+.card-actions {
+  position: absolute;
+  bottom: var(--romantic-spacing-2);
+  right: var(--romantic-spacing-2);
+  display: flex;
+  gap: var(--romantic-spacing-1);
+  z-index: 2;
+}
+
+.action-btn {
+  padding: var(--romantic-spacing-1) var(--romantic-spacing-2);
+  border: none;
+  border-radius: var(--romantic-radius-sm);
+  font-size: var(--romantic-font-size-xs);
+  font-weight: var(--romantic-font-weight-medium);
+  cursor: pointer;
+  transition: var(--romantic-transition);
+  opacity: 0.8;
+}
+
+.edit-btn {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.edit-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+  opacity: 1;
+}
+
+.delete-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  opacity: 1;
+}
+
+.card-content {
+  padding: var(--romantic-spacing-4);
+  text-align: center;
+}
+
+.card-title {
+  font-size: var(--romantic-font-size-lg);
+  font-weight: var(--romantic-font-weight-bold);
+  color: #f1f5f9;
+  margin: 0 0 var(--romantic-spacing-4) 0;
+  line-height: var(--romantic-line-height-tight);
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--romantic-spacing-3);
+}
+
+.date-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-3);
+  background: rgba(51, 65, 85, 0.4);
+  border-radius: var(--romantic-radius-sm);
+  border-left: 3px solid var(--romantic-primary);
+}
+
+.date-label {
+  font-size: var(--romantic-font-size-xs);
+  font-weight: var(--romantic-font-weight-medium);
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.date-value {
+  font-size: var(--romantic-font-size-sm);
+  font-weight: var(--romantic-font-weight-semibold);
+  color: #e2e8f0;
+}
+
+.countdown-info {
+  display: flex;
+  justify-content: center;
+}
+
+.countdown-badge {
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+  border-radius: var(--romantic-radius);
+  font-size: var(--romantic-font-size-sm);
+  font-weight: var(--romantic-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-today {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  animation: romanticPulse 2s ease-in-out infinite;
+}
+
+.badge-past {
+  background: linear-gradient(135deg, #64748b, #475569);
+  color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2);
+}
+
+.badge-future {
+  background: linear-gradient(135deg, var(--romantic-primary), var(--romantic-secondary));
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--romantic-spacing-16);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--romantic-radius-lg);
+  box-shadow: var(--romantic-shadow);
+  margin-bottom: var(--romantic-spacing-10);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: var(--romantic-spacing-4);
+  opacity: 0.7;
+}
+
+.empty-title {
+  font-size: var(--romantic-font-size-2xl);
+  font-weight: var(--romantic-font-weight-bold);
+  color: #2d1b24;
+  margin: 0 0 var(--romantic-spacing-2) 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.empty-description {
+  font-size: var(--romantic-font-size-lg);
+  color: #4a2c3a;
+  margin: 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.add-anniversary-section {
+  text-align: center;
+}
+
+.add-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-icon {
+  margin-right: var(--romantic-spacing-2);
+  font-size: 1.2rem;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .md\:flex-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+  .romantic-home {
+    padding: var(--romantic-spacing-4);
   }
   
-  .md\:text-1\.1rem {
-    font-size: 1rem;
+  .anniversary-header {
+    margin-bottom: var(--romantic-spacing-8);
   }
   
-  .md\:p-8 {
-    padding: 1rem;
+  .header-icon {
+    font-size: 2.5rem;
   }
   
-  .md\:mb-8 {
-    margin-bottom: 1rem;
+  .anniversaries-grid {
+    grid-template-columns: 1fr;
+    gap: var(--romantic-spacing-4);
   }
   
-  .md\:text-3xl {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
+  .anniversary-card-header {
+    flex-wrap: wrap;
+    gap: var(--romantic-spacing-2);
   }
   
-  .md\:mb-10 {
-    font-size: 1rem;
-    margin-bottom: 1rem;
+  .anniversary-title {
+    font-size: var(--romantic-font-size-lg);
   }
   
-  .md\:p-6 {
-    padding: 1rem;
-  }
-  
-  .md\:text-1\.5rem {
-    font-size: 1.3rem;
-  }
-  
-  .md\:p-1 {
-    padding: 0.2rem 0.4rem;
-    font-size: 0.8rem;
-  }
-  
-  .mt-10 {
-    margin-top: 2rem;
+  .anniversary-actions {
+    order: 3;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: var(--romantic-spacing-2);
   }
 }
 
-/* 小屏手机优化 */
 @media (max-width: 480px) {
-  .md\:p-8 {
-    padding: 0.5rem;
+  .romantic-home {
+    padding: var(--romantic-spacing-3);
   }
   
-  .md\:text-3xl {
-    font-size: 1.5rem;
+  .anniversary-card-body {
+    gap: var(--romantic-spacing-3);
   }
   
-  .md\:mb-10 {
-    font-size: 0.9rem;
+  .anniversary-date {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--romantic-spacing-1);
   }
   
-  .md\:p-6 {
-    padding: 0.75rem;
+  .countdown-text {
+    font-size: var(--romantic-font-size-lg);
   }
   
-  .mb-4 {
-    margin-bottom: 0.75rem;
+  .empty-state {
+    padding: var(--romantic-spacing-8);
   }
   
-  .md\:text-1\.5rem {
-    font-size: 1.2rem;
+  .empty-icon {
+    font-size: 3rem;
   }
-  
-  .md\:text-1\.1rem {
-    font-size: 0.9rem;
+}
+
+/* 动画增强 */
+@keyframes romanticGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
   }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
+  }
+}
+
+.countdown-today {
+  animation: romanticGlow 2s ease-in-out infinite;
 }
 </style>

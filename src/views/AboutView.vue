@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// About页面组件
+// Theme variables are available globally via CSS variables
 </script>
 
 <template>
-  <div class="about-page">
+  <div class="romantic-home romantic-fade-in">
     <div class="container">
       <header class="page-header">
         <h1 class="text-3xl font-bold text-center mb-8">关于我们</h1>
@@ -69,10 +69,10 @@
 </template>
 
 <style scoped>
-.about-page {
-  padding: 2rem 1rem;
-  min-height: calc(100vh - 60px);
-  background: linear-gradient(135deg, #f0f9ff 0%, #fdf2f8 100%);
+.romantic-home {
+  min-height: calc(100vh - 70px);
+  background: var(--romantic-gradient);
+  padding: var(--romantic-spacing-6);
 }
 
 .container {
@@ -85,11 +85,17 @@
 }
 
 .page-header h1 {
-  font-size: 2rem;
+  font-size: var(--romantic-font-size-4xl);
+  font-weight: var(--romantic-font-weight-bold);
+  color: var(--romantic-dark);
+  margin-bottom: var(--romantic-spacing-4);
 }
 
 .page-header p {
-  font-size: 1.1rem;
+  font-size: var(--romantic-font-size-xl);
+  font-weight: var(--romantic-font-weight-normal);
+  color: var(--romantic-dark-medium);
+  margin-bottom: var(--romantic-spacing-8);
 }
 
 .content-section {
@@ -99,11 +105,12 @@
 }
 
 .about-card {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  padding: 2rem;
-  transition: transform 0.3s ease;
+  background: var(--romantic-white);
+  border-radius: var(--romantic-radius);
+  box-shadow: var(--romantic-shadow);
+  padding: var(--romantic-spacing-6);
+  transition: var(--romantic-transition);
+  border: 1px solid rgba(255, 107, 157, 0.1);
 }
 
 .about-card:hover {
@@ -111,18 +118,18 @@
 }
 
 .section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: #db2777; /* pink-600 */
-  border-bottom: 2px solid #fce7f3; /* pink-100 */
-  padding-bottom: 0.5rem;
+  font-size: var(--romantic-font-size-2xl);
+  font-weight: var(--romantic-font-weight-bold);
+  color: var(--romantic-dark);
+  margin-bottom: var(--romantic-spacing-4);
+  border-bottom: 1px solid var(--romantic-gray);
+  padding-bottom: var(--romantic-spacing-2);
 }
 
 .section-content {
-  color: #666;
-  line-height: 1.7;
-  font-size: 1.1rem;
+  color: var(--romantic-dark-medium);
+  line-height: var(--romantic-line-height-relaxed);
+  font-size: var(--romantic-font-size-base);
 }
 
 .features-list {
@@ -132,12 +139,12 @@
 .feature-item {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  background: #f8fafc; /* slate-50 */
-  transition: background 0.2s ease;
+  gap: var(--romantic-spacing-4);
+  margin-bottom: var(--romantic-spacing-4);
+  padding: var(--romantic-spacing-4);
+  border-radius: var(--romantic-radius);
+  background: var(--romantic-light);
+  transition: var(--romantic-transition);
 }
 
 .feature-item:hover {
@@ -145,7 +152,8 @@
 }
 
 .feature-icon {
-  font-size: 1.5rem;
+  font-size: var(--romantic-font-size-xl);
+  color: var(--romantic-primary);
 }
 
 .tech-stack {
@@ -177,16 +185,16 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .about-page {
-    padding: 1rem;
+  .romantic-home {
+    padding: var(--romantic-spacing-4);
   }
   
   .about-card {
-    padding: 1.5rem;
+    padding: var(--romantic-spacing-4);
   }
   
   .section-content {
-    font-size: 1rem;
+    font-size: var(--romantic-font-size-sm);
   }
   
   .tech-stack {
@@ -194,41 +202,39 @@
   }
   
   .page-header {
-    margin-bottom: 1rem;
+    margin-bottom: var(--romantic-spacing-4);
   }
   
   .page-header h1 {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
+    font-size: var(--romantic-font-size-3xl);
   }
   
   .page-header p {
-    font-size: 1rem;
-    margin-bottom: 1rem;
+    font-size: var(--romantic-font-size-lg);
   }
   
   .content-section {
-    gap: 1.5rem;
+    gap: var(--romantic-spacing-6);
   }
   
   .section-title {
-    font-size: 1.3rem;
+    font-size: var(--romantic-font-size-xl);
   }
   
   .feature-item {
-    padding: 0.75rem;
-    gap: 0.75rem;
+    padding: var(--romantic-spacing-3);
+    gap: var(--romantic-spacing-3);
   }
   
   .feature-icon {
-    font-size: 1.3rem;
+    font-size: var(--romantic-font-size-lg);
   }
 }
 
 /* 小屏手机优化 */
 @media (max-width: 480px) {
-  .about-page {
-    padding: 0.5rem;
+  .romantic-home {
+    padding: var(--romantic-spacing-3);
   }
   
   .container {
@@ -236,50 +242,50 @@
   }
   
   .about-card {
-    padding: 1rem;
-    border-radius: 8px;
+    padding: var(--romantic-spacing-3);
+    border-radius: var(--romantic-radius-sm);
   }
   
   .page-header h1 {
-    font-size: 1.5rem;
+    font-size: var(--romantic-font-size-2xl);
   }
   
   .page-header p {
-    font-size: 0.9rem;
+    font-size: var(--romantic-font-size-base);
   }
   
   .content-section {
-    gap: 1rem;
+    gap: var(--romantic-spacing-4);
   }
   
   .section-title {
-    font-size: 1.2rem;
-    margin-bottom: 0.75rem;
+    font-size: var(--romantic-font-size-lg);
+    margin-bottom: var(--romantic-spacing-3);
   }
   
   .section-content {
-    font-size: 0.9rem;
-    line-height: 1.6;
+    font-size: var(--romantic-font-size-sm);
+    line-height: var(--romantic-line-height-normal);
   }
   
   .feature-item {
-    padding: 0.5rem;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    padding: var(--romantic-spacing-2);
+    gap: var(--romantic-spacing-2);
+    margin-bottom: var(--romantic-spacing-3);
   }
   
   .feature-icon {
-    font-size: 1.1rem;
+    font-size: var(--romantic-font-size-base);
   }
   
   .tech-category h3 {
-    font-size: 1.1rem;
-    margin-bottom: 0.75rem;
+    font-size: var(--romantic-font-size-base);
+    margin-bottom: var(--romantic-spacing-3);
   }
   
   .tech-category li {
-    padding: 0.25rem 0;
-    font-size: 0.9rem;
+    padding: var(--romantic-spacing-1) 0;
+    font-size: var(--romantic-font-size-sm);
   }
 }
 </style>

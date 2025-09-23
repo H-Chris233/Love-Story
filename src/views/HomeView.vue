@@ -74,8 +74,16 @@ const goToMemories = () => {
 }
 
 .romantic-title-prominent {
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  color: var(--romantic-dark);
+  text-shadow: 
+    2px 2px 0px #000,
+    -1px -1px 0px #000,
+    1px -1px 0px #000,
+    -1px 1px 0px #000,
+    2px 2px 8px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(0, 0, 0, 0.5);
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
 /* 响应式设计 */
