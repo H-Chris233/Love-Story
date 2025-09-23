@@ -6,7 +6,11 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Set NODE_ENV based on the mode
+  process.env.NODE_ENV = mode === 'production' ? 'production' : 'development'
+  
+  return {
   plugins: [
     vue(),
     vueDevTools(),
@@ -62,4 +66,4 @@ export default defineConfig({
       }
     }
   }
-})
+}})
