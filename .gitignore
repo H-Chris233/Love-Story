@@ -28,3 +28,9 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Environment files with sensitive information
+.env
+.env.local
+.env.production
+server/.env
