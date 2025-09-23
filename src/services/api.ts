@@ -51,6 +51,9 @@ export const authAPI = {
     
   getProfile: (): Promise<AxiosResponse<User>> => 
     apiClient.get<User>('/auth/profile'),
+    
+  checkRegistration: (): Promise<AxiosResponse<{ registrationAllowed: boolean; message: string }>> => 
+    apiClient.get<{ registrationAllowed: boolean; message: string }>('/auth/check-registration'),
 };
 
 // 记忆相关API
