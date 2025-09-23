@@ -79,10 +79,10 @@
       <div class="romantic-demo-section">
         <h2 class="romantic-card-title">动画效果</h2>
         <div class="romantic-demo-animations romantic-flex romantic-justify-center romantic-items-center romantic-flex-wrap romantic-gap-6 romantic-mt-4">
-          <div class="romantic-heartbeat" style="font-size: 2rem;">❤️</div>
-          <div class="romantic-float" style="font-size: 2rem;">🎈</div>
-          <div class="romantic-pulse" style="font-size: 2rem;">✨</div>
-          <div class="romantic-fade-in" style="font-size: 2rem;">fadeIn</div>
+          <div class="romantic-heartbeat animation-large">❤️</div>
+          <div class="romantic-float animation-large">🎈</div>
+          <div class="romantic-pulse animation-large">✨</div>
+          <div class="romantic-fade-in animation-large">fadeIn</div>
         </div>
       </div>
     </div>
@@ -117,6 +117,10 @@
   align-items: center;
   flex-wrap: wrap;
   margin-top: var(--romantic-spacing-4);
+}
+
+.animation-large {
+  font-size: 2rem;
 }
 
 @media (max-width: 768px) {

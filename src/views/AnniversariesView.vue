@@ -136,7 +136,7 @@ const getDaysUntilText = (days: number) => {
             v-for="(anniversary, index) in anniversaries" 
             :key="anniversary._id" 
             class="anniversary-card"
-            :style="{ animationDelay: `${index * 0.1}s` }"
+            :class="`anniversary-card-delay-${Math.min(index, 9)}`"
           >
             <!-- 操作按钮 -->
             <div class="card-actions">
@@ -285,6 +285,18 @@ const getDaysUntilText = (days: number) => {
   transition: var(--romantic-transition);
   animation: romanticFadeInUp 0.6s ease-out forwards;
 }
+
+/* Animation delay classes for staggered effect */
+.anniversary-card-delay-0 { animation-delay: 0s; }
+.anniversary-card-delay-1 { animation-delay: 0.1s; }
+.anniversary-card-delay-2 { animation-delay: 0.2s; }
+.anniversary-card-delay-3 { animation-delay: 0.3s; }
+.anniversary-card-delay-4 { animation-delay: 0.4s; }
+.anniversary-card-delay-5 { animation-delay: 0.5s; }
+.anniversary-card-delay-6 { animation-delay: 0.6s; }
+.anniversary-card-delay-7 { animation-delay: 0.7s; }
+.anniversary-card-delay-8 { animation-delay: 0.8s; }
+.anniversary-card-delay-9 { animation-delay: 0.9s; }
 
 .anniversary-card:hover {
   border-color: rgba(255, 107, 157, 0.5);

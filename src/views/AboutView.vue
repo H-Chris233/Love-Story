@@ -7,7 +7,7 @@
     <div class="container">
       <header class="page-header">
         <h1 class="text-3xl font-bold text-center mb-8">关于我们</h1>
-        <p class="text-center text-gray-600 mb-10">记录我们的爱情故事，珍藏美好回忆</p>
+        <p class="text-center text-gray-600 mb-10 intro-text">记录我们的爱情故事，珍藏美好回忆</p>
       </header>
 
       <div class="content-section">
@@ -24,19 +24,19 @@
           <ul class="features-list">
             <li class="feature-item">
               <span class="feature-icon">📅</span>
-              <span><strong>回忆时光轴：</strong>按时间顺序记录我们的爱情历程</span>
+            <span><strong class="feature-title">回忆时光轴：</strong><span class="feature-description">按时间顺序记录我们的爱情历程</span></span>
             </li>
             <li class="feature-item">
               <span class="feature-icon">📸</span>
               <span><strong>照片相册：</strong>珍藏我们的每一张合影</span>
             </li>
             <li class="feature-item">
-              <span class="feature-icon">🎉</span>
+              <span class="feature-icon feature-icon-highlighted">🎉</span>
               <span><strong>纪念日提醒：</strong>重要日子提醒，不再错过</span>
             </li>
             <li class="feature-item">
               <span class="feature-icon">🔒</span>
-              <span><strong>隐私保护：</strong>只有我们两个人可以访问</span>
+            <span><strong class="feature-title">隐私保护：</strong><span class="feature-description">只有我们两个人可以访问</span></span>
             </li>
           </ul>
         </div>
@@ -94,7 +94,7 @@
 .page-header p {
   font-size: var(--romantic-font-size-xl);
   font-weight: var(--romantic-font-weight-normal);
-  color: var(--romantic-dark-medium);
+  color: var(--romantic-primary);
   margin-bottom: var(--romantic-spacing-8);
 }
 
@@ -127,7 +127,7 @@
 }
 
 .section-content {
-  color: var(--romantic-dark-medium);
+  color: var(--romantic-primary);
   line-height: var(--romantic-line-height-relaxed);
   font-size: var(--romantic-font-size-base);
 }
@@ -154,6 +154,22 @@
 .feature-icon {
   font-size: var(--romantic-font-size-xl);
   color: var(--romantic-primary);
+}
+
+.intro-text {
+  color: var(--romantic-primary-dark) !important;
+}
+
+.feature-title {
+  color: var(--romantic-primary-dark);
+}
+
+.feature-description {
+  color: var(--romantic-dark);
+}
+
+.feature-icon-highlighted {
+  color: var(--romantic-primary-dark);
 }
 
 .tech-stack {
