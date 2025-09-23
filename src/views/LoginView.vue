@@ -279,18 +279,21 @@ label {
 .submit-button {
   width: 100%;
   padding: 0.75rem;
-  background: #ec4899;
+  background: var(--romantic-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--romantic-radius);
   color: white;
-  font-weight: 500;
-  font-size: 1rem;
+  font-weight: var(--romantic-font-weight-medium);
+  font-size: var(--romantic-font-size-base);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: var(--romantic-transition);
+  box-shadow: var(--romantic-shadow);
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #db2777;
+  background: var(--romantic-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--romantic-shadow-hover);
 }
 
 .submit-button:disabled {
@@ -308,14 +311,15 @@ label {
 .toggle-button {
   background: none;
   border: none;
-  color: #ec4899;
+  color: var(--romantic-primary);
   text-decoration: underline;
   cursor: pointer;
   font-size: inherit;
+  transition: var(--romantic-transition);
 }
 
 .toggle-button:hover {
-  color: #db2777;
+  color: var(--romantic-primary-dark);
 }
 
 /* 响应式设计 */

@@ -188,7 +188,7 @@
   font-weight: var(--romantic-font-weight-semibold);
   padding: var(--romantic-spacing-3) var(--romantic-spacing-6);
   border: none;
-  border-radius: 50px;
+  border-radius: var(--romantic-radius);
   cursor: pointer;
   transition: var(--romantic-transition);
   box-shadow: var(--romantic-shadow);

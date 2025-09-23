@@ -289,15 +289,15 @@ const handleSubmit = async () => {
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--romantic-gray-medium);
   padding: 0;
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  transition: background-color 0.2s;
+  border-radius: var(--romantic-radius);
+  transition: var(--romantic-transition);
 }
 
 .close-button:hover {
@@ -370,10 +370,10 @@ label {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #ef4444;
+  background: var(--romantic-danger);
   color: white;
   border: none;
-  border-radius: 50%;
+  border-radius: var(--romantic-radius);
   width: 24px;
   height: 24px;
   display: flex;
@@ -402,10 +402,10 @@ label {
 .cancel-button,
 .submit-button {
   padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  border-radius: var(--romantic-radius);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: var(--romantic-transition);
 }
 
 .cancel-button {

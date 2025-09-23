@@ -85,145 +85,215 @@ const formatDate = (dateString: string) => {
 </script>
 
 <template>
-  <div class="p-8 max-w-1200px mx-auto md:p-8">
-    <header class="mb-8 md:mb-8">
-      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">我们的照片相册</h1>
-      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">珍藏我们一起度过的美好时光</p>
+  <div class="romantic-container romantic-py-8">
+    <header class="romantic-my-8">
+      <h1 class="romantic-title romantic-fade-in">我们的照片相册</h1>
+      <p class="romantic-subtitle romantic-fade-in-up">珍藏我们一起度过的美好时光</p>
     </header>
 
-    <div v-if="loading" class="text-center py-10">
-      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
-      <p class="mt-2">加载中...</p>
+    <div v-if="loading" class="romantic-text-center romantic-py-10">
+      <div class="romantic-spinner"></div>
+      <p class="romantic-text romantic-m-2">加载中...</p>
     </div>
 
-    <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
+    <div v-else-if="error" class="romantic-text-center romantic-py-10">
+      <p class="romantic-text-danger">{{ error }}</p>
       <button 
         @click="fetchPhotos" 
-        class="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+        class="romantic-button romantic-mt-4"
       >
         重新加载
       </button>
     </div>
 
     <div v-else>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div class="romantic-grid romantic-grid-cols-1 romantic-grid-sm-cols-2 romantic-grid-md-cols-3 romantic-grid-lg-cols-4">
         <div 
           v-for="photo in photos" 
           :key="photo.id" 
-          class="rounded-12px overflow-hidden shadow-md transition-transform duration-300 hover:translate-y--5"
+          class="romantic-card photo-card romantic-fade-in"
         >
-          <div class="relative overflow-hidden">
+          <div class="photo-wrapper">
             <img 
               :src="getFullImageUrl(photo.url)" 
               :alt="photo.title" 
-              class="w-full h-60 object-cover block transition-transform duration-300 hover:scale-105 md:h-60"
+              class="photo-image"
             >
-            <div class="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-70 flex items-end p-4 opacity-0 transition-opacity duration-300 hover:opacity-100">
-              <div class="text-white transform translate-y-10 transition-transform duration-300 hover:translate-y-0">
-                <h3 class="text-1.1rem font-600 mb-1 md:text-1.1rem">{{ photo.title }}</h3>
-                <p class="text-0.9rem opacity-80 md:text-0.9rem">{{ formatDate(photo.date) }}</p>
+            <div class="photo-overlay">
+              <div class="photo-info">
+                <h3 class="photo-title">{{ photo.title }}</h3>
+                <p class="photo-date">{{ formatDate(photo.date) }}</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div v-if="photos.length === 0" class="text-center py-10">
-        <p class="text-gray-500">暂无照片，请先添加一些包含照片的回忆</p>
-      </div>
-
-      <div class="text-center mt-10">
-        <button class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300">
-          上传新照片
-        </button>
+      <div v-if="photos.length === 0" class="romantic-text-center romantic-py-10">
+        <p class="romantic-text romantic-text-secondary">暂无照片，请先添加一些包含照片的回忆</p>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* 照片卡片样式 */
+.photo-card {
+  overflow: hidden;
+  transition: var(--romantic-transition);
+  border: 1px solid rgba(255, 107, 157, 0.1);
 }
 
-/* 响应式设计 */
+.photo-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--romantic-shadow-lg);
+}
+
+.photo-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.photo-image {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  display: block;
+  transition: var(--romantic-transition);
+}
+
+.photo-card:hover .photo-image {
+  transform: scale(1.05);
+}
+
+.photo-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: var(--romantic-spacing-4);
+  opacity: 0;
+  transition: var(--romantic-transition);
+}
+
+.photo-card:hover .photo-overlay {
+  opacity: 1;
+}
+
+.photo-info {
+  color: var(--romantic-white);
+  transform: translateY(var(--romantic-spacing-4));
+  transition: var(--romantic-transition);
+}
+
+.photo-card:hover .photo-info {
+  transform: translateY(0);
+}
+
+.photo-title {
+  font-size: var(--romantic-font-size-lg);
+  font-weight: var(--romantic-font-weight-semibold);
+  margin-bottom: var(--romantic-spacing-1);
+  line-height: var(--romantic-line-height-tight);
+}
+
+.photo-date {
+  font-size: var(--romantic-font-size-sm);
+  opacity: 0.9;
+  line-height: var(--romantic-line-height-normal);
+}
+
+/* 添加浪漫主题的动画延迟效果 */
+.photo-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.photo-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.photo-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.photo-card:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.photo-card:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.photo-card:nth-child(6) {
+  animation-delay: 0.6s;
+}
+
+.photo-card:nth-child(7) {
+  animation-delay: 0.7s;
+}
+
+.photo-card:nth-child(8) {
+  animation-delay: 0.8s;
+}
+
+/* 响应式设计优化 */
 @media (max-width: 768px) {
-  .md\:grid-cols-4 {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
+  .photo-image {
+    height: 180px;
   }
   
-  .md\:h-60 {
+  .photo-title {
+    font-size: var(--romantic-font-size-base);
+  }
+  
+  .photo-date {
+    font-size: var(--romantic-font-size-xs);
+  }
+  
+  .photo-overlay {
+    padding: var(--romantic-spacing-3);
+  }
+}
+
+@media (max-width: 480px) {
+  .photo-image {
     height: 150px;
   }
   
-  .md\:p-8 {
-    padding: 1rem;
+  .photo-title {
+    font-size: var(--romantic-font-size-sm);
   }
   
-  .md\:mb-8 {
-    margin-bottom: 1rem;
+  .photo-date {
+    font-size: 0.7rem;
   }
   
-  .md\:text-3xl {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
+  .photo-overlay {
+    padding: var(--romantic-spacing-2);
   }
   
-  .md\:mb-10 {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .md\:text-1\.1rem {
-    font-size: 1rem;
-  }
-  
-  .md\:text-0\.9rem {
-    font-size: 0.8rem;
-  }
-  
-  .mt-10 {
-    margin-top: 2rem;
+  .photo-info {
+    transform: translateY(var(--romantic-spacing-2));
   }
 }
 
-/* 小屏手机优化 */
-@media (max-width: 480px) {
-  .md\:grid-cols-4 {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 0.75rem;
-  }
-  
-  .md\:h-60 {
-    height: 120px;
-  }
-  
-  .md\:p-8 {
-    padding: 0.5rem;
-  }
-  
-  .md\:text-3xl {
-    font-size: 1.5rem;
-  }
-  
-  .md\:mb-10 {
-    font-size: 0.9rem;
-  }
-  
-  .p-4 {
-    padding: 0.75rem;
-  }
-  
-  .md\:text-1\.1rem {
-    font-size: 0.9rem;
-  }
-  
-  .md\:text-0\.9rem {
-    font-size: 0.75rem;
-  }
+/* 空状态样式 */
+.romantic-py-10 p {
+  font-size: var(--romantic-font-size-lg);
+  line-height: var(--romantic-line-height-relaxed);
+}
+
+/* 加载状态优化 */
+.romantic-spinner {
+  margin-bottom: var(--romantic-spacing-4);
 }
 </style>

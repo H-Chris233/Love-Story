@@ -47,17 +47,24 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="image-gallery">
+  <div class="romantic-grid romantic-grid-cols-1 romantic-grid-sm-cols-2 romantic-grid-md-cols-3 romantic-grid-lg-cols-4">
     <div 
       v-for="image in images" 
       :key="image.id"
-      class="image-wrapper"
+      class="romantic-card gallery-card romantic-fade-in"
     >
-      <img 
-        :src="getFullImageUrl(image.url)" 
-        :alt="image.title"
-        class="gallery-image"
-      >
+      <div class="gallery-wrapper">
+        <img 
+          :src="getFullImageUrl(image.url)" 
+          :alt="image.title"
+          class="gallery-image"
+        >
+        <div class="gallery-overlay">
+          <div class="gallery-info">
+            <h3 class="gallery-title">{{ image.title }}</h3>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   
@@ -105,22 +112,22 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.image-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.image-wrapper {
+/* 画廊卡片样式 */
+.gallery-card {
   overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: var(--romantic-transition);
+  border: 1px solid rgba(255, 107, 157, 0.1);
 }
 
-.image-wrapper:hover {
-  transform: translateY(-3px);
+.gallery-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--romantic-shadow-hover);
+}
+
+.gallery-wrapper {
+  position: relative;
+  overflow: hidden;
 }
 
 .gallery-image {
@@ -128,7 +135,88 @@ onMounted(() => {
   height: 200px;
   object-fit: cover;
   display: block;
+  transition: var(--romantic-transition);
 }
+
+.gallery-card:hover .gallery-image {
+  transform: scale(1.05);
+}
+
+.gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: var(--romantic-spacing-4);
+  opacity: 0;
+  transition: var(--romantic-transition);
+}
+
+.gallery-card:hover .gallery-overlay {
+  opacity: 1;
+}
+
+.gallery-info {
+  color: var(--romantic-white);
+  transform: translateY(var(--romantic-spacing-3));
+  transition: var(--romantic-transition);
+}
+
+.gallery-card:hover .gallery-info {
+  transform: translateY(0);
+}
+
+.gallery-title {
+  font-size: var(--romantic-font-size-lg);
+  font-weight: var(--romantic-font-weight-semibold);
+  line-height: var(--romantic-line-height-tight);
+}
+
+/* 添加动画延迟效果 */
+.gallery-card:nth-child(1) { animation-delay: 0.1s; }
+.gallery-card:nth-child(2) { animation-delay: 0.2s; }
+.gallery-card:nth-child(3) { animation-delay: 0.3s; }
+.gallery-card:nth-child(4) { animation-delay: 0.4s; }
+.gallery-card:nth-child(5) { animation-delay: 0.5s; }
+.gallery-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .gallery-image {
+    height: 160px;
+  }
+  
+  .gallery-title {
+    font-size: var(--romantic-font-size-base);
+  }
+  
+  .gallery-overlay {
+    padding: var(--romantic-spacing-3);
+  }
+}
+
+@media (max-width: 480px) {
+  .gallery-image {
+    height: 140px;
+  }
+  
+  .gallery-title {
+    font-size: var(--romantic-font-size-sm);
+  }
+  
+  .gallery-overlay {
+    padding: var(--romantic-spacing-2);
+  }
+}</style>
 
 /* PhotoSwipe默认样式 */
 .pswp {

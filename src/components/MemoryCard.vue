@@ -64,6 +64,21 @@ const getFullImageUrl = (imageUrl: string) => {
   console.log('Production mode - image URL construction:', { imageUrl, baseUrl, serverUrl, fullUrl })
   return fullUrl
 }
+
+// 获取图片布局类名
+const getImageLayoutClass = (imageCount: number) => {
+  if (imageCount === 1) return 'single-image'
+  if (imageCount === 2) return 'two-images'
+  if (imageCount === 3) return 'three-images'
+  return 'multiple-images'
+}
+
+// 获取单个图片容器的类名
+const getImageContainerClass = (totalCount: number, index: number) => {
+  if (totalCount === 3 && index === 0) return 'main-image'
+  if (totalCount === 3 && index > 0) return 'side-image'
+  return ''
+}
 </script>
 
 <template>
@@ -79,9 +94,20 @@ const getFullImageUrl = (imageUrl: string) => {
         {{ memory.content }}
       </p>
       
-      <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images romantic-grid romantic-grid-cols-2 romantic-gap-2">
-        <div v-for="(image, index) in memory.images" :key="index" class="romantic-memory-image">
-          <img :src="getFullImageUrl(image)" :alt="`${memory.title} - 图片 ${index + 1}`" class="romantic-rounded">
+      <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images">
+        <div class="image-gallery" :class="getImageLayoutClass(memory.images.length)">
+          <div 
+            v-for="(image, index) in memory.images" 
+            :key="index" 
+            class="image-container"
+            :class="getImageContainerClass(memory.images.length, index)"
+          >
+            <img 
+              :src="getFullImageUrl(image)" 
+              :alt="`${memory.title} - 图片 ${index + 1}`" 
+              class="memory-image"
+            >
+          </div>
         </div>
       </div>
       
@@ -101,34 +127,51 @@ const getFullImageUrl = (imageUrl: string) => {
 .romantic-memory-card {
   position: relative;
   background: var(--romantic-white);
-  border-radius: var(--romantic-radius);
+  border-radius: var(--romantic-radius-lg);
   box-shadow: var(--romantic-shadow);
   overflow: hidden;
   transition: var(--romantic-transition);
   margin-left: 40px;
-  border: 1px solid rgba(255, 107, 157, 0.1);
+  border: 1px solid rgba(255, 107, 157, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.romantic-memory-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--romantic-gradient);
+  z-index: 1;
 }
 
 .romantic-memory-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--romantic-shadow-hover);
+  transform: translateY(-8px);
+  box-shadow: var(--romantic-shadow-lg);
+  border-color: rgba(255, 107, 157, 0.3);
 }
 
 .romantic-card-content {
   padding: var(--romantic-spacing-6);
+  position: relative;
+  z-index: 2;
 }
 
 .romantic-date-tag {
   position: absolute;
-  top: -12px;
-  left: -12px;
-  background: var(--romantic-primary);
+  top: -15px;
+  left: -15px;
+  background: var(--romantic-gradient);
   color: var(--romantic-white);
   font-weight: var(--romantic-font-weight-bold);
-  padding: var(--romantic-spacing-1) var(--romantic-spacing-3);
-  border-radius: 20px;
+  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+  border-radius: var(--romantic-radius-full);
   font-size: var(--romantic-font-size-sm);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--romantic-shadow);
+  z-index: 3;
+  border: 2px solid var(--romantic-white);
 }
 
 .romantic-memory-title {
@@ -136,49 +179,136 @@ const getFullImageUrl = (imageUrl: string) => {
   font-weight: var(--romantic-font-weight-bold);
   margin-bottom: var(--romantic-spacing-3);
   color: var(--romantic-dark);
+  background: var(--romantic-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: var(--romantic-line-height-tight);
 }
 
 .romantic-memory-content {
-  color: var(--romantic-dark);
-  line-height: 1.6;
+  color: var(--romantic-dark-medium);
+  line-height: var(--romantic-line-height-relaxed);
   margin-bottom: var(--romantic-spacing-5);
+  font-size: var(--romantic-font-size-lg);
 }
 
-.romantic-memory-image {
-  margin-bottom: var(--romantic-spacing-5);
+/* 图片画廊样式 */
+.romantic-memory-images {
+  margin-bottom: var(--romantic-spacing-4);
+}
+
+.image-gallery {
+  display: grid;
+  gap: var(--romantic-spacing-2);
   border-radius: var(--romantic-radius);
   overflow: hidden;
 }
 
-.romantic-memory-image img {
-  width: 100%;
-  height: auto;
-  max-height: 300px;
-  object-fit: cover;
-  transition: var(--romantic-transition);
+.single-image {
+  grid-template-columns: 1fr;
 }
 
-.romantic-memory-image img:hover {
-  transform: scale(1.02);
+.two-images {
+  grid-template-columns: 1fr 1fr;
+}
+
+.three-images {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.multiple-images {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--romantic-radius-sm);
+  background: var(--romantic-gray);
+}
+
+.main-image {
+  grid-row: 1 / 3;
+}
+
+.memory-image {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  object-fit: cover;
+  transition: var(--romantic-transition);
+  cursor: pointer;
+}
+
+.single-image .memory-image {
+  min-height: 250px;
+  max-height: 400px;
+}
+
+.two-images .memory-image {
+  min-height: 200px;
+  max-height: 300px;
+}
+
+.three-images .memory-image {
+  min-height: 150px;
+}
+
+.three-images .main-image .memory-image {
+  min-height: 300px;
+}
+
+.multiple-images .memory-image {
+  min-height: 150px;
+  max-height: 200px;
+}
+
+.memory-image:hover {
+  transform: scale(1.05);
+}
+
+/* 图片叠加效果 */
+.image-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 157, 0.1) 0%,
+    transparent 50%,
+    rgba(168, 125, 200, 0.1) 100%
+  );
+  opacity: 0;
+  transition: var(--romantic-transition);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.image-container:hover::before {
+  opacity: 1;
 }
 
 .romantic-card-actions {
   display: flex;
   gap: var(--romantic-spacing-3);
+  padding-top: var(--romantic-spacing-4);
+  border-top: 1px solid var(--romantic-gray);
+  margin-top: var(--romantic-spacing-4);
 }
 
 .romantic-action-button {
   padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
-  background: var(--romantic-gray);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--romantic-radius);
   cursor: pointer;
   font-weight: var(--romantic-font-weight-medium);
   transition: var(--romantic-transition);
-}
-
-.romantic-action-button:hover {
-  background: var(--romantic-light);
+  font-size: var(--romantic-font-size-sm);
 }
 
 .romantic-delete-button {
@@ -237,12 +367,27 @@ const getFullImageUrl = (imageUrl: string) => {
     margin-bottom: 1rem;
   }
   
-  .romantic-memory-image {
-    margin-bottom: 1rem;
+  .single-image .memory-image {
+    min-height: 180px;
+    max-height: 250px;
   }
   
-  .romantic-memory-image img {
-    max-height: 200px;
+  .two-images .memory-image {
+    min-height: 120px;
+    max-height: 180px;
+  }
+  
+  .three-images .memory-image {
+    min-height: 100px;
+  }
+  
+  .three-images .main-image .memory-image {
+    min-height: 200px;
+  }
+  
+  .multiple-images .memory-image {
+    min-height: 100px;
+    max-height: 150px;
   }
   
   .romantic-card-actions {
@@ -252,6 +397,7 @@ const getFullImageUrl = (imageUrl: string) => {
   .romantic-action-button {
     padding: 0.4rem 0.8rem;
     font-size: 0.9rem;
+    border-radius: var(--romantic-radius);
   }
 }
 
@@ -283,12 +429,31 @@ const getFullImageUrl = (imageUrl: string) => {
     line-height: 1.5;
   }
   
-  .romantic-memory-image {
-    margin-bottom: 0.75rem;
+  .image-gallery {
+    gap: var(--romantic-spacing-1);
   }
   
-  .romantic-memory-image img {
+  .single-image .memory-image {
+    min-height: 150px;
+    max-height: 200px;
+  }
+  
+  .two-images .memory-image {
+    min-height: 100px;
     max-height: 150px;
+  }
+  
+  .three-images .memory-image {
+    min-height: 80px;
+  }
+  
+  .three-images .main-image .memory-image {
+    min-height: 160px;
+  }
+  
+  .multiple-images .memory-image {
+    min-height: 80px;
+    max-height: 120px;
   }
   
   .romantic-card-actions {
