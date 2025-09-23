@@ -5,7 +5,10 @@ const connectDB = async (): Promise<void> => {
   try {
     // For local development, you can use 'mongodb://localhost:27017/love-story'
     // For production, you should use environment variables
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/love-story');
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/love-story', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error: any) {

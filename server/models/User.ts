@@ -5,7 +5,6 @@ export interface IUser extends Document {
   email: string;
   password: string;
   isAdmin: boolean;
-  createdAt: Date;
 }
 
 const userSchema: Schema = new mongoose.Schema({
@@ -32,10 +31,7 @@ const userSchema: Schema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+
 });
 
 export default mongoose.model<IUser>('User', userSchema);

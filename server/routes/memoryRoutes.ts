@@ -14,11 +14,11 @@ const router = express.Router();
 // All routes are protected
 router.route('/')
   .get(protect, getMemories)
-  .post(protect, upload.array('images', 10), createMemory);
+  .post(protect, upload.array('images'), createMemory);
 
 router.route('/:id')
   .get(protect, getMemory)
-  .put(protect, upload.array('images', 10), updateMemory)
+  .put(protect, upload.array('images'), updateMemory)
   .delete(protect, deleteMemory);
 
 export default router;
