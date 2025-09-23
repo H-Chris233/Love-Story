@@ -36,16 +36,7 @@ const routes: RouteRecordRaw[] = [
     name: 'login',
     component: () => import('../views/LoginView.vue'),
   },
-  {
-    path: '/demo',
-    name: 'demo',
-    component: () => import('../views/RomanticDemoView.vue'),
-  },
-  {
-    path: '/lightning-css-test',
-    name: 'lightning-css-test',
-    component: () => import('../views/LightningCSSTestView.vue'),
-  },
+
   {
     path: '/profile',
     name: 'profile',

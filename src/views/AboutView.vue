@@ -1,5 +1,24 @@
 <script setup lang="ts">
-// Theme variables are available globally via CSS variables
+import { ref } from 'vue'
+
+// 跟踪当前激活的功能项索引（-1表示没有激活项）
+const activeFeatureIndex = ref<number>(-1)
+
+// 处理功能项点击
+const toggleFeature = (index: number) => {
+  // 如果点击的是当前激活项，则取消激活
+  if (activeFeatureIndex.value === index) {
+    activeFeatureIndex.value = -1
+  } else {
+    // 否则激活当前项（自动取消其他项）
+    activeFeatureIndex.value = index
+  }
+}
+
+// 检查功能项是否被点击
+const isFeatureClicked = (index: number) => {
+  return activeFeatureIndex.value === index
+}
 </script>
 
 <template>
@@ -22,21 +41,37 @@
         <div class="about-card">
           <h2 class="section-title">功能特色</h2>
           <ul class="features-list">
-            <li class="feature-item">
+            <li 
+              class="feature-item"
+              :class="{ 'clicked': isFeatureClicked(0) }"
+              @click="toggleFeature(0)"
+            >
               <span class="feature-icon">📅</span>
-            <span><strong class="feature-title">回忆时光轴：</strong><span class="feature-description">按时间顺序记录我们的爱情历程</span></span>
+              <span><strong class="feature-title">回忆时光轴：</strong><span class="feature-description">按时间顺序记录我们的爱情历程</span></span>
             </li>
-            <li class="feature-item">
+            <li 
+              class="feature-item"
+              :class="{ 'clicked': isFeatureClicked(1) }"
+              @click="toggleFeature(1)"
+            >
               <span class="feature-icon">📸</span>
-              <span><strong>照片相册：</strong>珍藏我们的每一张合影</span>
+              <span><strong class="feature-title">照片相册：</strong><span class="feature-description">珍藏我们的每一张合影</span></span>
             </li>
-            <li class="feature-item">
+            <li 
+              class="feature-item"
+              :class="{ 'clicked': isFeatureClicked(2) }"
+              @click="toggleFeature(2)"
+            >
               <span class="feature-icon feature-icon-highlighted">🎉</span>
-              <span><strong>纪念日提醒：</strong>重要日子提醒，不再错过</span>
+              <span><strong class="feature-title">纪念日提醒：</strong><span class="feature-description">重要日子提醒，不再错过</span></span>
             </li>
-            <li class="feature-item">
+            <li 
+              class="feature-item"
+              :class="{ 'clicked': isFeatureClicked(3) }"
+              @click="toggleFeature(3)"
+            >
               <span class="feature-icon">🔒</span>
-            <span><strong class="feature-title">隐私保护：</strong><span class="feature-description">只有我们两个人可以访问</span></span>
+              <span><strong class="feature-title">隐私保护：</strong><span class="feature-description">只有我们两个人可以访问</span></span>
             </li>
           </ul>
         </div>
@@ -94,7 +129,7 @@
 .page-header p {
   font-size: var(--romantic-font-size-xl);
   font-weight: var(--romantic-font-weight-normal);
-  color: var(--romantic-primary);
+  color: var(--romantic-dark-medium);
   margin-bottom: var(--romantic-spacing-8);
 }
 
@@ -127,7 +162,7 @@
 }
 
 .section-content {
-  color: var(--romantic-primary);
+  color: var(--romantic-dark);
   line-height: var(--romantic-line-height-relaxed);
   font-size: var(--romantic-font-size-base);
 }
@@ -145,10 +180,31 @@
   border-radius: var(--romantic-radius);
   background: var(--romantic-light);
   transition: var(--romantic-transition);
+  cursor: pointer;
 }
 
 .feature-item:hover {
   background: #f1f5f9; /* slate-100 */
+}
+
+.feature-item.clicked {
+  background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%) !important;
+  border: 1px solid var(--romantic-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.2);
+}
+
+.feature-item.clicked .feature-title {
+  color: var(--romantic-primary-dark) !important;
+}
+
+.feature-item.clicked .feature-description {
+  color: var(--romantic-white) !important;
+}
+
+.feature-item.clicked .feature-icon {
+  color: var(--romantic-primary) !important;
+  transform: scale(1.1);
 }
 
 .feature-icon {
@@ -182,7 +238,7 @@
   font-size: 1.2rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--romantic-dark);
 }
 
 .tech-category ul {
@@ -192,7 +248,7 @@
 .tech-category li {
   padding: 0.5rem 0;
   border-bottom: 1px solid #e2e8f0; /* slate-200 */
-  color: #666;
+  color: var(--romantic-dark-medium);
 }
 
 .tech-category li:last-child {

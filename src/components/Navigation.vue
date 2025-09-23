@@ -398,16 +398,7 @@ onMounted(() => {
             关于
           </RouterLink>
         </li>
-        <li>
-          <RouterLink 
-            to="/demo" 
-            @click="closeMenu"
-            class="romantic-menu-link"
-            active-class="romantic-menu-link-active"
-          >
-            样式演示
-          </RouterLink>
-        </li>
+
         <template v-if="!userStore.isLoggedIn">
           <li>
             <RouterLink 
@@ -519,16 +510,7 @@ onMounted(() => {
             关于
           </RouterLink>
         </div>
-        <div class="romantic-mobile-menu-item">
-          <RouterLink 
-            to="/demo" 
-            @click="closeMenu"
-            class="romantic-mobile-menu-link"
-            active-class="romantic-mobile-menu-link-active"
-          >
-            样式演示
-          </RouterLink>
-        </div>
+
         <template v-if="!userStore.isLoggedIn">
           <div class="romantic-mobile-menu-item">
             <RouterLink 
