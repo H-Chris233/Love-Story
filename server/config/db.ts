@@ -1,14 +1,12 @@
 import mongoose from 'mongoose';
+import config from './index';
 
 // MongoDB connection
 const connectDB = async (): Promise<void> => {
   try {
-    // For local development, you can use 'mongodb://localhost:27017/love-story'
-    // For production, you should use environment variables
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/love-story', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    // Use the mongoURI from config which defaults to MongoDB Atlas connection string
+    // Updated configuration to remove deprecated options
+    const conn = await mongoose.connect(config.mongoURI);
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error: any) {

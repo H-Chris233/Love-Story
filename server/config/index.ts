@@ -14,7 +14,7 @@ interface Config {
 
 const config: Config = {
   port: parseInt(process.env.PORT as string, 10) || 3000,
-  mongoURI: process.env.MONGODB_URI || 'mongodb://localhost:27017/love-story',
+  mongoURI: process.env.MONGODB_URI || 'mongodb+srv://lovestory:6hodo2dvTDjf5WIU@love-story.rwsp47v.mongodb.net/?retryWrites=true&w=majority&appName=Love-Story',
   jwtSecret: process.env.JWT_SECRET || 'love_story_secret_key',
   emailjsServiceId: process.env.EMAILJS_SERVICE_ID || '',
   emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID || '',
