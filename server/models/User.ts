@@ -4,6 +4,7 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
+  isAdmin: boolean;
   createdAt: Date;
 }
 
@@ -26,6 +27,10 @@ const userSchema: Schema = new mongoose.Schema({
     required: [true, 'Please add a password'],
     minlength: 6,
     select: false,
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false,
   },
   createdAt: {
     type: Date,

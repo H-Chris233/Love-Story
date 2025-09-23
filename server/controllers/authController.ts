@@ -28,6 +28,10 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Check if this is the first user (should be admin)
+    const userCount = await User.countDocuments();
+    const isFirstUser = userCount === 0;
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password as string, salt);
@@ -37,6 +41,7 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
       name,
       email,
       password: hashedPassword,
+      isAdmin: isFirstUser, // First user gets admin privileges
     });
 
     if (user) {
@@ -44,6 +49,7 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
         _id: (user as any)._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
         token: generateToken((user as any)._id.toString()),
       });
     } else {
@@ -68,6 +74,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
         _id: (user as any)._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
         token: generateToken((user as any)._id.toString()),
       });
     } else {
@@ -89,6 +96,7 @@ const getUserProfile = async (req: Request, res: Response): Promise<void> => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        isAdmin: user.isAdmin,
       });
     } else {
       res.status(404).json({ message: 'User not found' });
@@ -98,8 +106,22 @@ const getUserProfile = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// Check if registration is allowed (no users exist)
+const checkRegistrationAllowed = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userCount = await User.countDocuments();
+    res.json({
+      registrationAllowed: userCount === 0,
+      message: userCount === 0 ? 'Registration allowed for first admin user' : 'Registration not allowed'
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: (error as Error).message });
+  }
+};
+
 export {
   registerUser,
   loginUser,
   getUserProfile,
+  checkRegistrationAllowed,
 };
