@@ -78,7 +78,7 @@ pnpm remove postcss autoprefixer
 
 ## 使用示例
 
-请查看 `/src/components/LightningCSSTest.vue` 和 `/src/assets/test-lightning.css` 文件了解具体的使用示例。
+请查看 `/src/components/LightningCSSTest.vue` 和 `/src/views/LightningCSSTestView.vue` 文件了解具体的使用示例。
 
 ## 测试
 

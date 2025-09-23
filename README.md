@@ -158,22 +158,59 @@ EMAILJS_USER_ID=your_user_id
 
 ## 部署
 
-### 前端部署 (Vercel)
-1. 连接GitHub仓库到Vercel
-2. 配置环境变量
-3. 触发自动部署
+### JAMstack 部署方案（推荐）
+前端部署到Vercel，后端部署到Railway，实现前后端分离的云端部署。
 
-### 后端部署 (Railway/Heroku)
-1. 创建Railway/Heroku账户
-2. 连接GitHub仓库
-3. 配置环境变量
-4. 部署应用
+#### 前端部署到 Vercel
+```bash
+# 登录Vercel
+vercel login
 
-### 数据库 (MongoDB Atlas)
+# 部署到生产环境
+vercel --prod
+```
+
+**配置文件**：
+- `vercel.json`: 配置Vue Router重写规则和静态资源缓存
+- `.env.production`: 生产环境变量配置
+
+**环境变量设置**：
+- `VITE_API_BASE_URL`: 设置为Railway后端URL
+
+#### 后端部署到 Railway
+```bash
+cd server
+
+# 登录Railway
+railway login
+
+# 初始化项目
+railway init
+
+# 部署
+railway up
+```
+
+**配置文件**：
+- `railway.json`: Railway部署配置
+- `.env.example`: 环境变量模板
+
+**必需环境变量**：
+- `MONGODB_URI`: MongoDB Atlas连接字符串
+- `JWT_SECRET`: JWT密钥
+- `NODE_ENV=production`: 生产环境标识
+- `FRONTEND_URL`: Vercel前端URL（用于CORS配置）
+
+#### CORS自动配置
+后端已配置环境自适应CORS：
+- **开发环境**: 允许 `localhost:5173` 和 `127.0.0.1:5173`
+- **生产环境**: 仅允许配置的前端域名
+
+#### 数据库 (MongoDB Atlas)
 1. 创建MongoDB Atlas账户
 2. 创建集群和数据库
-3. 配置网络访问
-4. 获取连接字符串
+3. 配置网络访问（允许所有IP: 0.0.0.0/0）
+4. 获取连接字符串并设置到Railway环境变量
 
 ## 功能模块
 

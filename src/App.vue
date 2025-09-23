@@ -28,5 +28,5 @@ onMounted(() => {
   background: var(--romantic-gradient);
 }
 
-/* 全局样式已移至Tailwind CSS */
+/* 全局样式已移至增强版浪漫主题 */
 </style>

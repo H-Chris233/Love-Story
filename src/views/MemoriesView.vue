@@ -70,33 +70,33 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-8 max-w-800px mx-auto md:p-8">
-    <header class="mb-8 md:mb-8">
-      <h1 class="text-2xl font-bold text-center mb-4 md:text-3xl md:mb-8">我们的爱情回忆</h1>
-      <p class="text-center text-gray-600 mb-6 md:mb-10 md:text-lg">记录我们在一起的每一个美好时刻</p>
+  <div class="romantic-container romantic-py-8">
+    <header class="romantic-mb-8">
+      <h1 class="romantic-title romantic-title-md">我们的爱情回忆</h1>
+      <p class="romantic-subtitle">记录我们在一起的每一个美好时刻</p>
     </header>
 
-    <div v-if="loading" class="text-center py-10">
-      <div class="border-4 border-gray-200 border-t-4 border-t-pink-500 rounded-50% w-10 h-10 animate-spin mx-auto"></div>
-      <p class="mt-2">加载中...</p>
+    <div v-if="loading" class="romantic-text-center romantic-py-10">
+      <div class="romantic-spinner"></div>
+      <p class="romantic-mt-2">加载中...</p>
     </div>
 
-    <div v-else-if="error" class="text-center py-10">
-      <p class="text-red-500">{{ error }}</p>
+    <div v-else-if="error" class="romantic-text-center romantic-py-10">
+      <p class="romantic-text-danger">{{ error }}</p>
       <button 
         @click="fetchMemories" 
-        class="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+        class="romantic-button romantic-mt-4"
       >
         重新加载
       </button>
     </div>
 
     <div v-else>
-      <div class="relative">
+      <div class="romantic-relative">
         <div 
           v-for="memory in memories" 
           :key="memory._id" 
-          class="mb-8 last:mb-0 md:mb-8"
+          class="romantic-mb-8"
         >
           <MemoryCard 
             :memory="{
@@ -112,10 +112,10 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="text-center mt-10">
+      <div class="romantic-text-center romantic-mt-10">
         <button 
           @click="handleAddMemory"
-          class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-6 rounded-full transition duration-300"
+          class="romantic-button romantic-button-lg"
         >
           添加新的回忆
         </button>
@@ -133,55 +133,51 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 加载动画 */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* 小屏手机优化 */
 @media (max-width: 768px) {
-  .p-8.max-w-800px.mx-auto.md\:p-8 {
-    padding: 1rem;
+  .romantic-py-8 {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
   }
   
-  .mb-8.md\:mb-8 {
+  .romantic-mb-8 {
     margin-bottom: 1rem;
   }
   
-  .text-2xl.font-bold.text-center.mb-4.md\:text-3xl.md\:mb-8 {
+  .romantic-title {
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
   }
   
-  .text-center.text-gray-600.mb-6.md\:mb-10.md\:text-lg {
+  .romantic-subtitle {
     font-size: 1rem;
     margin-bottom: 1rem;
   }
   
-  .mb-8.last\:mb-0.md\:mb-8 {
+  .romantic-mb-8 {
     margin-bottom: 1.5rem;
   }
   
-  .text-center.mt-10 {
+  .romantic-mt-10 {
     margin-top: 2rem;
   }
 }
 
 @media (max-width: 480px) {
-  .p-8.max-w-800px.mx-auto.md\:p-8 {
-    padding: 0.5rem;
+  .romantic-py-8 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
   }
   
-  .text-2xl.font-bold.text-center.mb-4.md\:text-3xl.md\:mb-8 {
+  .romantic-title {
     font-size: 1.5rem;
   }
   
-  .text-center.text-gray-600.mb-6.md\:mb-10.md\:text-lg {
+  .romantic-subtitle {
     font-size: 0.9rem;
   }
   
-  .mb-8.last\:mb-0.md\:mb-8 {
+  .romantic-mb-8 {
     margin-bottom: 1rem;
   }
 }

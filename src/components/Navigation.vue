@@ -408,16 +408,6 @@ onMounted(() => {
             样式演示
           </RouterLink>
         </li>
-        <li>
-          <RouterLink 
-            to="/lightning-css-test" 
-            @click="closeMenu"
-            class="romantic-menu-link"
-            active-class="romantic-menu-link-active"
-          >
-            Lightning CSS 测试
-          </RouterLink>
-        </li>
         <template v-if="!userStore.isLoggedIn">
           <li>
             <RouterLink 
@@ -537,16 +527,6 @@ onMounted(() => {
             active-class="romantic-mobile-menu-link-active"
           >
             样式演示
-          </RouterLink>
-        </div>
-        <div class="romantic-mobile-menu-item">
-          <RouterLink 
-            to="/lightning-css-test" 
-            @click="closeMenu"
-            class="romantic-mobile-menu-link"
-            active-class="romantic-mobile-menu-link-active"
-          >
-            Lightning CSS 测试
           </RouterLink>
         </div>
         <template v-if="!userStore.isLoggedIn">

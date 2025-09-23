@@ -11,22 +11,22 @@ const goToMemories = () => {
 </script>
 
 <template>
-  <div class="romantic-home">
+  <div class="romantic-home romantic-fade-in">
     <section class="romantic-home-section">
-      <div class="romantic-home-container">
-        <div class="romantic-heart-container">
+      <div class="romantic-home-container romantic-card">
+        <div class="romantic-heart-container romantic-heartbeat">
           <div class="romantic-heart">❤️</div>
         </div>
         
-        <h1 class="romantic-title">我们的爱情故事</h1>
-        <p class="romantic-subtitle">记录我们在一起的每一个美好瞬间</p>
+        <h1 class="romantic-title romantic-title-md romantic-title-prominent">我们的爱情故事</h1>
+        <p class="romantic-subtitle romantic-text-primary">记录我们在一起的每一个美好瞬间</p>
         
         <!-- 恋爱天数计数器 -->
         <LoveTimer />
         
         <button 
           @click="goToMemories" 
-          class="romantic-button"
+          class="romantic-button romantic-button-lg romantic-ripple"
         >
           查看我们的回忆
         </button>
@@ -37,7 +37,7 @@ const goToMemories = () => {
 
 <style scoped>
 .romantic-home {
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh - 70px);
   background: var(--romantic-gradient);
   display: flex;
   align-items: center;
@@ -57,14 +57,15 @@ const goToMemories = () => {
   align-items: center;
   gap: var(--romantic-spacing-8);
   padding: var(--romantic-spacing-8) var(--romantic-spacing-12);
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: var(--romantic-radius);
-  box-shadow: var(--romantic-shadow);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--romantic-radius-lg);
+  box-shadow: var(--romantic-shadow-lg);
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .romantic-heart-container {
-  animation: romanticHeartbeat 1.5s ease-in-out infinite;
+  margin-top: var(--romantic-spacing-4);
 }
 
 .romantic-heart {
@@ -72,99 +73,9 @@ const goToMemories = () => {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.romantic-title {
-  font-size: var(--romantic-font-size-3xl);
-  font-weight: var(--romantic-font-weight-bold);
-  margin-bottom: var(--romantic-spacing-4);
-  color: var(--romantic-primary-dark);
-  text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.romantic-subtitle {
-  font-size: var(--romantic-font-size-xl);
-  margin-bottom: var(--romantic-spacing-8);
-  color: var(--romantic-secondary);
-  text-align: center;
-  line-height: 1.6;
-}
-
-.romantic-button {
-  background: var(--romantic-primary);
-  color: var(--romantic-white);
-  font-size: var(--romantic-font-size-lg);
-  font-weight: var(--romantic-font-weight-semibold);
-  padding: var(--romantic-spacing-4) var(--romantic-spacing-12);
-  border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: var(--romantic-transition);
-  box-shadow: var(--romantic-shadow);
-  position: relative;
-  overflow: hidden;
-}
-
-.romantic-button:hover {
-  background: var(--romantic-primary-dark);
-  transform: translateY(-2px);
-  box-shadow: var(--romantic-shadow-hover);
-}
-
-.romantic-button:active {
-  transform: translateY(0);
-}
-
-/* 心跳动画 */
-@keyframes romanticHeartbeat {
-  0% {
-    transform: scale(1);
-  }
-  5% {
-    transform: scale(1.1);
-  }
-  10% {
-    transform: scale(1);
-  }
-  15% {
-    transform: scale(1.1);
-  }
-  20% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* 按钮点击波纹效果 */
-.romantic-button::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.5);
-  opacity: 0;
-  border-radius: 100%;
-  transform: scale(1, 1) translate(-50%);
-  transform-origin: 50% 50%;
-}
-
-.romantic-button:focus:not(:active)::after {
-  animation: romanticRipple 1s ease-out;
-}
-
-/* 波纹动画 */
-@keyframes romanticRipple {
-  0% {
-    transform: scale(0, 0);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(50, 50);
-    opacity: 0;
-  }
+.romantic-title-prominent {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  color: var(--romantic-dark);
 }
 
 /* 响应式设计 */
@@ -176,6 +87,7 @@ const goToMemories = () => {
   .romantic-home-container {
     padding: var(--romantic-spacing-6) var(--romantic-spacing-4);
     gap: var(--romantic-spacing-6);
+    border-radius: var(--romantic-radius);
   }
   
   .romantic-heart {

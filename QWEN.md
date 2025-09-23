@@ -140,17 +140,47 @@ EMAILJS_USER_ID=your_user_id
 
 ## 部署方案
 
-### 前端部署
-- 使用Vite构建生产版本
-- 可部署到Vercel、Netlify等静态网站托管平台
+### JAMstack 部署（推荐）
 
-### 后端部署
-- 可部署到Heroku、Railway等云平台
-- 支持Docker容器化部署
+#### 前端部署到 Vercel
+- 使用Vite构建生产版本
+- 已配置 `vercel.json` 支持 Vue Router
+- 自动处理静态资源缓存
+- 支持环境变量配置
+
+#### 后端部署到 Railway
+- 已配置 `railway.json` 部署文件
+- 支持健康检查端点 `/health`
+- 自动构建和部署
+- 环境变量管理
+
+#### 环境配置
+- **开发环境**: 本地 `http://localhost:5173` 和 `http://localhost:3000`
+- **生产环境**: Vercel + Railway 云服务
+- **CORS配置**: 根据环境自动切换允许的域名
+
+#### 部署步骤
+1. **后端Railway部署**:
+   ```bash
+   cd server
+   railway login
+   railway init
+   railway up
+   ```
+
+2. **前端Vercel部署**:
+   ```bash
+   vercel login
+   vercel --prod
+   ```
+
+3. **环境变量设置**:
+   - Railway: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL`
+   - Vercel: `VITE_API_BASE_URL`
 
 ### 数据库
-- MongoDB Atlas云数据库
-- 支持本地MongoDB部署
+- MongoDB Atlas云数据库（推荐）
+- 支持本地MongoDB开发
 
 ## 项目特点
 

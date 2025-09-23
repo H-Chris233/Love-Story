@@ -45,29 +45,29 @@ const handleDelete = () => {
 </script>
 
 <template>
-  <div class="romantic-memory-card">
+  <div class="romantic-memory-card romantic-card">
     <div class="romantic-card-content">
       <div class="romantic-date-tag">
         {{ formatDate(memory.date) }}
       </div>
       
-      <h2 class="romantic-memory-title">{{ memory.title }}</h2>
+      <h2 class="romantic-memory-title romantic-card-title">{{ memory.title }}</h2>
       
-      <p class="romantic-memory-content">
+      <p class="romantic-memory-content romantic-text">
         {{ memory.content }}
       </p>
       
-      <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images">
+      <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images romantic-grid romantic-grid-cols-2 romantic-gap-2">
         <div v-for="(image, index) in memory.images" :key="index" class="romantic-memory-image">
-          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`">
+          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`" class="romantic-rounded">
         </div>
       </div>
       
-      <div class="romantic-card-actions">
-        <button class="romantic-action-button" @click="handleEdit">
+      <div class="romantic-card-actions romantic-flex romantic-gap-2 romantic-mt-4">
+        <button class="romantic-action-button romantic-button romantic-button-sm" @click="handleEdit">
           编辑
         </button>
-        <button class="romantic-action-button romantic-delete-button" @click="handleDelete">
+        <button class="romantic-action-button romantic-button romantic-button-sm romantic-button-outline" @click="handleDelete">
           删除
         </button>
       </div>
