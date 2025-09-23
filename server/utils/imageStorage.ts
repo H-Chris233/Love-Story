@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 const uploadImageToGridFS = async (buffer: Buffer, filename: string, mimeType: string): Promise<{ fileId: mongoose.Types.ObjectId; url: string }> => {
   try {
     // Get the MongoDB connection from mongoose
-    const db = mongoose.connection.db;
+    const db = mongoose.connection.db as mongoose.mongo.Db;
     
     // Create GridFS bucket
     const bucket = new mongoose.mongo.GridFSBucket(db, {
@@ -39,7 +39,7 @@ const uploadImageToGridFS = async (buffer: Buffer, filename: string, mimeType: s
 const getImageFromGridFS = async (fileId: string) => {
   try {
     // Get the MongoDB connection from mongoose
-    const db = mongoose.connection.db;
+    const db = mongoose.connection.db as mongoose.mongo.Db;
     
     // Create GridFS bucket
     const bucket = new mongoose.mongo.GridFSBucket(db, {
@@ -52,6 +52,11 @@ const getImageFromGridFS = async (fileId: string) => {
     // Check if file exists and get its metadata
     const files = await bucket.find({ _id: objectId }).toArray();
     if (files.length === 0) {
+      throw new Error('File not found');
+    }
+    
+    // Check that files[0] exists before accessing its properties
+    if (!files[0]) {
       throw new Error('File not found');
     }
     
@@ -74,7 +79,7 @@ const getImageFromGridFS = async (fileId: string) => {
 const deleteImageFromGridFS = async (fileId: string): Promise<void> => {
   try {
     // Get the MongoDB connection from mongoose
-    const db = mongoose.connection.db;
+    const db = mongoose.connection.db as mongoose.mongo.Db;
     
     // Create GridFS bucket
     const bucket = new mongoose.mongo.GridFSBucket(db, {
