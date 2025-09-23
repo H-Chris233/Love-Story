@@ -62,12 +62,14 @@ const getFullImageUrl = (imageUrl: string) => {
     return imageUrl
   }
   
-  // 如果是相对路径，添加API基础URL
+  // 在开发环境中，使用Vite代理，直接返回相对路径
+  if (import.meta.env.DEV) {
+    return imageUrl
+  }
+  
+  // 在生产环境中，构建完整URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-  
-  // 移除API基础URL中的/api后缀，因为图片URL已经包含/api
   const serverUrl = baseUrl.replace('/api', '')
-  
   return `${serverUrl}${imageUrl}`
 }
 

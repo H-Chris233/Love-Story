@@ -33,7 +33,15 @@ const corsOptions = {
 };
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "http://localhost:5173", "http://127.0.0.1:5173"],
+    },
+  },
+})); // Security headers with image loading permissions
 app.use(cors(corsOptions)); // Enable CORS with options
 app.use(morgan('combined')); // Logging
 app.use(express.json()); // Parse JSON bodies
