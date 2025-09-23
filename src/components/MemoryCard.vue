@@ -42,6 +42,22 @@ const handleDelete = () => {
     emit('delete', props.memory.id)
   }
 }
+
+// 获取完整的图片URL
+const getFullImageUrl = (imageUrl: string) => {
+  // 如果URL已经是完整的URL，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  
+  // 如果是相对路径，添加API基础URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+  
+  // 移除API基础URL中的/api后缀，因为图片URL已经包含/api
+  const serverUrl = baseUrl.replace('/api', '')
+  
+  return `${serverUrl}${imageUrl}`
+}
 </script>
 
 <template>
@@ -59,7 +75,7 @@ const handleDelete = () => {
       
       <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images romantic-grid romantic-grid-cols-2 romantic-gap-2">
         <div v-for="(image, index) in memory.images" :key="index" class="romantic-memory-image">
-          <img :src="image" :alt="`${memory.title} - 图片 ${index + 1}`" class="romantic-rounded">
+          <img :src="getFullImageUrl(image)" :alt="`${memory.title} - 图片 ${index + 1}`" class="romantic-rounded">
         </div>
       </div>
       

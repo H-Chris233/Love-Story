@@ -55,6 +55,22 @@ onMounted(() => {
   fetchPhotos()
 })
 
+// 获取完整的图片URL
+const getFullImageUrl = (imageUrl: string) => {
+  // 如果URL已经是完整的URL，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  
+  // 如果是相对路径，添加API基础URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+  
+  // 移除API基础URL中的/api后缀，因为图片URL已经包含/api
+  const serverUrl = baseUrl.replace('/api', '')
+  
+  return `${serverUrl}${imageUrl}`
+}
+
 // 格式化日期
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -97,7 +113,7 @@ const formatDate = (dateString: string) => {
         >
           <div class="relative overflow-hidden">
             <img 
-              :src="photo.url" 
+              :src="getFullImageUrl(photo.url)" 
               :alt="photo.title" 
               class="w-full h-60 object-cover block transition-transform duration-300 hover:scale-105 md:h-60"
             >

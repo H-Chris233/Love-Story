@@ -22,6 +22,22 @@ const initPhotoSwipe = () => {
   console.log('PhotoSwipe initialized with images:', props.images)
 }
 
+// 获取完整的图片URL
+const getFullImageUrl = (imageUrl: string) => {
+  // 如果URL已经是完整的URL，直接返回
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+  
+  // 如果是相对路径，添加API基础URL
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+  
+  // 移除API基础URL中的/api后缀，因为图片URL已经包含/api
+  const serverUrl = baseUrl.replace('/api', '')
+  
+  return `${serverUrl}${imageUrl}`
+}
+
 // 组件挂载后初始化
 onMounted(() => {
   initPhotoSwipe()
@@ -36,7 +52,7 @@ onMounted(() => {
       class="image-wrapper"
     >
       <img 
-        :src="image.url" 
+        :src="getFullImageUrl(image.url)" 
         :alt="image.title"
         class="gallery-image"
       >
