@@ -79,6 +79,12 @@ const getImageContainerClass = (totalCount: number, index: number) => {
   if (totalCount === 3 && index > 0) return 'side-image'
   return ''
 }
+
+// 格式化内容，支持换行
+const formatContent = (content: string) => {
+  // 将换行符替换为<br>标签
+  return content.replace(/\n/g, '<br>')
+}
 </script>
 
 <template>
@@ -90,8 +96,7 @@ const getImageContainerClass = (totalCount: number, index: number) => {
       
       <h2 class="romantic-memory-title romantic-card-title">{{ memory.title }}</h2>
       
-      <p class="romantic-memory-content romantic-text">
-        {{ memory.content }}
+      <p class="romantic-memory-content romantic-text" v-html="formatContent(memory.content)">
       </p>
       
       <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images">
@@ -136,16 +141,7 @@ const getImageContainerClass = (totalCount: number, index: number) => {
   backdrop-filter: blur(10px);
 }
 
-.romantic-memory-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: var(--romantic-gradient);
-  z-index: 1;
-}
+
 
 .romantic-memory-card:hover {
   transform: translateY(-8px);
@@ -161,17 +157,16 @@ const getImageContainerClass = (totalCount: number, index: number) => {
 
 .romantic-date-tag {
   position: absolute;
-  top: -15px;
-  left: -15px;
+  top: var(--romantic-spacing-4);
+  right: var(--romantic-spacing-4);
   background: var(--romantic-gradient);
   color: var(--romantic-white);
   font-weight: var(--romantic-font-weight-bold);
   padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
-  border-radius: var(--romantic-radius-full);
+  border-radius: var(--romantic-radius);
   font-size: var(--romantic-font-size-sm);
   box-shadow: var(--romantic-shadow);
   z-index: 3;
-  border: 2px solid var(--romantic-white);
 }
 
 .romantic-memory-title {
@@ -351,10 +346,11 @@ const getImageContainerClass = (totalCount: number, index: number) => {
   }
   
   .romantic-date-tag {
-    top: -10px;
-    left: -10px;
+    top: 0.5rem;
+    right: 0.5rem;
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
+    border-radius: var(--romantic-radius-sm);
   }
   
   .romantic-memory-title {
@@ -412,10 +408,11 @@ const getImageContainerClass = (totalCount: number, index: number) => {
   }
   
   .romantic-date-tag {
-    top: -8px;
-    left: -8px;
+    top: 0.4rem;
+    right: 0.4rem;
     padding: 0.15rem 0.5rem;
     font-size: 0.7rem;
+    border-radius: var(--romantic-radius-sm);
   }
   
   .romantic-memory-title {
