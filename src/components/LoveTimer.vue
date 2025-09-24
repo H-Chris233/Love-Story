@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
-// 设置开始日期（可以根据实际情况修改）
-const startDate = new Date('2020-01-01')
+// 设置开始日期和时间（可以根据实际情况修改）
+// 格式：YYYY-MM-DD HH:MM:SS
+const startDate = new Date('2024-1-12 21:28:46')
 
 // 响应式数据
 const daysTogether = ref(0)
@@ -25,12 +26,15 @@ const calculateDaysTogether = () => {
   secondsTogether.value = diffSeconds
 }
 
-// 格式化开始日期
+// 格式化开始日期和时间
 const formattedStartDate = computed(() => {
   return startDate.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
   })
 })
 
