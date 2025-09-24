@@ -50,18 +50,12 @@ const getFullImageUrl = (imageUrl: string) => {
     return imageUrl
   }
   
-  // 在开发环境中，使用Vite代理，直接返回相对路径
-  if (import.meta.env.DEV) {
-    console.log('Development mode - using proxy for image:', imageUrl)
-    return imageUrl
-  }
-  
-  // 在生产环境中，构建完整URL
+  // 构建完整的API URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
   const serverUrl = baseUrl.replace('/api', '')
   const fullUrl = `${serverUrl}${imageUrl}`
   
-  console.log('Production mode - image URL construction:', { imageUrl, baseUrl, serverUrl, fullUrl })
+  console.log('Image URL construction:', { imageUrl, baseUrl, serverUrl, fullUrl })
   return fullUrl
 }
 

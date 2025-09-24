@@ -103,6 +103,10 @@ const getDaysUntilText = (days: number) => {
     return `还有 ${days} 天`
   }
 }
+
+
+
+
 </script>
 
 <template>
@@ -345,6 +349,8 @@ const getDaysUntilText = (days: number) => {
   opacity: 1;
 }
 
+
+
 .card-content {
   padding: var(--romantic-spacing-4);
   text-align: center;
@@ -454,12 +460,18 @@ const getDaysUntilText = (days: number) => {
 
 .add-anniversary-section {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--romantic-spacing-4);
+  align-items: center;
 }
 
 .add-button {
   position: relative;
   overflow: hidden;
 }
+
+
 
 .button-icon {
   margin-right: var(--romantic-spacing-2);

@@ -19,6 +19,12 @@ apiClient.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // 如果是FormData，删除默认的Content-Type让浏览器自动设置
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => {
@@ -68,21 +74,13 @@ export const memoryAPI = {
     apiClient.post<Memory>('/memories', data),
     
   createWithImages: (formData: FormData): Promise<AxiosResponse<Memory>> => 
-    apiClient.post<Memory>('/memories', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }),
+    apiClient.post<Memory>('/memories', formData),
     
   update: (id: string, data: Partial<Omit<Memory, '_id' | 'user' | 'createdAt' | 'images'>> & { images?: Array<{ url: string; publicId: string }> }): Promise<AxiosResponse<Memory>> => 
     apiClient.put<Memory>(`/memories/${id}`, data),
     
   updateWithImages: (id: string, formData: FormData): Promise<AxiosResponse<Memory>> => 
-    apiClient.put<Memory>(`/memories/${id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }),
+    apiClient.put<Memory>(`/memories/${id}`, formData),
     
   delete: (id: string): Promise<AxiosResponse<void>> => 
     apiClient.delete<void>(`/memories/${id}`),
@@ -105,6 +103,9 @@ export const anniversaryAPI = {
   delete: (id: string): Promise<AxiosResponse<void>> => 
     apiClient.delete<void>(`/anniversaries/${id}`),
     
-  sendReminder: (id: string): Promise<AxiosResponse<{ message: string }>> => 
-    apiClient.post<{ message: string }>(`/anniversaries/${id}/remind`),
+  sendReminder: (id: string): Promise<AxiosResponse<{ message: string; details: any }>> => 
+    apiClient.post<{ message: string; details: any }>(`/anniversaries/${id}/remind`),
+    
+  testSendAllReminders: (): Promise<AxiosResponse<{ message: string; details?: any }>> => 
+    apiClient.post<{ message: string; details?: any }>('/anniversaries/test-reminders'),
 };

@@ -25,7 +25,6 @@ export interface Anniversary {
   title: string;
   date: string;
   reminderDays: number;
-  user: string;
   createdAt: string;
 }
 
