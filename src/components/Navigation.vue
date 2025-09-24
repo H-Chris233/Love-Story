@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 
@@ -9,6 +9,9 @@ const router = useRouter()
 
 // 移动端菜单开关状态
 const isMenuOpen = ref(false)
+
+// 导航栏透明度状态
+const navbarOpacity = ref(1)
 
 // 切换移动端菜单
 const toggleMenu = () => {
@@ -27,11 +30,25 @@ const logout = () => {
   closeMenu()
 }
 
+// 处理页面滚动事件，改变导航栏透明度
+const handleScroll = () => {
+  const scrollPosition = window.scrollY
+  // 根据滚动位置调整透明度，滚动越多透明度越不透明
+  navbarOpacity.value = 1 - Math.min(scrollPosition / 100, 0.3) // 最多减少30%的透明度
+}
+
 // Fetch user profile on component mount
 onMounted(() => {
   if (userStore.token) {
     userStore.fetchUserProfile()
   }
+  // 添加滚动事件监听器
+  window.addEventListener('scroll', handleScroll)
+})
+
+// 组件卸载时移除事件监听器
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 </script>
 
@@ -43,6 +60,7 @@ onMounted(() => {
   top: 0;
   z-index: 50;
   width: 100%;
+  transition: opacity 0.3s ease;
 }
 
 .romantic-navigation-container {
@@ -129,8 +147,15 @@ onMounted(() => {
   font-weight: var(--romantic-font-weight-medium);
   padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
   border-radius: var(--romantic-radius);
-  transition: var(--romantic-transition);
+  transition: var(--romantic-transition), opacity 0.3s ease;
   position: relative;
+  opacity: 0.9;
+}
+
+.romantic-menu-link:hover {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
+  opacity: 1;
 }
 
 .romantic-menu-link:hover {
@@ -197,15 +222,28 @@ onMounted(() => {
   padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   z-index: 50;
-  display: none;
+  opacity: 0;
+  transform: translateY(-10px);
+  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  max-height: 0;
+  overflow: hidden;
 }
 
 .romantic-mobile-menu-open {
   display: block;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  max-height: 300px; /* Adjust as needed */
 }
 
 .romantic-mobile-menu-closed {
-  display: none;
+  opacity: 0;
+  transform: translateY(-10px);
+  visibility: hidden;
+  max-height: 0;
+  overflow: hidden;
 }
 
 .romantic-mobile-menu-items {
@@ -245,7 +283,7 @@ onMounted(() => {
   color: var(--romantic-dark);
   font-weight: var(--romantic-font-weight-medium);
   border-radius: var(--romantic-radius);
-  transition: var(--romantic-transition);
+  transition: var(--romantic-transition), opacity 0.3s ease;
   position: relative;
   white-space: nowrap;
   /* 增加触摸区域 */
@@ -253,6 +291,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.9;
+}
+
+.romantic-mobile-menu-link:hover {
+  color: var(--romantic-primary);
+  background: var(--romantic-light);
+  opacity: 1;
 }
 
 .romantic-mobile-menu-link:hover {
@@ -334,7 +379,7 @@ onMounted(() => {
 </style>
 
 <template>
-  <nav class="romantic-navigation">
+  <nav class="romantic-navigation" :style="{ opacity: navbarOpacity }">
     <div class="romantic-navigation-container">
       <div>
         <RouterLink 
@@ -495,7 +540,7 @@ onMounted(() => {
             to="/anniversaries" 
             @click="closeMenu"
             class="romantic-mobile-menu-link"
-            active-class="romantic-mobile-menu-link-active"
+            active-class="romantic-menu-link-active"
           >
             纪念日
           </RouterLink>
