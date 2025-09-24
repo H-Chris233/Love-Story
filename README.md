@@ -107,10 +107,12 @@ MONGODB_URI=mongodb://localhost:27017/love-story
 # JWT密钥
 JWT_SECRET=your_jwt_secret_key
 
-# EmailJS配置
+# EmailJS配置（纪念日邮件提醒）
 EMAILJS_SERVICE_ID=your_service_id
-EMAILJS_TEMPLATE_ID=your_template_id
-EMAILJS_USER_ID=your_user_id
+EMAILJS_TEMPLATE_ID=your_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_public_key
+EMAILJS_PRIVATE_KEY=your_private_key
 ```
 
 ## 浪漫主题样式
@@ -233,10 +235,12 @@ railway up
 - 照片浏览与删除
 
 ### 纪念日提醒
-- [x] 创建纪念日
+- [x] 创建纪念日（全局共享）
 - [x] 编辑纪念日
 - [x] 删除纪念日
-- [x] 邮件提醒
+- [x] 自动邮件提醒（每日早上7点）
+- [x] 批量邮件发送（向所有用户发送）
+- [x] 测试发送功能
 
 ## 重构说明
 

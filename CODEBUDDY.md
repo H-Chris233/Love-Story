@@ -73,6 +73,13 @@ JWT_SECRET=your-secret-key
 PORT=3000
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173  # For CORS in production
+
+# EmailJS Configuration (for anniversary reminders)
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID=your_emailjs_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_emailjs_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 ```
 
 ## Deployment Configuration
@@ -102,6 +109,13 @@ FRONTEND_URL=http://localhost:5173  # For CORS in production
 - Consistent response format with proper HTTP status codes
 - Error handling with automatic token refresh on 401 responses
 - File uploads handled with multipart/form-data for images
+
+### Anniversary Email System
+- **Automated Daily Reminders**: Cron job runs at 7:00 AM daily (Asia/Shanghai timezone)
+- **Global Anniversaries**: All anniversaries are shared globally, not user-specific
+- **Batch Email Sending**: Each anniversary reminder is sent to all registered users
+- **Test Functionality**: Manual trigger API and frontend buttons for testing email sending
+- **EmailJS Integration**: Uses private key authentication for secure email delivery
 
 ### Styling System
 - Custom "Romantic Theme" with CSS variables (--romantic-*)
