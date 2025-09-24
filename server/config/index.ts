@@ -9,7 +9,9 @@ interface Config {
   jwtSecret: string;
   emailjsServiceId: string;
   emailjsTemplateId: string;
-  emailjsUserId: string;
+  emailjsTodayTemplateId: string;
+  emailjsPublicKey: string;
+  emailjsPrivateKey: string;
 }
 
 const config: Config = {
@@ -18,7 +20,9 @@ const config: Config = {
   jwtSecret: process.env.JWT_SECRET || 'love_story_secret_key',
   emailjsServiceId: process.env.EMAILJS_SERVICE_ID || '',
   emailjsTemplateId: process.env.EMAILJS_TEMPLATE_ID || '',
-  emailjsUserId: process.env.EMAILJS_USER_ID || '',
+  emailjsTodayTemplateId: process.env.EMAILJS_TODAY_TEMPLATE_ID || '',
+  emailjsPublicKey: process.env.EMAILJS_PUBLIC_KEY || '',
+  emailjsPrivateKey: process.env.EMAILJS_PRIVATE_KEY || '',
 };
 
 export default config;

@@ -1,11 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { IUser } from './User';
 
 export interface IAnniversary extends Document {
   title: string;
   date: Date;
   reminderDays: number;
-  user: IUser['_id'];
   createdAt: Date;
 }
 
@@ -23,11 +21,6 @@ const anniversarySchema: Schema = new mongoose.Schema({
   reminderDays: {
     type: Number,
     default: 1,
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
   },
   createdAt: {
     type: Date,

@@ -1,16 +1,30 @@
 import { Request, Response } from 'express';
-import Anniversary, { IAnniversary } from '../models/Anniversary';
+import Anniversary from '../models/Anniversary';
 import User from '../models/User';
-import { sendAnniversaryReminder } from '../utils/email';
+import { sendAnniversaryReminderToAllUsers } from '../utils/email';
+import { triggerManualReminderCheck } from '../utils/scheduler';
 
-// @desc    Get all anniversaries for a user
+// @desc    Get all anniversaries
 // @route   GET /api/anniversaries
 // @access  Private
 const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
+  console.log(`📖 [CONTROLLER] GET /api/anniversaries - User requesting all anniversaries`);
+  console.log(`📖 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  
   try {
-    const anniversaries = await Anniversary.find({ user: (req as any).user._id }).sort({ date: -1 });
+    console.log(`📖 [CONTROLLER] - Querying database for all anniversaries...`);
+    const anniversaries = await Anniversary.find().sort({ date: -1 });
+    console.log(`📖 [CONTROLLER] - Found ${anniversaries.length} anniversaries in database`);
+    
+    anniversaries.forEach((anniversary, index) => {
+      console.log(`📖 [CONTROLLER] - Anniversary ${index + 1}: "${anniversary.title}" (${anniversary.date.toISOString().split('T')[0]})`);
+    });
+    
+    console.log(`✅ [CONTROLLER] - Successfully returning ${anniversaries.length} anniversaries`);
     res.json(anniversaries);
   } catch (error: any) {
+    console.error(`❌ [CONTROLLER] - Error fetching anniversaries:`, error);
+    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -24,12 +38,6 @@ const getAnniversary = async (req: Request, res: Response): Promise<void> => {
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
-      return;
-    }
-
-    // Check if user owns anniversary
-    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
       return;
     }
 
@@ -50,7 +58,6 @@ const createAnniversary = async (req: Request, res: Response): Promise<void> => 
       title,
       date,
       reminderDays,
-      user: (req as any).user._id,
     });
 
     res.status(201).json(anniversary);
@@ -70,12 +77,6 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
-      return;
-    }
-
-    // Check if user owns anniversary
-    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
       return;
     }
 
@@ -103,12 +104,6 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Check if user owns anniversary
-    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
-      return;
-    }
-
     await anniversary.deleteOne();
 
     res.json({ message: 'Anniversary removed' });
@@ -117,34 +112,103 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// @desc    Send anniversary reminder
+// @desc    Send anniversary reminder to all users
 // @route   POST /api/anniversaries/:id/remind
 // @access  Private
 const sendReminder = async (req: Request, res: Response): Promise<void> => {
+  const anniversaryId = req.params.id;
+  console.log(`📤 [CONTROLLER] POST /api/anniversaries/${anniversaryId}/remind - Single anniversary reminder request`);
+  console.log(`📤 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  
   try {
-    const anniversary = await Anniversary.findById(req.params.id).populate('user');
+    console.log(`📤 [CONTROLLER] - Looking up anniversary by ID: ${anniversaryId}`);
+    const anniversary = await Anniversary.findById(anniversaryId);
 
     if (!anniversary) {
+      console.log(`❌ [CONTROLLER] - Anniversary not found: ${anniversaryId}`);
       res.status(404).json({ message: 'Anniversary not found' });
       return;
     }
 
-    // Check if user owns anniversary
-    if ((anniversary as any).user.toString() !== (req as any).user._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
+    console.log(`📤 [CONTROLLER] - Found anniversary: "${anniversary.title}"`);
+    console.log(`📤 [CONTROLLER] - Anniversary date: ${anniversary.date.toISOString().split('T')[0]}`);
+    console.log(`📤 [CONTROLLER] - Reminder days: ${anniversary.reminderDays}`);
+
+    console.log(`📤 [CONTROLLER] - Fetching all users from database...`);
+    // Get all users
+    const users = await User.find({}, 'name email');
+    console.log(`📤 [CONTROLLER] - Found ${users.length} users in database`);
+    
+    if (users.length === 0) {
+      console.log(`❌ [CONTROLLER] - No users found in the system`);
+      res.status(404).json({ message: 'No users found in the system' });
       return;
     }
 
-    // Send email reminder
-    await sendAnniversaryReminder(
-      (anniversary as any).user.email,
-      (anniversary as any).user.name,
+    users.forEach((user, index) => {
+      console.log(`📤 [CONTROLLER] - User ${index + 1}: ${user.name} <${user.email}>`);
+    });
+
+    const userList = users.map(user => ({
+      email: user.email,
+      name: user.name
+    }));
+
+    console.log(`📤 [CONTROLLER] - Starting email sending process for "${anniversary.title}"...`);
+    // Send email reminder to all users
+    const result = await sendAnniversaryReminderToAllUsers(
+      userList,
       anniversary.title,
       anniversary.date
     );
 
-    res.json({ message: 'Reminder sent successfully' });
+    console.log(`✅ [CONTROLLER] - Email sending completed for "${anniversary.title}"`);
+    console.log(`✅ [CONTROLLER] - Results: ${result.successful} successful, ${result.failed} failed`);
+
+    res.json({ 
+      message: 'Anniversary reminders sent',
+      details: {
+        successful: result.successful,
+        failed: result.failed,
+        totalUsers: users.length,
+        errors: result.errors
+      }
+    });
   } catch (error: any) {
+    console.error(`❌ [CONTROLLER] - Error in sendReminder:`, error);
+    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Test send all anniversary reminders (for testing purposes)
+// @route   POST /api/anniversaries/test-reminders
+// @access  Private
+const testSendAllReminders = async (req: Request, res: Response): Promise<void> => {
+  console.log(`🧪 [CONTROLLER] POST /api/anniversaries/test-reminders - Test all reminders request`);
+  console.log(`🧪 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  console.log(`🧪 [CONTROLLER] - This will test send reminders for anniversaries within next 7 days`);
+  
+  try {
+    console.log(`🧪 [CONTROLLER] - Triggering manual reminder check...`);
+    const result = await triggerManualReminderCheck();
+    
+    if (result.success) {
+      console.log(`✅ [CONTROLLER] - Test completed successfully`);
+      console.log(`✅ [CONTROLLER] - Results: ${result.details?.sent || 0} sent, ${result.details?.failed || 0} failed`);
+      res.json({
+        message: result.message,
+        details: result.details
+      });
+    } else {
+      console.log(`❌ [CONTROLLER] - Test failed: ${result.message}`);
+      res.status(400).json({
+        message: result.message
+      });
+    }
+  } catch (error: any) {
+    console.error(`❌ [CONTROLLER] - Error in testSendAllReminders:`, error);
+    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -156,4 +220,5 @@ export {
   updateAnniversary,
   deleteAnniversary,
   sendReminder,
+  testSendAllReminders,
 };

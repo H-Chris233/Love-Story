@@ -6,6 +6,7 @@ import {
   updateAnniversary,
   deleteAnniversary,
   sendReminder,
+  testSendAllReminders,
 } from '../controllers/anniversaryController';
 import { protect } from '../middleware/authMiddleware';
 
@@ -23,5 +24,8 @@ router.route('/:id')
 
 router.route('/:id/remind')
   .post(protect, sendReminder);
+
+router.route('/test-reminders')
+  .post(protect, testSendAllReminders);
 
 export default router;
