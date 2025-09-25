@@ -40,6 +40,46 @@
   font-weight: normal;
 }
 
+/* 移除所有元素的默认焦点轮廓 */
+*:focus {
+  outline: none;
+}
+
+/* 移除按钮和链接的焦点轮廓 */
+button:focus,
+a:focus,
+input:focus,
+textarea:focus,
+select:focus,
+[tabindex]:focus {
+  outline: none;
+}
+
+/* 移除点击时的高亮效果 */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* 允许文本输入框和文本区域选择文本 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 body {
   min-height: 100vh;
   color: var(--color-text);
