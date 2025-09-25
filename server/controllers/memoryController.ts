@@ -2,13 +2,36 @@ import { Request, Response } from 'express';
 import Memory, { IMemory } from '../models/Memory';
 import User from '../models/User';
 import { uploadImage, deleteImage } from '../utils/imageUpload';
+import { 
+  generateCacheKey, 
+  CACHE_PREFIX, 
+  getCache, 
+  setCache, 
+  delCache, 
+  clearCacheByPrefix 
+} from '../utils/cache';
 
 // @desc    Get all memories for a user
 // @route   GET /api/memories
 // @access  Private
 const getMemories = async (req: Request, res: Response): Promise<void> => {
   try {
+    // 检查缓存
+    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, (req as any).user._id, 'all');
+    const cachedMemories = getCache(cacheKey);
+    
+    if (cachedMemories) {
+      console.log('从缓存返回记忆列表');
+      res.json(cachedMemories);
+      return;
+    }
+
+    // 从数据库获取
     const memories = await Memory.find({ user: (req as any).user._id }).sort({ date: -1 });
+    
+    // 设置缓存
+    setCache(cacheKey, memories, 300); // 缓存5分钟
+    
     res.json(memories);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -19,8 +42,25 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
 // @route   GET /api/memories/:id
 // @access  Private
 const getMemory = async (req: Request, res: Response): Promise<void> => {
+  const id = req.params.id;
+
+  if (!id) {
+    res.status(400).json({ message: 'Memory ID is required' });
+    return;
+  }
+
   try {
-    const memory = await Memory.findById(req.params.id);
+    // 检查缓存
+    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, id);
+    const cachedMemory = getCache(cacheKey);
+    
+    if (cachedMemory) {
+      console.log('从缓存返回单个记忆');
+      res.json(cachedMemory);
+      return;
+    }
+
+    const memory = await Memory.findById(id);
 
     if (!memory) {
       res.status(404).json({ message: 'Memory not found' });
@@ -33,6 +73,9 @@ const getMemory = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 设置缓存
+    setCache(cacheKey, memory, 600); // 缓存10分钟
+    
     res.json(memory);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -76,6 +119,11 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
     });
 
     console.log('记忆创建成功:', { id: memory._id, imagesCount: images.length });
+    
+    // 清除相关的缓存
+    const userId = (req as any).user._id;
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
+    
     res.status(201).json(memory);
   } catch (error: any) {
     console.error('创建记忆失败:', error);
@@ -87,13 +135,19 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
 // @route   PUT /api/memories/:id
 // @access  Private
 const updateMemory = async (req: Request, res: Response): Promise<void> => {
+  const id = req.params.id;
+  if (!id) {
+    res.status(400).json({ message: 'Memory ID is required' });
+    return;
+  }
+
   const { title, description, date } = req.body;
   let images: { url: string; publicId: string }[] = [];
   let imagesToDelete: string[] = [];
 
   try {
     console.log('更新记忆请求:', {
-      id: req.params.id,
+      id: id,
       title,
       description,
       date,
@@ -103,7 +157,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       userId: (req as any).user._id
     });
 
-    let memory = await Memory.findById(req.params.id);
+    let memory = await Memory.findById(id);
 
     if (!memory) {
       res.status(404).json({ message: 'Memory not found' });
@@ -152,12 +206,18 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     console.log(`最终图片数量: ${images.length} 张`);
 
     memory = await Memory.findByIdAndUpdate(
-      req.params.id,
+      id,
       { title, description, date, images },
       { new: true, runValidators: true }
     );
 
     console.log('记忆更新成功:', { id: memory?._id, imagesCount: images.length });
+    
+    // 清除相关的缓存
+    delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
+    const userId = (req as any).user._id;
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
+    
     res.json(memory);
   } catch (error: any) {
     console.error('更新记忆失败:', error);
@@ -169,8 +229,14 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
 // @route   DELETE /api/memories/:id
 // @access  Private
 const deleteMemory = async (req: Request, res: Response): Promise<void> => {
+  const id = req.params.id;
+  if (!id) {
+    res.status(400).json({ message: 'Memory ID is required' });
+    return;
+  }
+
   try {
-    const memory = await Memory.findById(req.params.id);
+    const memory = await Memory.findById(id);
 
     if (!memory) {
       res.status(404).json({ message: 'Memory not found' });
@@ -189,6 +255,11 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     await memory.deleteOne();
+
+    // 清除相关的缓存
+    delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
+    const userId = (req as any).user._id;
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
 
     res.json({ message: 'Memory removed' });
   } catch (error: any) {

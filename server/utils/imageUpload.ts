@@ -1,8 +1,9 @@
 import multer from 'multer';
 import { uploadImageToGridFS, deleteImageFromGridFS } from './imageStorage';
 import mongoose from 'mongoose';
+import sharp from 'sharp';
 
-console.log('🖼️ [IMAGE_UPLOAD] 初始化图片上传模块，支持宽松的文件格式验证');
+console.log('🖼️ [IMAGE_UPLOAD] 初始化图片上传模块，支持宽松的文件格式验证和图片压缩');
 
 // Create multer instance with memory storage and limits
 const upload = multer({ 
@@ -81,6 +82,37 @@ const detectImageType = (buffer: Buffer): string | null => {
   return null;
 };
 
+// 优化图片质量
+const optimizeImage = async (buffer: Buffer, mimeType: string): Promise<Buffer> => {
+  try {
+    // 仅对支持的格式进行优化
+    if (!mimeType.startsWith('image/')) {
+      return buffer; // 非图片格式直接返回
+    }
+    
+    // JPEG、PNG、WebP格式进行优化
+    let sharpInstance = sharp(buffer);
+    
+    // 如果是JPEG或PNG，调整为最大1920x1080分辨率，质量80%
+    if (mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/webp') {
+      sharpInstance = sharpInstance
+        .resize(1920, 1080, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .jpeg({ quality: 80, progressive: true })
+        .png({ quality: 80 })
+        .webp({ quality: 80 });
+    }
+    
+    return await sharpInstance.toBuffer();
+  } catch (error) {
+    console.error('图片优化失败:', error);
+    // 如果优化失败，返回原始buffer
+    return buffer;
+  }
+};
+
 // Upload image to MongoDB GridFS
 const uploadImage = async (fileBuffer: Buffer, filename: string, mimeType: string): Promise<{ url: string; publicId: string }> => {
   try {
@@ -98,7 +130,10 @@ const uploadImage = async (fileBuffer: Buffer, filename: string, mimeType: strin
     const finalMimeType = detectedType || mimeType || 'image/jpeg';
     console.log(`使用MIME类型: ${finalMimeType}`);
     
-    const result = await uploadImageToGridFS(fileBuffer, filename, finalMimeType);
+    // 优化图片质量以减少存储空间和传输时间
+    const optimizedBuffer = await optimizeImage(fileBuffer, finalMimeType);
+    
+    const result = await uploadImageToGridFS(optimizedBuffer, filename, finalMimeType);
     console.log('GridFS上传结果:', result);
     
     return {

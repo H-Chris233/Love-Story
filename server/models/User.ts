@@ -17,7 +17,7 @@ const userSchema: Schema = new mongoose.Schema({
     required: [true, 'Please add an email'],
     unique: true,
     match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(.\w{2,3})+$/,
       'Please add a valid email',
     ],
   },
@@ -33,5 +33,8 @@ const userSchema: Schema = new mongoose.Schema({
   },
 
 });
+
+// 为常用查询字段添加索引
+userSchema.index({ email: 1 }); // 按邮箱查询的索引
 
 export default mongoose.model<IUser>('User', userSchema);

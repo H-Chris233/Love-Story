@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import MemoryCard from '../components/MemoryCard.vue'
 import MemoryForm from '../components/MemoryForm.vue'
 import { memoryAPI } from '../services/api'
@@ -12,12 +12,26 @@ const error = ref('')
 const showForm = ref(false)
 const editingMemory = ref<Memory | null>(null)
 
+// 分页相关
+const currentPage = ref(1)
+const memoriesPerPage = 10 // 每页显示10个记忆
+const totalPages = computed(() => Math.ceil(memories.value.length / memoriesPerPage))
+
+// 获取当前页的记忆数据
+const paginatedMemories = computed(() => {
+  const startIndex = (currentPage.value - 1) * memoriesPerPage
+  const endIndex = startIndex + memoriesPerPage
+  return memories.value.slice(startIndex, endIndex)
+})
+
 // 获取记忆数据
 const fetchMemories = async () => {
   try {
     loading.value = true
     const response = await memoryAPI.getAll()
     memories.value = response.data
+    // 重置到第一页
+    currentPage.value = 1
   } catch (err) {
     console.error('获取记忆数据失败:', err)
     error.value = '获取记忆数据失败'
@@ -51,6 +65,10 @@ const handleDeleteMemory = async (id: string | number) => {
     await memoryAPI.delete(id.toString())
     // 从本地状态中移除已删除的记忆
     memories.value = memories.value.filter(memory => memory._id !== id.toString())
+    // 如果当前页没有记忆了，且不是第一页，则跳转到上一页
+    if (paginatedMemories.value.length === 0 && currentPage.value > 1) {
+      currentPage.value--
+    }
   } catch (err) {
     console.error('删除记忆失败:', err)
     error.value = '删除记忆失败'
@@ -61,6 +79,13 @@ const handleDeleteMemory = async (id: string | number) => {
 const handleCancelForm = () => {
   showForm.value = false
   editingMemory.value = null
+}
+
+// 处理分页
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 
 // 页面加载时获取数据
@@ -94,22 +119,39 @@ onMounted(() => {
     <div v-else>
       <div class="romantic-relative">
         <div 
-          v-for="memory in memories" 
+          v-for="memory in paginatedMemories" 
           :key="memory._id" 
           class="romantic-mb-8"
         >
           <MemoryCard 
-            :memory="{
-              id: memory._id,
-              title: memory.title,
-              date: memory.date,
-              content: memory.description,
-              images: memory.images ? memory.images.map(img => img.url) : []
-            }" 
-            @edit="handleEditMemory(memory)"
+            :memory="memory" 
+            @edit="handleEditMemory"
             @delete="handleDeleteMemory"
           />
         </div>
+      </div>
+
+      <!-- 分页组件 -->
+      <div v-if="totalPages > 1" class="romantic-flex romantic-justify-center romantic-mt-8 romantic-gap-2">
+        <button 
+          @click="goToPage(currentPage - 1)" 
+          :disabled="currentPage === 1"
+          class="romantic-button romantic-button-outline romantic-px-4"
+        >
+          上一页
+        </button>
+        
+        <span class="romantic-flex romantic-items-center romantic-px-4 romantic-text-gray-600">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        
+        <button 
+          @click="goToPage(currentPage + 1)" 
+          :disabled="currentPage === totalPages"
+          class="romantic-button romantic-button-outline romantic-px-4"
+        >
+          下一页
+        </button>
       </div>
 
       <div class="romantic-text-center romantic-mt-10">

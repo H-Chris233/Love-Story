@@ -28,4 +28,7 @@ const anniversarySchema: Schema = new mongoose.Schema({
   },
 });
 
+// 为常用查询字段添加索引
+anniversarySchema.index({ date: 1 }); // 按日期查询的索引
+
 export default mongoose.model<IAnniversary>('Anniversary', anniversarySchema);

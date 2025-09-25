@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import AnniversaryForm from '../components/AnniversaryForm.vue'
-import { anniversaryAPI } from '../services/api'
+import { ref, onMounted, computed } from 'vue'
+import { anniversaryAPI, authAPI } from '../services/api'
 import type { Anniversary } from '../types/api'
 
 // 纪念日数据
@@ -10,6 +9,19 @@ const loading = ref(true)
 const error = ref('')
 const showForm = ref(false)
 const editingAnniversary = ref<Anniversary | null>(null)
+const user = ref<{ name: string; email: string } | null>(null)
+
+// 分页相关
+const currentPage = ref(1)
+const anniversariesPerPage = 10 // 每页显示10个纪念日
+const totalPages = computed(() => Math.ceil(anniversaries.value.length / anniversariesPerPage))
+
+// 获取当前页的纪念日数据
+const paginatedAnniversaries = computed(() => {
+  const startIndex = (currentPage.value - 1) * anniversariesPerPage
+  const endIndex = startIndex + anniversariesPerPage
+  return anniversaries.value.slice(startIndex, endIndex)
+})
 
 // 获取纪念日数据
 const fetchAnniversaries = async () => {
@@ -17,12 +29,48 @@ const fetchAnniversaries = async () => {
     loading.value = true
     const response = await anniversaryAPI.getAll()
     anniversaries.value = response.data
+    // 重置到第一页
+    currentPage.value = 1
   } catch (err) {
     console.error('获取纪念日数据失败:', err)
     error.value = '获取纪念日数据失败'
   } finally {
     loading.value = false
   }
+}
+
+// 获取用户信息
+const fetchUser = async () => {
+  try {
+    const response = await authAPI.getProfile()
+    user.value = response.data
+  } catch (err) {
+    console.error('获取用户信息失败:', err)
+  }
+}
+
+// 计算距离纪念日的天数
+const daysUntil = (dateString: string): number => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const anniversaryDate = new Date(dateString)
+  anniversaryDate.setFullYear(today.getFullYear())
+  
+  // 如果今年的纪念日已经过了，计算到明年的天数
+  if (anniversaryDate < today) {
+    anniversaryDate.setFullYear(today.getFullYear() + 1)
+  }
+  
+  const diffTime = anniversaryDate.getTime() - today.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+// 格式化日期为中文
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const weekday = weekdays[date.getDay()]
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${weekday}`
 }
 
 // 处理添加纪念日
@@ -46,15 +94,41 @@ const handleSaveAnniversary = (anniversary: Anniversary) => {
 
 // 处理删除纪念日
 const handleDeleteAnniversary = async (id: string) => {
-  if (confirm('确定要删除这个纪念日吗？')) {
-    try {
-      await anniversaryAPI.delete(id)
-      // 从本地状态中移除已删除的纪念日
-      anniversaries.value = anniversaries.value.filter(anniversary => anniversary._id !== id)
-    } catch (err) {
-      console.error('删除纪念日失败:', err)
-      error.value = '删除纪念日失败'
+  try {
+    await anniversaryAPI.delete(id)
+    // 从本地状态中移除已删除的纪念日
+    anniversaries.value = anniversaries.value.filter(anniversary => anniversary._id !== id)
+    // 如果当前页没有纪念日了，且不是第一页，则跳转到上一页
+    if (paginatedAnniversaries.value.length === 0 && currentPage.value > 1) {
+      currentPage.value--
     }
+  } catch (err) {
+    console.error('删除纪念日失败:', err)
+    error.value = '删除纪念日失败'
+  }
+}
+
+// 处理发送提醒
+const handleSendReminder = async (id: string) => {
+  try {
+    const response = await anniversaryAPI.sendReminder(id)
+    console.log('提醒发送成功:', response.data)
+    alert('提醒发送成功！')
+  } catch (err) {
+    console.error('发送提醒失败:', err)
+    alert('发送提醒失败')
+  }
+}
+
+// 处理测试发送所有提醒
+const handleTestSendReminders = async () => {
+  try {
+    const response = await anniversaryAPI.testSendAllReminders()
+    console.log('测试发送所有提醒成功:', response.data)
+    alert(`测试发送完成: ${response.data.details?.successful || 0} 个成功, ${response.data.details?.failed || 0} 个失败`)
+  } catch (err) {
+    console.error('测试发送提醒失败:', err)
+    alert('测试发送提醒失败')
   }
 }
 
@@ -64,49 +138,18 @@ const handleCancelForm = () => {
   editingAnniversary.value = null
 }
 
-// 计算距离纪念日的天数
-const calculateDaysUntil = (dateString: string) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  const anniversaryDate = new Date(dateString)
-  anniversaryDate.setHours(0, 0, 0, 0)
-  
-  const diffTime = anniversaryDate.getTime() - today.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
-  return diffDays
+// 处理分页
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 
 // 页面加载时获取数据
 onMounted(() => {
   fetchAnniversaries()
+  fetchUser()
 })
-
-// 格式化日期
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-// 获取倒计时文本
-const getDaysUntilText = (days: number) => {
-  if (days === 0) {
-    return '今天'
-  } else if (days < 0) {
-    return `已过 ${Math.abs(days)} 天`
-  } else {
-    return `还有 ${days} 天`
-  }
-}
-
-
-
-
 </script>
 
 <template>
@@ -134,75 +177,87 @@ const getDaysUntilText = (days: number) => {
         </button>
       </div>
 
-      <div v-else class="anniversaries-content">
-        <div class="anniversaries-grid" v-if="anniversaries.length > 0">
-          <div 
-            v-for="(anniversary, index) in anniversaries" 
-            :key="anniversary._id" 
-            class="anniversary-card"
-            :class="`anniversary-card-delay-${Math.min(index, 9)}`"
-          >
-            <!-- 操作按钮 -->
-            <div class="card-actions">
+      <div v-else>
+      <div class="anniversary-grid">
+        <div 
+          v-for="anniversary in paginatedAnniversaries" 
+          :key="anniversary._id" 
+          class="romantic-card anniversary-card"
+        >
+          <div class="romantic-card-header">
+            <h3 class="romantic-card-title">{{ anniversary.title }}</h3>
+            <div class="anniversary-actions">
               <button 
-                @click="handleEditAnniversary(anniversary)"
-                class="action-btn edit-btn"
-                title="编辑"
+                @click="handleEditAnniversary(anniversary)" 
+                class="romantic-button romantic-button-sm romantic-button-outline"
               >
                 编辑
               </button>
               <button 
-                @click="handleDeleteAnniversary(anniversary._id)"
-                class="action-btn delete-btn"
-                title="删除"
+                @click="handleDeleteAnniversary(anniversary._id)" 
+                class="romantic-button romantic-button-sm romantic-button-outline romantic-button-danger"
               >
                 删除
               </button>
             </div>
+          </div>
+          
+          <div class="romantic-card-body">
+            <p><strong>日期:</strong> {{ formatDate(anniversary.date) }}</p>
+            <p><strong>提醒天数:</strong> {{ anniversary.reminderDays }} 天</p>
+            <p><strong>距离:</strong> 
+              <span :class="{
+                'days-until-soon': daysUntil(anniversary.date) <= 7,
+                'days-until-far': daysUntil(anniversary.date) > 7
+              }">
+                {{ daysUntil(anniversary.date) }} 天
+              </span>
+            </p>
             
-            <!-- 卡片内容 -->
-            <div class="card-content">
-              <h3 class="card-title">{{ anniversary.title }}</h3>
-              
-              <div class="card-info">
-                <div class="date-info">
-                  <span class="date-label">日期</span>
-                  <span class="date-value">{{ formatDate(anniversary.date) }}</span>
-                </div>
-                
-                <div class="countdown-info">
-                  <span 
-                    class="countdown-badge"
-                    :class="{
-                      'badge-today': calculateDaysUntil(anniversary.date) === 0,
-                      'badge-past': calculateDaysUntil(anniversary.date) < 0,
-                      'badge-future': calculateDaysUntil(anniversary.date) > 0
-                    }"
-                  >
-                    {{ getDaysUntilText(calculateDaysUntil(anniversary.date)) }}
-                  </span>
-                </div>
-              </div>
+            <div class="romantic-card-actions romantic-mt-4">
+              <button 
+                @click="handleSendReminder(anniversary._id)"
+                class="romantic-button romantic-button-sm"
+              >
+                📧 测试发送提醒
+              </button>
             </div>
           </div>
         </div>
-
-        <div v-else class="empty-state">
-          <div class="empty-icon">💝</div>
-          <h3 class="empty-title">还没有纪念日</h3>
-          <p class="empty-description">添加一个对你们来说特别的日子吧</p>
-        </div>
-
-        <div class="add-anniversary-section">
-          <button 
-            @click="handleAddAnniversary"
-            class="romantic-button romantic-button-lg romantic-ripple add-button"
-          >
-            <span class="button-icon">➕</span>
-            添加纪念日
-          </button>
-        </div>
       </div>
+      
+      <!-- 分页组件 -->
+      <div v-if="totalPages > 1" class="romantic-flex romantic-justify-center romantic-mt-8 romantic-gap-2">
+        <button 
+          @click="goToPage(currentPage - 1)" 
+          :disabled="currentPage === 1"
+          class="romantic-button romantic-button-outline romantic-px-4"
+        >
+          上一页
+        </button>
+        
+        <span class="romantic-flex romantic-items-center romantic-px-4 romantic-text-gray-600">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        
+        <button 
+          @click="goToPage(currentPage + 1)" 
+          :disabled="currentPage === totalPages"
+          class="romantic-button romantic-button-outline romantic-px-4"
+        >
+          下一页
+        </button>
+      </div>
+
+      <div class="romantic-text-center romantic-mt-10">
+        <button 
+          @click="handleAddAnniversary"
+          class="romantic-button romantic-button-lg"
+        >
+          添加新的纪念日
+        </button>
+      </div>
+    </div>
 
       <!-- 纪念日表单模态框 -->
       <AnniversaryForm 

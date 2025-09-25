@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 // 设置开始日期和时间（可以根据实际情况修改）
 // 格式：YYYY-MM-DD HH:MM:SS
-const startDate = new Date('2024-1-12 21:28:46')
+const startDate = new Date('2024-1-13 22:28:46')
 
 // 响应式数据
 const daysTogether = ref(0)

@@ -1,14 +1,6 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
-
-// 定义记忆数据类型
-interface Memory {
-  id: number | string
-  title: string
-  date: string
-  content: string
-  images?: string[]
-}
+import { computed } from 'vue'
+import type { Memory } from '../types/api'
 
 // 定义组件Props
 const props = defineProps<{
@@ -18,8 +10,27 @@ const props = defineProps<{
 // 定义组件Emits
 const emit = defineEmits<{
   edit: [memory: Memory]
-  delete: [id: number | string]
+  delete: [id: string]
 }>()
+
+// 计算属性优化
+const formattedDate = computed(() => {
+  const date = new Date(props.memory.date)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+})
+
+const imageLayoutClass = computed(() => {
+  if (!props.memory.images || props.memory.images.length === 0) return 'multiple-images'
+  const imageCount = props.memory.images.length
+  if (imageCount === 1) return 'single-image'
+  if (imageCount === 2) return 'two-images'
+  if (imageCount === 3) return 'three-images'
+  return 'multiple-images'
+})
 
 // 格式化日期
 const formatDate = (dateString: string) => {
@@ -39,32 +50,21 @@ const handleEdit = () => {
 // 处理删除事件
 const handleDelete = () => {
   if (confirm('确定要删除这个回忆吗？')) {
-    emit('delete', props.memory.id)
+    emit('delete', props.memory._id)
   }
 }
 
 // 获取完整的图片URL
-const getFullImageUrl = (imageUrl: string) => {
+const getFullImageUrl = (image: { url: string; publicId: string }) => {
   // 如果URL已经是完整的URL，直接返回
-  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl
+  if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+    return image.url
   }
   
   // 构建完整的API URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
   const serverUrl = baseUrl.replace('/api', '')
-  const fullUrl = `${serverUrl}${imageUrl}`
-  
-  console.log('Image URL construction:', { imageUrl, baseUrl, serverUrl, fullUrl })
-  return fullUrl
-}
-
-// 获取图片布局类名
-const getImageLayoutClass = (imageCount: number) => {
-  if (imageCount === 1) return 'single-image'
-  if (imageCount === 2) return 'two-images'
-  if (imageCount === 3) return 'three-images'
-  return 'multiple-images'
+  return `${serverUrl}${image.url}`
 }
 
 // 获取单个图片容器的类名
@@ -76,7 +76,6 @@ const getImageContainerClass = (totalCount: number, index: number) => {
 
 // 格式化内容，支持换行
 const formatContent = (content: string) => {
-  // 将换行符替换为<br>标签
   return content.replace(/\n/g, '<br>')
 }
 </script>
@@ -85,16 +84,17 @@ const formatContent = (content: string) => {
   <div class="romantic-memory-card romantic-card">
     <div class="romantic-card-content">
       <div class="romantic-date-tag">
-        {{ formatDate(memory.date) }}
+        {{ formattedDate }}
       </div>
       
       <h2 class="romantic-memory-title romantic-card-title">{{ memory.title }}</h2>
       
-      <p class="romantic-memory-content romantic-text" v-html="formatContent(memory.content)">
+      <p class="romantic-memory-content romantic-text">
+        {{ memory.description }}
       </p>
       
       <div v-if="memory.images && memory.images.length > 0" class="romantic-memory-images">
-        <div class="image-gallery" :class="getImageLayoutClass(memory.images.length)">
+        <div class="image-gallery" :class="imageLayoutClass">
           <div 
             v-for="(image, index) in memory.images" 
             :key="index" 
@@ -180,6 +180,7 @@ const formatContent = (content: string) => {
   line-height: var(--romantic-line-height-relaxed);
   margin-bottom: var(--romantic-spacing-5);
   font-size: var(--romantic-font-size-lg);
+  white-space: pre-wrap; /* 保留换行符和空格 */
 }
 
 /* 图片画廊样式 */

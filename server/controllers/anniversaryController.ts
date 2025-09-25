@@ -3,6 +3,14 @@ import Anniversary from '../models/Anniversary';
 import User from '../models/User';
 import { sendAnniversaryReminderToAllUsers } from '../utils/email';
 import { triggerManualReminderCheck } from '../utils/scheduler';
+import { 
+  generateCacheKey, 
+  CACHE_PREFIX, 
+  getCache, 
+  setCache, 
+  delCache, 
+  clearCacheByPrefix 
+} from '../utils/cache';
 
 // @desc    Get all anniversaries
 // @route   GET /api/anniversaries
@@ -12,6 +20,16 @@ const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
   console.log(`📖 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
   
   try {
+    // 检查缓存
+    const cacheKey = generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all');
+    const cachedAnniversaries = getCache(cacheKey);
+    
+    if (cachedAnniversaries) {
+      console.log('从缓存返回纪念日列表');
+      res.json(cachedAnniversaries);
+      return;
+    }
+    
     console.log(`📖 [CONTROLLER] - Querying database for all anniversaries...`);
     const anniversaries = await Anniversary.find().sort({ date: -1 });
     console.log(`📖 [CONTROLLER] - Found ${anniversaries.length} anniversaries in database`);
@@ -19,6 +37,9 @@ const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
     anniversaries.forEach((anniversary, index) => {
       console.log(`📖 [CONTROLLER] - Anniversary ${index + 1}: "${anniversary.title}" (${anniversary.date.toISOString().split('T')[0]})`);
     });
+    
+    // 设置缓存
+    setCache(cacheKey, anniversaries, 300); // 缓存5分钟
     
     console.log(`✅ [CONTROLLER] - Successfully returning ${anniversaries.length} anniversaries`);
     res.json(anniversaries);
@@ -34,13 +55,32 @@ const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
 // @access  Private
 const getAnniversary = async (req: Request, res: Response): Promise<void> => {
   try {
-    const anniversary = await Anniversary.findById(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+      res.status(400).json({ message: 'Anniversary ID is required' });
+      return;
+    }
+
+    // 检查缓存
+    const cacheKey = generateCacheKey(CACHE_PREFIX.ANNIVERSARY, id);
+    const cachedAnniversary = getCache(cacheKey);
+    
+    if (cachedAnniversary) {
+      console.log('从缓存返回单个纪念日');
+      res.json(cachedAnniversary);
+      return;
+    }
+
+    const anniversary = await Anniversary.findById(id);
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
       return;
     }
 
+    // 设置缓存
+    setCache(cacheKey, anniversary, 600); // 缓存10分钟
+    
     res.json(anniversary);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -60,6 +100,9 @@ const createAnniversary = async (req: Request, res: Response): Promise<void> => 
       reminderDays,
     });
 
+    // 清除相关的缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
+
     res.status(201).json(anniversary);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -71,9 +114,15 @@ const createAnniversary = async (req: Request, res: Response): Promise<void> => 
 // @access  Private
 const updateAnniversary = async (req: Request, res: Response): Promise<void> => {
   const { title, date, reminderDays } = req.body;
+  const id = req.params.id;
+
+  if (!id) {
+    res.status(400).json({ message: 'Anniversary ID is required' });
+    return;
+  }
 
   try {
-    const anniversary = await Anniversary.findById(req.params.id);
+    const anniversary = await Anniversary.findById(id);
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
@@ -81,10 +130,14 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
     }
 
     const updatedAnniversary = await Anniversary.findByIdAndUpdate(
-      req.params.id,
+      id,
       { title, date, reminderDays },
       { new: true, runValidators: true }
     );
+
+    // 清除相关的缓存
+    delCache(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, id)); // 删除单个纪念日缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
 
     res.json(updatedAnniversary);
   } catch (error: any) {
@@ -96,8 +149,15 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
 // @route   DELETE /api/anniversaries/:id
 // @access  Private
 const deleteAnniversary = async (req: Request, res: Response): Promise<void> => {
+  const id = req.params.id;
+
+  if (!id) {
+    res.status(400).json({ message: 'Anniversary ID is required' });
+    return;
+  }
+
   try {
-    const anniversary = await Anniversary.findById(req.params.id);
+    const anniversary = await Anniversary.findById(id);
 
     if (!anniversary) {
       res.status(404).json({ message: 'Anniversary not found' });
@@ -105,6 +165,10 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
     }
 
     await anniversary.deleteOne();
+
+    // 清除相关的缓存
+    delCache(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, id)); // 删除单个纪念日缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
 
     res.json({ message: 'Anniversary removed' });
   } catch (error: any) {
