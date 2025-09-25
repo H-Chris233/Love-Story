@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Memory } from '../types/api'
+import type { Memory, User } from '../types/api'
+import { useUserStore } from '../stores/user'
 
 // 定义组件Props
 const props = defineProps<{
@@ -12,6 +13,9 @@ const emit = defineEmits<{
   edit: [memory: Memory]
   delete: [id: string]
 }>()
+
+// 用户状态
+const userStore = useUserStore()
 
 // 计算属性优化
 const formattedDate = computed(() => {
@@ -78,6 +82,29 @@ const getImageContainerClass = (totalCount: number, index: number) => {
 const formatContent = (content: string) => {
   return content.replace(/\n/g, '<br>')
 }
+
+// 获取创建者信息
+const creator = computed(() => {
+  if (typeof props.memory.user === 'object') {
+    return props.memory.user as User
+  }
+  return null
+})
+
+// 检查当前用户是否可以编辑/删除此回忆
+const canEdit = computed(() => {
+  if (!userStore.user) return false
+  
+  // 管理员可以编辑任何回忆
+  if (userStore.user.isAdmin) return true
+  
+  // 创建者可以编辑自己的回忆
+  const creatorId = typeof props.memory.user === 'object' 
+    ? props.memory.user._id 
+    : props.memory.user
+  
+  return userStore.user._id === creatorId
+})
 </script>
 
 <template>
@@ -88,6 +115,11 @@ const formatContent = (content: string) => {
       </div>
       
       <h2 class="romantic-memory-title romantic-card-title">{{ memory.title }}</h2>
+      
+      <div v-if="creator" class="romantic-memory-creator">
+        <span class="creator-label">创建者:</span>
+        <span class="creator-name">{{ creator.name }}</span>
+      </div>
       
       <p class="romantic-memory-content romantic-text">
         {{ memory.description }}
@@ -110,7 +142,7 @@ const formatContent = (content: string) => {
         </div>
       </div>
       
-      <div class="romantic-card-actions romantic-flex romantic-gap-2 romantic-mt-4">
+      <div v-if="canEdit" class="romantic-card-actions romantic-flex romantic-gap-2 romantic-mt-4">
         <button class="romantic-action-button romantic-button romantic-button-sm" @click="handleEdit">
           编辑
         </button>
@@ -157,6 +189,22 @@ const formatContent = (content: string) => {
   color: var(--romantic-white);
   font-weight: var(--romantic-font-weight-bold);
   padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+}
+
+.romantic-memory-creator {
+  margin: var(--romantic-spacing-2) 0;
+  font-size: var(--romantic-font-size-sm);
+  color: var(--romantic-gray-600);
+}
+
+.creator-label {
+  font-weight: var(--romantic-font-weight-medium);
+}
+
+.creator-name {
+  color: var(--romantic-primary);
+  font-weight: var(--romantic-font-weight-semibold);
+  margin-left: var(--romantic-spacing-1);
   border-radius: var(--romantic-radius);
   font-size: var(--romantic-font-size-sm);
   box-shadow: var(--romantic-shadow);

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useUserStore } from '../stores/user'
 
 // 定义路由配置类型
 const routes: RouteRecordRaw[] = [
@@ -46,12 +47,45 @@ const routes: RouteRecordRaw[] = [
     path: '/admin',
     name: 'admin',
     component: () => import('../views/AdminView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+})
+
+// Navigation guard for admin routes
+router.beforeEach(async (to, from, next) => {
+  const userStore = useUserStore()
+  
+  // Check if route requires admin access
+  if (to.meta.requiresAdmin) {
+    // If not logged in, redirect to login
+    if (!userStore.isLoggedIn) {
+      next('/login')
+      return
+    }
+    
+    // If user info not loaded, fetch it first
+    if (!userStore.user && userStore.token) {
+      try {
+        await userStore.fetchUserProfile()
+      } catch (error) {
+        next('/login')
+        return
+      }
+    }
+    
+    // Check if user is admin
+    if (!userStore.user?.isAdmin) {
+      next('/')
+      return
+    }
+  }
+  
+  next()
 })
 
 export default router
