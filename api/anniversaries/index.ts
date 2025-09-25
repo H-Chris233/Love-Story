@@ -19,10 +19,11 @@ interface Anniversary {
   date: Date;
   reminderDays: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
-  // Only allow GET requests
+  // Only allow GET requests for this endpoint
   if (request.method !== 'GET') {
     return vercelResponse.status(405).json({ 
       message: 'Method not allowed' 
@@ -40,7 +41,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       .sort({ date: 1 })
       .toArray();
 
-    // Return all anniversaries
+    // Return all anniversaries (without sensitive information)
     return vercelResponse.status(200).json({
       success: true,
       anniversaries: anniversaries.map(anniversary => ({
@@ -48,7 +49,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         title: anniversary.title,
         date: anniversary.date,
         reminderDays: anniversary.reminderDays,
-        createdAt: anniversary.createdAt
+        createdAt: anniversary.createdAt,
+        updatedAt: anniversary.updatedAt
       }))
     });
   } catch (error: any) {

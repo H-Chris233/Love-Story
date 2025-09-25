@@ -45,14 +45,16 @@ love-story-website/
 │   ├── stores/          # Pinia状态管理
 │   ├── utils/           # 工具函数
 │   └── App.vue          # 根组件
-├── server/              # 后端服务
-│   ├── controllers/     # 控制器
-│   ├── models/          # 数据模型
-│   ├── routes/          # 路由
-│   ├── middleware/      # 中间件
-│   ├── utils/           # 工具函数
-│   ├── config/          # 配置文件
-│   └── server.js        # 服务入口
+├── api/                 # Vercel Serverless Functions
+│   ├── auth/            # 用户认证API
+│   ├── memories/        # 回忆管理API
+│   ├── anniversaries/   # 纪念日管理API
+│   ├── images/          # 图片处理API
+│   ├── cron/            # 定时任务API
+│   ├── utils/           # 服务端工具函数
+│   └── health.ts        # 健康检查端点
+├── lib/                 # 共享库
+│   └── db.ts            # 数据库连接工具
 ├── public/              # 公共资源
 └── tests/               # 测试文件
 ```
@@ -89,14 +91,40 @@ pnpm dev
 pnpm start
 ```
 
-## 环境变量配置
+### 环境变量配置
 
-### 前端环境变量 (.env)
+#### 前端环境变量 (.env)
 ```
+VITE_USE_SERVERLESS_FUNCTIONS=true
+VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
+```
+
+#### Serverless 环境变量 (Vercel Dashboard)
+```
+# MongoDB连接 (Vercel Environment Variables)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+
+# JWT密钥 (Vercel Environment Variables)
+JWT_SECRET=your_secure_jwt_secret_key
+
+# EmailJS配置（纪念日邮件提醒，Vercel Environment Variables）
+EMAILJS_SERVICE_ID=your_service_id
+EMAILJS_TEMPLATE_ID=your_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_public_key
+EMAILJS_PRIVATE_KEY=your_private_key
+```
+
+#### 传统模式环境变量 (已弃用)
+如果使用传统模式（不推荐），环境变量配置如下：
+
+**前端环境变量 (.env):**
+```
+VITE_USE_SERVERLESS_FUNCTIONS=false
 VITE_API_BASE_URL=http://localhost:3000/api
 ```
 
-### 后端环境变量 (.env)
+**后端环境变量 (.env):**
 ```
 # 服务器端口
 PORT=3000
@@ -162,22 +190,28 @@ EMAILJS_PRIVATE_KEY=your_private_key
 
 ### 部署模式
 
-本项目支持两种部署架构模式，可通过环境变量进行切换：
+本项目推荐使用 Serverless 模式部署，以获得更好的扩展性、维护性和成本效益：
 
-#### 1. 传统服务器模式 (默认)
-- **环境变量**: `VITE_USE_SERVERLESS_FUNCTIONS=false` 或不设置
-- **架构**: Vue.js 前端 + Express.js 后端服务器 + MongoDB
-- **部署**: 
-  - 前端部署到 Vercel
-  - 后端部署到 Railway 或其他支持 Node.js 应用的平台
-
-#### 2. Serverless 模式
+#### 1. Serverless 模式 (推荐)
 - **环境变量**: `VITE_USE_SERVERLESS_FUNCTIONS=true`
 - **架构**: Vue.js 前端 + Vercel Serverless Functions + MongoDB Atlas
 - **部署**: 
   - 前端和后端 API 都部署到 Vercel
   - 使用 Vercel 的 Serverless Functions 处理后端逻辑
   - 数据库使用 MongoDB Atlas 或其他云数据库
+- **优势**:
+  - 自动扩展，按需付费
+  - 零服务器维护
+  - 全球 CDN 加速
+  - 内置 CI/CD
+
+#### 2. 传统服务器模式 (已弃用)
+- **环境变量**: `VITE_USE_SERVERLESS_FUNCTIONS=false`
+- **架构**: Vue.js 前端 + Express.js 后端服务器 + MongoDB
+- **部署**: 
+  - 前端部署到 Vercel
+  - 后端部署到 Railway 或其他支持 Node.js 应用的平台
+- **注意**: 此模式已被弃用，建议迁移到 Serverless 模式
 
 ### JAMstack 部署方案（推荐）
 
@@ -252,33 +286,62 @@ railway up
 }
 ```
 
+#### API 端点列表 (Serverless 模式)
+- **用户认证**
+  - `POST /api/auth/register` - 用户注册
+  - `POST /api/auth/login` - 用户登录
+  - `GET /api/auth/profile` - 获取用户资料
+
+- **回忆管理**
+  - `GET /api/memories` - 获取回忆列表
+  - `POST /api/memories/create` - 创建新回忆
+  - `GET /api/memories/[id]` - 获取单个回忆
+  - `PUT /api/memories/[id]` - 更新回忆
+  - `DELETE /api/memories/[id]` - 删除回忆
+
+- **纪念日管理**
+  - `GET /api/anniversaries` - 获取纪念日列表
+  - `POST /api/anniversaries/create` - 创建新纪念日
+  - `GET /api/anniversaries/[id]` - 获取单个纪念日
+  - `PUT /api/anniversaries/[id]` - 更新纪念日
+  - `DELETE /api/anniversaries/[id]` - 删除纪念日
+  - `POST /api/anniversaries/test-reminders` - 测试纪念日提醒
+
+- **系统功能**
+  - `GET /api/health` - 健康检查
+  - `POST /api/cron/anniversary-reminders` - 纪念日提醒定时任务 (Vercel Cron)
+
 ## 功能模块
 
 ### 用户系统
-- [x] 用户注册
-- [x] 用户登录
-- [x] 身份验证
+- [x] 用户注册 (`POST /api/auth/register`)
+- [x] 用户登录 (`POST /api/auth/login`)
+- [x] 身份验证 (`GET /api/auth/profile`)
 - [x] 用户资料
 
 ### 记忆时光轴
-- [x] 创建记忆
-- [x] 编辑记忆
-- [x] 删除记忆
+- [x] 创建记忆 (`POST /api/memories/create`)
+- [x] 获取记忆列表 (`GET /api/memories`)
+- [x] 获取单个记忆 (`GET /api/memories/[id]`)
+- [x] 编辑记忆 (`PUT /api/memories/[id]`)
+- [x] 删除记忆 (`DELETE /api/memories/[id]`)
 - [x] 查看记忆详情
 - [x] 时间排序
 
-### 3. 照片相册
-- 图片上传与管理
-- MongoDB GridFS 存储
-- 照片浏览与删除
+### 照片相册
+- [x] 图片上传与管理 (`POST /api/images/upload`)
+- [x] MongoDB GridFS 存储
+- [ ] 照片浏览与删除 (API endpoints to be implemented)
 
 ### 纪念日提醒
-- [x] 创建纪念日（全局共享）
-- [x] 编辑纪念日
-- [x] 删除纪念日
-- [x] 自动邮件提醒（每日早上7点）
+- [x] 创建纪念日 (`POST /api/anniversaries/create`)
+- [x] 获取纪念日列表 (`GET /api/anniversaries`)
+- [x] 获取单个纪念日 (`GET /api/anniversaries/[id]`)
+- [x] 编辑纪念日 (`PUT /api/anniversaries/[id]`)
+- [x] 删除纪念日 (`DELETE /api/anniversaries/[id]`)
+- [x] 自动邮件提醒（每日早上7点，通过 Vercel Cron Job）
 - [x] 批量邮件发送（向所有用户发送）
-- [x] 测试发送功能
+- [x] 测试发送功能 (`POST /api/anniversaries/test-reminders`)
 
 ## 重构说明
 

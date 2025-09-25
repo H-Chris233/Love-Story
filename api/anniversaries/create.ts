@@ -19,6 +19,7 @@ interface Anniversary {
   date: Date;
   reminderDays: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
@@ -57,26 +58,31 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     const { title, date, reminderDays } = request.body;
 
     // Validate required fields
-    if (!title || !date) {
+    if (!title || !date || reminderDays === undefined) {
       return vercelResponse.status(400).json({
-        message: 'Please provide title and date'
+        message: 'Please provide title, date, and reminderDays'
       });
     }
-
-    // Validate reminderDays if provided
-    const validatedReminderDays = reminderDays !== undefined ? 
-      Math.max(0, Math.min(30, parseInt(reminderDays))) : 1; // Default to 1 day
 
     // Connect to database
     const { db } = await connectToDatabase();
     const anniversariesCollection = db.collection('anniversaries');
 
+    // Check if an anniversary with the same title already exists
+    const existingAnniversary = await anniversariesCollection.findOne({ title });
+    if (existingAnniversary) {
+      return vercelResponse.status(409).json({
+        message: 'An anniversary with this title already exists'
+      });
+    }
+
     // Create new anniversary object
     const newAnniversary: Anniversary = {
       title,
       date: new Date(date), // Ensure date is a proper Date object
-      reminderDays: validatedReminderDays,
-      createdAt: new Date()
+      reminderDays: parseInt(reminderDays),
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     // Insert new anniversary into database
@@ -91,7 +97,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         title: newAnniversary.title,
         date: newAnniversary.date,
         reminderDays: newAnniversary.reminderDays,
-        createdAt: newAnniversary.createdAt
+        createdAt: newAnniversary.createdAt,
+        updatedAt: newAnniversary.updatedAt
       }
     });
   } catch (error: any) {

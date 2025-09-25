@@ -1,10 +1,8 @@
-```ts
 // api/cron/anniversary-reminders.ts
 // Vercel Cron Function to handle anniversary reminders
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db';
-import { MongoClient, ObjectId } from 'mongodb';
-import { sendAnniversaryReminderToAllUsers } from '../utils/email'; // This would need to be adapted
+import { sendAnniversaryReminderToAllUsers } from '../utils/email';
 
 // Calculate days until anniversary
 const calculateDaysUntil = (anniversaryDate: Date): number => {
@@ -62,7 +60,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     
     // Log all anniversaries
     anniversaries.forEach((anniversary, index) => {
-      console.log(`🔍 [SCHEDULER] Anniversary ${index + 1}: "${anniversary.title}"`);
+      console.log(`🔍 [SCHEDULER] Anniversary ${index + 1}: \"${anniversary.title}\"`);
       console.log(`🔍 [SCHEDULER]   - Date: ${new Date(anniversary.date).toISOString().split('T')[0]}`);
       console.log(`🔍 [SCHEDULER]   - Reminder Days: ${anniversary.reminderDays}`);
       console.log(`🔍 [SCHEDULER]   - Created: ${new Date(anniversary.createdAt).toISOString().split('T')[0]}`);
@@ -107,7 +105,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     for (const anniversary of anniversaries) {
       anniversariesProcessed++;
       console.log(`
-🎯 [SCHEDULER] Processing anniversary ${anniversariesProcessed}/${anniversaries.length}: "${anniversary.title}"`);
+🎯 [SCHEDULER] Processing anniversary ${anniversariesProcessed}/${anniversaries.length}: \"${anniversary.title}\"`);
       
       const daysUntil = calculateDaysUntil(new Date(anniversary.date));
       
@@ -116,24 +114,26 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       // Send reminder if it matches the reminder days setting
       if (daysUntil === anniversary.reminderDays) {
         anniversariesTriggered++;
-        console.log(`🎉 [SCHEDULER] ✅ CONDITION MET! Sending reminders for "${anniversary.title}"`);
+        console.log(`🎉 [SCHEDULER] ✅ CONDITION MET! Sending reminders for \"${anniversary.title}\"`);
         console.log(`🎉 [SCHEDULER] - Anniversary is ${daysUntil} days away`);
         console.log(`🎉 [SCHEDULER] - Will send to ${userList.length} users`);
         
-        // Note: The email sending function would need to be adapted to work in this environment
-        // const result = await sendAnniversaryReminderToAllUsers(
-        //   userList,
-        //   anniversary.title,
-        //   new Date(anniversary.date)
-        // );
-        console.log(`📧 [SCHEDULER] REMINDER EMAIL WOULD BE SENT (EMAIL SENDING LOGIC TO BE IMPLEMENTED)`);
+        const result = await sendAnniversaryReminderToAllUsers(
+          userList,
+          anniversary.title,
+          new Date(anniversary.date)
+        );
         
-        // For now, just log this would be sent
-        totalSent += userList.length; // Assuming all emails would be sent successfully for logging purposes
+        totalSent += result.successful;
+        totalFailed += result.failed;
         
-        console.log(`🎉 [SCHEDULER] Emails sent for "${anniversary.title}"`);
+        if (result.errors.length > 0) {
+          console.error(`❌ [SCHEDULER] Email sending errors for \"${anniversary.title}\":`, result.errors);
+        }
+        
+        console.log(`🎉 [SCHEDULER] Results for \"${anniversary.title}\": ${result.successful} sent, ${result.failed} failed`);
       } else {
-        console.log(`⏭️  [SCHEDULER] ❌ Condition not met. Skipping "${anniversary.title}"`);
+        console.log(`⏭️  [SCHEDULER] ❌ Condition not met. Skipping \"${anniversary.title}\"`);
       }
     }
     
@@ -181,4 +181,3 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
   }
 }
-```
