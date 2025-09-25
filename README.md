@@ -125,6 +125,13 @@ EMAILJS_PRIVATE_KEY=your_private_key
 ```
 VITE_USE_SERVERLESS_FUNCTIONS=false
 VITE_API_BASE_URL=http://localhost:3000/api
+
+# EmailJS 配置（纪念日邮件提醒）- 这些变量在后端使用，仅在 .env 中定义
+# EMAILJS_SERVICE_ID=your_service_id
+# EMAILJS_TEMPLATE_ID=your_reminder_template_id  # 提前提醒模板ID
+# EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id  # 当天庆祝模板ID
+# EMAILJS_PUBLIC_KEY=your_public_key
+# EMAILJS_PRIVATE_KEY=your_private_key
 ```
 
 **后端环境变量 (.env):**
@@ -140,8 +147,8 @@ JWT_SECRET=your_jwt_secret_key
 
 # EmailJS配置（纪念日邮件提醒）
 EMAILJS_SERVICE_ID=your_service_id
-EMAILJS_TEMPLATE_ID=your_reminder_template_id
-EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
+EMAILJS_TEMPLATE_ID=your_reminder_template_id  # 提前提醒模板ID
+EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id  # 当天庆祝模板ID
 EMAILJS_PUBLIC_KEY=your_public_key
 EMAILJS_PRIVATE_KEY=your_private_key
 ```
