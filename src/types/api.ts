@@ -16,7 +16,7 @@ export interface Memory {
     url: string;
     publicId: string;
   }>;
-  user: string;
+  user: string | User;
   createdAt: string;
 }
 

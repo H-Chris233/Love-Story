@@ -3,14 +3,14 @@ import Memory, { IMemory } from '../models/Memory';
 import User from '../models/User';
 import { uploadImage, deleteImage } from '../utils/imageUpload';
 
-// @desc    Get all memories for a user
+// @desc    Get all memories (shared for all users)
 // @route   GET /api/memories
 // @access  Private
 const getMemories = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('🔍 [MEMORIES] Fetching memories for user:', req.user?._id);
-    const memories = await Memory.find({ user: req.user!._id }).sort({ date: -1 });
-    console.log('✅ [MEMORIES] Successfully fetched', memories.length, 'memories');
+    console.log('🔍 [MEMORIES] Fetching all shared memories');
+    const memories = await Memory.find({}).sort({ date: -1 }).populate('user', 'name email');
+    console.log('✅ [MEMORIES] Successfully fetched', memories.length, 'shared memories');
     res.json(memories);
   } catch (error: any) {
     console.error('❌ [MEMORIES] Error fetching memories:', {
@@ -30,36 +30,20 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// @desc    Get single memory
+// @desc    Get single memory (accessible to all users)
 // @route   GET /api/memories/:id
 // @access  Private
 const getMemory = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('🔍 [MEMORY] Fetching memory:', req.params.id);
     
-    const memory = await Memory.findById(req.params.id);
+    const memory = await Memory.findById(req.params.id).populate('user', 'name email');
 
     if (!memory) {
       console.log('❌ [MEMORY] Memory not found:', req.params.id);
       res.status(404).json({ 
         message: 'Memory not found',
         memoryId: req.params.id 
-      });
-      return;
-    }
-
-    // Check if user owns memory
-    if ((memory as any).user.toString() !== req.user!._id.toString()) {
-      console.log('❌ [MEMORY] Unauthorized access attempt - user does not own memory:', {
-        userId: req.user?._id,
-        memoryId: req.params.id,
-        memoryOwner: (memory as any).user.toString()
-      });
-      res.status(401).json({ 
-        message: 'Not authorized',
-        authorized: false,
-        userId: req.user?._id,
-        memoryId: req.params.id
       });
       return;
     }
@@ -219,15 +203,19 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user owns memory
-    if ((memory as any).user.toString() !== req.user!._id.toString()) {
-      console.log('❌ [MEMORY] Unauthorized update attempt - user does not own memory:', {
+    // Check if user owns memory or is admin
+    const isOwner = (memory as any).user.toString() === req.user!._id.toString();
+    const isAdmin = req.user!.isAdmin;
+    
+    if (!isOwner && !isAdmin) {
+      console.log('❌ [MEMORY] Unauthorized update attempt - user does not own memory and is not admin:', {
         userId: req.user?._id,
         memoryId: req.params.id,
-        memoryOwner: (memory as any).user.toString()
+        memoryOwner: (memory as any).user.toString(),
+        isAdmin: req.user!.isAdmin
       });
       res.status(401).json({ 
-        message: 'Not authorized',
+        message: 'Not authorized - only the creator or admin can edit this memory',
         authorized: false,
         userId: req.user?._id,
         memoryId: req.params.id
@@ -399,15 +387,19 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user owns memory
-    if ((memory as any).user.toString() !== req.user!._id.toString()) {
-      console.log('❌ [MEMORY] Unauthorized deletion attempt - user does not own memory:', {
+    // Check if user owns memory or is admin
+    const isOwner = (memory as any).user.toString() === req.user!._id.toString();
+    const isAdmin = req.user!.isAdmin;
+    
+    if (!isOwner && !isAdmin) {
+      console.log('❌ [MEMORY] Unauthorized deletion attempt - user does not own memory and is not admin:', {
         userId: req.user?._id,
         memoryId: req.params.id,
-        memoryOwner: (memory as any).user.toString()
+        memoryOwner: (memory as any).user.toString(),
+        isAdmin: req.user!.isAdmin
       });
       res.status(401).json({ 
-        message: 'Not authorized',
+        message: 'Not authorized - only the creator or admin can delete this memory',
         authorized: false,
         userId: req.user?._id,
         memoryId: req.params.id
