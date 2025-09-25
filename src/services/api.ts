@@ -45,9 +45,23 @@ class ApiCache {
 
 const apiCache = new ApiCache();
 
+// 动态确定API基础URL
+const determineBaseURL = (): string => {
+  // 如果使用 Serverless Functions，URL 结构会不同
+  const useServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true';
+  
+  if (useServerless) {
+    // Vercel Functions 的 URL 模式
+    return import.meta.env.VITE_SERVERLESS_API_URL || '/api';
+  } else {
+    // 当前 Express 服务器的 URL 模式
+    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+  }
+};
+
 // 创建axios实例
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: determineBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

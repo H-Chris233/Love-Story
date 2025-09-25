@@ -160,8 +160,26 @@ EMAILJS_PRIVATE_KEY=your_private_key
 
 ## 部署
 
+### 部署模式
+
+本项目支持两种部署架构模式，可通过环境变量进行切换：
+
+#### 1. 传统服务器模式 (默认)
+- **环境变量**: `VITE_USE_SERVERLESS_FUNCTIONS=false` 或不设置
+- **架构**: Vue.js 前端 + Express.js 后端服务器 + MongoDB
+- **部署**: 
+  - 前端部署到 Vercel
+  - 后端部署到 Railway 或其他支持 Node.js 应用的平台
+
+#### 2. Serverless 模式
+- **环境变量**: `VITE_USE_SERVERLESS_FUNCTIONS=true`
+- **架构**: Vue.js 前端 + Vercel Serverless Functions + MongoDB Atlas
+- **部署**: 
+  - 前端和后端 API 都部署到 Vercel
+  - 使用 Vercel 的 Serverless Functions 处理后端逻辑
+  - 数据库使用 MongoDB Atlas 或其他云数据库
+
 ### JAMstack 部署方案（推荐）
-前端部署到Vercel，后端部署到Railway，实现前后端分离的云端部署。
 
 #### 前端部署到 Vercel
 ```bash
@@ -173,13 +191,15 @@ vercel --prod
 ```
 
 **配置文件**：
-- `vercel.json`: 配置Vue Router重写规则和静态资源缓存
+- `vercel.json`: 配置Vue Router重写规则、静态资源缓存和Cron Jobs
 - `.env.production`: 生产环境变量配置
 
 **环境变量设置**：
-- `VITE_API_BASE_URL`: 设置为Railway后端URL
+- `VITE_USE_SERVERLESS_FUNCTIONS`: 设置为 `true` 使用Serverless模式，`false` 使用传统服务器模式
+- `VITE_API_BASE_URL`: 传统服务器模式下设置为后端API URL
+- `VITE_SERVERLESS_API_URL`: Serverless模式下设置为Vercel应用URL
 
-#### 后端部署到 Railway
+#### 后端部署（传统模式）到 Railway
 ```bash
 cd server
 
@@ -202,8 +222,9 @@ railway up
 - `JWT_SECRET`: JWT密钥
 - `NODE_ENV=production`: 生产环境标识
 - `FRONTEND_URL`: Vercel前端URL（用于CORS配置）
+- `EMAILJS_*` 系列变量: 邮件发送服务配置
 
-#### CORS自动配置
+#### 传统模式 CORS 自动配置
 后端已配置环境自适应CORS：
 - **开发环境**: 允许 `localhost:5173` 和 `127.0.0.1:5173`
 - **生产环境**: 仅允许配置的前端域名
@@ -212,7 +233,24 @@ railway up
 1. 创建MongoDB Atlas账户
 2. 创建集群和数据库
 3. 配置网络访问（允许所有IP: 0.0.0.0/0）
-4. 获取连接字符串并设置到Railway环境变量
+4. 获取连接字符串并设置到相应环境的变量中
+
+#### Serverless 模式特殊配置
+对于 Serverless 模式，需要额外配置 Vercel Cron Jobs 以处理定时任务：
+- **路径**: `/api/cron/anniversary-reminders`
+- **调度**: `0 7 * * *` (每天早上 7 点，时区: Asia/Shanghai)
+
+**vercel.json 配置示例**:
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/anniversary-reminders",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
+```
 
 ## 功能模块
 
