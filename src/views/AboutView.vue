@@ -15,7 +15,7 @@ const toggleFeature = (index: number) => {
   }
 }
 
-// 检查功能项是否被点击
+// 检查功能项是否被激活
 const isFeatureClicked = (index: number) => {
   return activeFeatureIndex.value === index
 }
@@ -40,40 +40,97 @@ const isFeatureClicked = (index: number) => {
 
         <div class="about-card">
           <h2 class="section-title">功能特色</h2>
-          <ul class="features-list">
-            <li 
-              class="feature-item"
-              :class="{ 'clicked': isFeatureClicked(0) }"
+          <div class="features-grid">
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(0) }"
               @click="toggleFeature(0)"
             >
-              <span class="feature-icon">📅</span>
-              <span><strong class="feature-title">回忆时光轴：</strong><span class="feature-description">按时间顺序记录我们的爱情历程</span></span>
-            </li>
-            <li 
-              class="feature-item"
-              :class="{ 'clicked': isFeatureClicked(1) }"
+              <div class="feature-header">
+                <span class="feature-icon">💕</span>
+                <h3 class="feature-title">爱情时光轴</h3>
+              </div>
+              <p class="feature-description">
+                记录我们从相遇到相知相爱的每一个重要时刻，用时间线的方式展现我们的爱情故事，让美好回忆永远保存。
+              </p>
+
+            </div>
+
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(1) }"
               @click="toggleFeature(1)"
             >
-              <span class="feature-icon">📸</span>
-              <span><strong class="feature-title">照片相册：</strong><span class="feature-description">珍藏我们的每一张合影</span></span>
-            </li>
-            <li 
-              class="feature-item"
-              :class="{ 'clicked': isFeatureClicked(2) }"
+              <div class="feature-header">
+                <span class="feature-icon">📷</span>
+                <h3 class="feature-title">专属相册</h3>
+              </div>
+              <p class="feature-description">
+                上传和管理我们的合影照片，支持分类整理，每张照片都可以添加专属的回忆描述，打造属于我们的数字相册。
+              </p>
+
+            </div>
+
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(2) }"
               @click="toggleFeature(2)"
             >
-              <span class="feature-icon feature-icon-highlighted">🎉</span>
-              <span><strong class="feature-title">纪念日提醒：</strong><span class="feature-description">重要日子提醒，不再错过</span></span>
-            </li>
-            <li 
-              class="feature-item"
-              :class="{ 'clicked': isFeatureClicked(3) }"
+              <div class="feature-header">
+                <span class="feature-icon">🎂</span>
+                <h3 class="feature-title">纪念日管理</h3>
+              </div>
+              <p class="feature-description">
+                记录所有重要的纪念日，包括相识日、恋爱日、生日等，系统会自动计算天数并提醒，让每个特殊日子都不会被遗忘。
+              </p>
+
+            </div>
+
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(3) }"
               @click="toggleFeature(3)"
             >
-              <span class="feature-icon">🔒</span>
-              <span><strong class="feature-title">隐私保护：</strong><span class="feature-description">只有我们两个人可以访问</span></span>
-            </li>
-          </ul>
+              <div class="feature-header">
+                <span class="feature-icon">🛡️</span>
+                <h3 class="feature-title">隐私安全</h3>
+              </div>
+              <p class="feature-description">
+                采用安全的用户认证系统，确保只有我们两个人可以访问和管理内容，所有数据都经过加密保护，守护我们的私密回忆。
+              </p>
+
+            </div>
+
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(4) }"
+              @click="toggleFeature(4)"
+            >
+              <div class="feature-header">
+                <span class="feature-icon">📱</span>
+                <h3 class="feature-title">响应式设计</h3>
+              </div>
+              <p class="feature-description">
+                完美适配手机、平板和电脑等各种设备，无论在哪里都能随时查看我们的回忆，界面优雅美观，操作简单流畅。
+              </p>
+
+            </div>
+
+            <div 
+              class="feature-card"
+              :class="{ 'active': isFeatureClicked(5) }"
+              @click="toggleFeature(5)"
+            >
+              <div class="feature-header">
+                <span class="feature-icon">⏰</span>
+                <h3 class="feature-title">爱情计时器</h3>
+              </div>
+              <p class="feature-description">
+                实时显示我们在一起的时间，精确到秒的爱情计时器，见证我们爱情的每一分每一秒，让时间成为爱的见证。
+              </p>
+
+            </div>
+          </div>
         </div>
 
         <div class="about-card">
@@ -83,9 +140,9 @@ const isFeatureClicked = (index: number) => {
               <h3>前端技术</h3>
               <ul>
                 <li>Vue 3 + TypeScript</li>
-                <li>Tailwind CSS</li>
                 <li>Vue Router</li>
                 <li>Pinia 状态管理</li>
+                <li>CSS Variables</li>
               </ul>
             </div>
             <div class="tech-category">
@@ -167,50 +224,95 @@ const isFeatureClicked = (index: number) => {
   font-size: var(--romantic-font-size-base);
 }
 
-.features-list {
-  list-style: none;
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--romantic-spacing-6);
 }
 
-.feature-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--romantic-spacing-4);
-  margin-bottom: var(--romantic-spacing-4);
-  padding: var(--romantic-spacing-4);
+.feature-card {
+  background: var(--romantic-white);
+  border: 1px solid rgba(255, 107, 157, 0.1);
   border-radius: var(--romantic-radius);
-  background: var(--romantic-light);
-  transition: var(--romantic-transition);
+  padding: var(--romantic-spacing-6);
+  transition: all 0.3s ease;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--romantic-shadow);
 }
 
-.feature-item:hover {
-  background: #f1f5f9; /* slate-100 */
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--romantic-primary), var(--romantic-primary-light));
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
-.feature-item.clicked {
-  background: linear-gradient(135deg, #fff5f8 0%, #ffffff 100%) !important;
-  border: 1px solid var(--romantic-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.2);
+.feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(255, 107, 157, 0.15);
 }
 
-.feature-item.clicked .feature-title {
-  color: var(--romantic-primary-dark) !important;
+.feature-card:hover::before {
+  transform: scaleX(1);
 }
 
-.feature-item.clicked .feature-description {
-  color: var(--romantic-white) !important;
+.feature-card.active {
+  background: var(--romantic-white);
+  border-color: var(--romantic-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(255, 107, 157, 0.2);
 }
 
-.feature-item.clicked .feature-icon {
-  color: var(--romantic-primary) !important;
-  transform: scale(1.1);
+.feature-card.active::before {
+  transform: scaleX(1);
+}
+
+.feature-header {
+  display: flex;
+  align-items: center;
+  gap: var(--romantic-spacing-3);
+  margin-bottom: var(--romantic-spacing-4);
 }
 
 .feature-icon {
-  font-size: var(--romantic-font-size-xl);
-  color: var(--romantic-primary);
+  font-size: 2rem;
+  transition: transform 0.3s ease;
 }
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1);
+}
+
+.feature-card.active .feature-icon {
+  transform: scale(1.15);
+}
+
+.feature-title {
+  font-size: var(--romantic-font-size-lg);
+  font-weight: var(--romantic-font-weight-bold);
+  color: var(--romantic-dark);
+  margin: 0;
+}
+
+.feature-card.active .feature-title {
+  color: var(--romantic-primary-dark);
+}
+
+.feature-description {
+  color: var(--romantic-dark);
+  line-height: var(--romantic-line-height-relaxed);
+  margin-bottom: 0;
+  font-size: var(--romantic-font-size-sm);
+}
+
+
 
 .intro-text {
   color: var(--romantic-primary-dark) !important;
@@ -293,13 +395,21 @@ const isFeatureClicked = (index: number) => {
     font-size: var(--romantic-font-size-xl);
   }
   
-  .feature-item {
-    padding: var(--romantic-spacing-3);
-    gap: var(--romantic-spacing-3);
+  .features-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--romantic-spacing-4);
+  }
+  
+  .feature-card {
+    padding: var(--romantic-spacing-4);
   }
   
   .feature-icon {
-    font-size: var(--romantic-font-size-lg);
+    font-size: 1.5rem;
+  }
+  
+  .feature-title {
+    font-size: var(--romantic-font-size-base);
   }
 }
 
@@ -340,15 +450,33 @@ const isFeatureClicked = (index: number) => {
     line-height: var(--romantic-line-height-normal);
   }
   
-  .feature-item {
-    padding: var(--romantic-spacing-2);
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: var(--romantic-spacing-3);
+  }
+  
+  .feature-card {
+    padding: var(--romantic-spacing-3);
+  }
+  
+  .feature-header {
     gap: var(--romantic-spacing-2);
     margin-bottom: var(--romantic-spacing-3);
   }
   
   .feature-icon {
-    font-size: var(--romantic-font-size-base);
+    font-size: 1.25rem;
   }
+  
+  .feature-title {
+    font-size: var(--romantic-font-size-sm);
+  }
+  
+  .feature-description {
+    font-size: var(--romantic-font-size-xs);
+  }
+  
+
   
   .tech-category h3 {
     font-size: var(--romantic-font-size-base);

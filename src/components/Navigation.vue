@@ -70,7 +70,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 70px;
+  height: 60px;
+  min-height: 60px;
 }
 
 .romantic-logo-link {
@@ -79,6 +80,9 @@ onUnmounted(() => {
   color: var(--romantic-primary);
   text-decoration: none;
   transition: var(--romantic-transition);
+  display: flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .romantic-logo-link:hover {
@@ -199,10 +203,12 @@ onUnmounted(() => {
 .romantic-mobile-menu-button {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
   width: 30px;
-  height: 21px;
+  height: 30px;
   cursor: pointer;
+  gap: 4px;
 }
 
 .romantic-menu-bar {
@@ -248,11 +254,12 @@ onUnmounted(() => {
 
 .romantic-mobile-menu-items {
   display: flex;
+  align-items: center;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
-  padding: var(--romantic-spacing-2) 0;
+  padding: var(--romantic-spacing-3) 0;
   /* 添加一个指示器，显示可以滚动 */
   mask-image: linear-gradient(to right, 
     rgba(0, 0, 0, 0) 0%, 
@@ -276,8 +283,10 @@ onUnmounted(() => {
 }
 
 .romantic-mobile-menu-link {
-  display: block;
-  padding: var(--romantic-spacing-2) var(--romantic-spacing-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--romantic-spacing-3) var(--romantic-spacing-4);
   font-size: var(--romantic-font-size-base);
   text-decoration: none;
   color: var(--romantic-dark);
@@ -286,12 +295,9 @@ onUnmounted(() => {
   transition: var(--romantic-transition), opacity 0.3s ease;
   position: relative;
   white-space: nowrap;
-  /* 增加触摸区域 */
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 48px;
   opacity: 0.9;
+  line-height: 1;
 }
 
 .romantic-mobile-menu-link:hover {
@@ -322,8 +328,10 @@ onUnmounted(() => {
 }
 
 .romantic-mobile-logout-button {
-  display: block;
-  padding: var(--romantic-spacing-2) var(--romantic-spacing-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--romantic-spacing-3) var(--romantic-spacing-4);
   font-size: var(--romantic-font-size-base);
   background: none;
   border: none;
@@ -333,6 +341,8 @@ onUnmounted(() => {
   transition: var(--romantic-transition);
   cursor: pointer;
   white-space: nowrap;
+  min-height: 48px;
+  line-height: 1;
 }
 
 .romantic-mobile-logout-button:hover {
@@ -467,7 +477,7 @@ onUnmounted(() => {
               用户
             </RouterLink>
           </li>
-          <li>
+          <li v-if="userStore.user?.isAdmin">
             <RouterLink 
               to="/admin" 
               @click="closeMenu"
@@ -579,7 +589,7 @@ onUnmounted(() => {
               用户
             </RouterLink>
           </div>
-          <div class="romantic-mobile-menu-item">
+          <div v-if="userStore.user?.isAdmin" class="romantic-mobile-menu-item">
             <RouterLink 
               to="/admin" 
               @click="closeMenu"
