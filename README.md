@@ -50,6 +50,9 @@ love-story-website/
 │   ├── memories/        # 回忆管理API
 │   ├── anniversaries/   # 纪念日管理API
 │   ├── images/          # 图片处理API
+│   │   ├── [id].ts      # 获取/删除特定图片
+│   │   ├── index.ts     # 获取图片列表
+│   │   └── upload.ts    # 图片上传
 │   ├── cron/            # 定时任务API
 │   ├── utils/           # 服务端工具函数
 │   └── health.ts        # 健康检查端点
@@ -307,6 +310,12 @@ railway up
   - `DELETE /api/anniversaries/[id]` - 删除纪念日
   - `POST /api/anniversaries/test-reminders` - 测试纪念日提醒
 
+- **图片管理**
+  - `POST /api/images/upload` - 上传图片
+  - `GET /api/images` - 获取用户图片列表
+  - `GET /api/images/[id]` - 获取/下载特定图片
+  - `DELETE /api/images/[id]` - 删除特定图片
+
 - **系统功能**
   - `GET /api/health` - 健康检查
   - `POST /api/cron/anniversary-reminders` - 纪念日提醒定时任务 (Vercel Cron)
@@ -331,7 +340,7 @@ railway up
 ### 照片相册
 - [x] 图片上传与管理 (`POST /api/images/upload`)
 - [x] MongoDB GridFS 存储
-- [ ] 照片浏览与删除 (API endpoints to be implemented)
+- [x] 照片浏览与删除 (`GET /api/images`, `GET /api/images/[id]`, `DELETE /api/images/[id]`)
 
 ### 纪念日提醒
 - [x] 创建纪念日 (`POST /api/anniversaries/create`)
