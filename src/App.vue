@@ -3,6 +3,8 @@ import { RouterView } from 'vue-router'
 import Navigation from './components/Navigation.vue'
 import { useUserStore } from './stores/user'
 import { onMounted } from 'vue'
+import { SpeedInsights } from '@vercel/speed-insights/vue';
+import { Analytics } from '@vercel/analytics/vue';
 
 // Initialize user store
 const userStore = useUserStore()
@@ -19,6 +21,8 @@ onMounted(() => {
   <div class="app-container">
     <Navigation />
     <RouterView />
+    <SpeedInsights />
+    <Analytics />
   </div>
 </template>
 
