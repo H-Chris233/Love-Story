@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IUser extends Document {
+  _id: Types.ObjectId;
   name: string;
   email: string;
   password: string;
@@ -17,7 +18,7 @@ const userSchema: Schema = new mongoose.Schema({
     required: [true, 'Please add an email'],
     unique: true,
     match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(.\w{2,3})+$/,
+      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
       'Please add a valid email',
     ],
   },

@@ -78,6 +78,40 @@ app.get('/', (req: Request, res: Response) => {
   res.json({ message: 'Love Story API is running!' });
 });
 
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('❌ [SERVER] Unhandled application error:', {
+    error: err.message,
+    stack: err.stack,
+    timestamp: new Date().toISOString(),
+    path: req.path,
+    method: req.method,
+    ip: req.ip || req.connection.remoteAddress,
+    userAgent: req.get('User-Agent')
+  });
+  
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// 404 handler for undefined routes
+app.use('*', (req: Request, res: Response) => {
+  console.log('❌ [SERVER] 404 - Route not found:', {
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+    ip: req.ip || req.connection.remoteAddress
+  });
+  
+  res.status(404).json({ 
+    message: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n✅ [SERVER] ==========================================`);

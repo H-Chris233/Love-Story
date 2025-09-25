@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IAnniversary extends Document {
+  _id: Types.ObjectId;
   title: string;
   date: Date;
   reminderDays: number;
@@ -27,8 +28,5 @@ const anniversarySchema: Schema = new mongoose.Schema({
     default: Date.now,
   },
 });
-
-// 为常用查询字段添加索引
-anniversarySchema.index({ date: 1 }); // 按日期查询的索引
 
 export default mongoose.model<IAnniversary>('Anniversary', anniversarySchema);

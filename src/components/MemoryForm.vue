@@ -47,6 +47,7 @@ const getFullImageUrl = (imageUrl: string) => {
 
 // 如果是编辑模式，初始化表单数据
 onMounted(() => {
+  console.log(`🖼️ [MEMORY-FORM] Initializing form, mode: ${props.memory ? 'edit' : 'create'}`)
   if (props.memory) {
     title.value = props.memory.title
     date.value = new Date(props.memory.date).toISOString().split('T')[0]
@@ -61,6 +62,9 @@ onMounted(() => {
         publicId: img.publicId
       }))
     }
+    console.log(`🖼️ [MEMORY-FORM] Edit mode initialized for memory: ${props.memory._id}`)
+  } else {
+    console.log('🖼️ [MEMORY-FORM] Create mode initialized')
   }
 })
 
@@ -69,20 +73,21 @@ const handleImageChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files) {
     const files = Array.from(target.files)
+    console.log(`🖼️ [MEMORY-FORM] Processing ${files.length} selected files`, files)
     
     // 验证文件类型
-    const validFiles = []
-    const invalidFiles = []
+    const validFiles = [] as File[]
+    const invalidFiles = [] as File[]
     
     for (const file of files) {
-      console.log(`检查文件: ${file.name}, MIME类型: "${file.type}", 大小: ${file.size} bytes`)
+      console.log(`🔍 [MEMORY-FORM] Checking file: ${file.name}, MIME type: "${file.type}", size: ${file.size} bytes`)
       
       // 首先检查MIME类型（最可靠的方法）
       const isValidByMimeType = file.type && file.type.startsWith('image/')
       
       // 如果MIME类型有效，直接接受
       if (isValidByMimeType) {
-        console.log(`文件 ${file.name} 通过MIME类型验证: ${file.type}`)
+        console.log(`✅ [MEMORY-FORM] File ${file.name} passed MIME type validation: ${file.type}`)
         validFiles.push(file)
         continue
       }
@@ -91,7 +96,7 @@ const handleImageChange = (event: Event) => {
       const isValidByExtension = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(file.name)
       
       if (isValidByExtension) {
-        console.log(`文件 ${file.name} 通过扩展名验证（MIME类型缺失或无效: "${file.type}"）`)
+        console.log(`✅ [MEMORY-FORM] File ${file.name} passed extension validation (MIME type missing or invalid: "${file.type}")`)
         validFiles.push(file)
       } else {
         // 检查是否是没有扩展名但可能是图片的文件
@@ -99,16 +104,16 @@ const handleImageChange = (event: Event) => {
         const hasEmptyMimeType = !file.type || file.type === ''
         
         if (hasNoExtension && file.size > 0) {
-          console.log(`文件 ${file.name} 没有扩展名，但有内容 (${file.size} bytes)，尝试作为图片处理`)
+          console.log(`⚠️ [MEMORY-FORM] File ${file.name} has no extension, but has content (${file.size} bytes), attempting to process as image`)
           // 对于没有扩展名但有内容的文件，假设它可能是图片
           // 让后端的MIME类型检测来最终验证
           validFiles.push(file)
         } else if (hasEmptyMimeType && file.size > 0) {
-          console.log(`文件 ${file.name} MIME类型为空，但有内容，尝试作为图片处理`)
+          console.log(`⚠️ [MEMORY-FORM] File ${file.name} has empty MIME type, but has content, attempting to process as image`)
           // 对于MIME类型为空但有内容的文件，也给一次机会
           validFiles.push(file)
         } else {
-          console.warn(`文件 ${file.name} 格式无效 - MIME: "${file.type}", 扩展名: ${isValidByExtension}, 大小: ${file.size}`)
+          console.warn(`❌ [MEMORY-FORM] File ${file.name} format invalid - MIME: "${file.type}", extension: ${isValidByExtension}, size: ${file.size}`)
           invalidFiles.push(file)
         }
       }
@@ -117,19 +122,21 @@ const handleImageChange = (event: Event) => {
     if (invalidFiles.length > 0) {
       const fileDetails = invalidFiles.map(f => {
         const hasNoExtension = !f.name.includes('.')
-        const mimeInfo = f.type ? f.type : '未知'
+        const mimeInfo = f.type ? f.type : 'unknown'
         if (hasNoExtension) {
-          return `${f.name} (无扩展名, MIME: ${mimeInfo})`
+          return `${f.name} (no extension, MIME: ${mimeInfo})`
         }
         return `${f.name} (MIME: ${mimeInfo})`
       }).join(', ')
       
-      error.value = `以下文件格式不支持: ${fileDetails}。请确保选择的是图片文件，建议重命名文件添加正确的扩展名 (.jpg, .png, .gif 等)`
+      error.value = `Unsupported file formats: ${fileDetails}. Please ensure you select image files, consider renaming files to add proper extensions (.jpg, .png, .gif, etc.)`
+      console.error(`❌ [MEMORY-FORM] Invalid file formats selected:`, invalidFiles)
       return
     }
     
     if (validFiles.length === 0) {
-      error.value = '请选择有效的图片文件'
+      error.value = 'Please select valid image files'
+      console.error('❌ [MEMORY-FORM] No valid image files selected')
       return
     }
     
@@ -137,7 +144,8 @@ const handleImageChange = (event: Event) => {
     const oversizedFiles = validFiles.filter(file => file.size > 5 * 1024 * 1024)
     if (oversizedFiles.length > 0) {
       const sizeInMB = (oversizedFiles[0].size / (1024 * 1024)).toFixed(2)
-      error.value = `文件 "${oversizedFiles[0].name}" 大小为 ${sizeInMB}MB，超过5MB限制。请选择更小的图片文件。`
+      error.value = `File "${oversizedFiles[0].name}" is ${sizeInMB}MB, exceeding 5MB limit. Please select smaller image files.`
+      console.error(`❌ [MEMORY-FORM] File exceeds size limit:`, oversizedFiles[0])
       return
     }
     
@@ -145,7 +153,8 @@ const handleImageChange = (event: Event) => {
     const currentExistingCount = existingImages.value.length - imagesToDelete.value.length
     const totalImages = currentExistingCount + newImages.value.length + validFiles.length
     if (totalImages > 10) {
-      error.value = `图片总数将达到 ${totalImages} 张，超过10张限制。当前已有 ${currentExistingCount + newImages.value.length} 张，请删除一些图片后再添加。`
+      error.value = `Total images will reach ${totalImages}, exceeding the 10 image limit. Currently have ${currentExistingCount + newImages.value.length} images, please remove some before adding more.`
+      console.error(`❌ [MEMORY-FORM] Image count exceeds limit: ${totalImages} total, current: ${currentExistingCount + newImages.value.length}, adding: ${validFiles.length}`)
       return
     }
     
@@ -174,7 +183,7 @@ const handleImageChange = (event: Event) => {
     // 清空input，允许重复选择相同文件
     target.value = ''
     
-    console.log('图片选择完成:', {
+    console.log('✅ [MEMORY-FORM] Image selection completed:', {
       newImagesCount: newImages.value.length,
       allPreviewsCount: allPreviews.value.length,
       validFilesCount: validFiles.length
@@ -185,29 +194,33 @@ const handleImageChange = (event: Event) => {
 // 移除图片预览
 const removeImage = (index: number) => {
   const preview = allPreviews.value[index]
-  if (!preview) return
+  if (!preview) {
+    console.error(`❌ [MEMORY-FORM] Attempted to remove image at invalid index: ${index}`)
+    return
+  }
   
   if (preview.type === 'existing' && preview.publicId) {
     // 这是已存在的图片，标记为删除
     imagesToDelete.value.push(preview.publicId)
-    console.log(`标记删除已存在图片: ${preview.publicId}`)
+    console.log(`🗑️ [MEMORY-FORM] Marked existing image for deletion: ${preview.publicId}`)
   } else if (preview.type === 'new' && preview.index !== undefined) {
     // 这是新添加的图片，从文件数组中移除
-    newImages.value.splice(preview.index, 1)
+    const originalIndex = preview.index
+    newImages.value.splice(originalIndex, 1)
     // 更新后续新图片的索引
     for (let i = index + 1; i < allPreviews.value.length; i++) {
       const laterPreview = allPreviews.value[i]
-      if (laterPreview.type === 'new' && laterPreview.index !== undefined && laterPreview.index > preview.index) {
+      if (laterPreview.type === 'new' && laterPreview.index !== undefined && laterPreview.index > originalIndex) {
         laterPreview.index--
       }
     }
-    console.log(`移除新图片，索引: ${preview.index}，剩余新图片数量: ${newImages.value.length}`)
+    console.log(`🗑️ [MEMORY-FORM] Removed new image at original index: ${originalIndex}, remaining new images: ${newImages.value.length}`)
   }
   
   // 从预览数组中移除
   allPreviews.value.splice(index, 1)
   
-  console.log('移除图片后状态:', {
+  console.log('🗑️ [MEMORY-FORM] Image removal completed. Current state:', {
     allPreviewsCount: allPreviews.value.length,
     newImagesCount: newImages.value.length,
     imagesToDeleteCount: imagesToDelete.value.length
@@ -216,8 +229,11 @@ const removeImage = (index: number) => {
 
 // 提交表单
 const handleSubmit = async () => {
+  console.log('📝 [MEMORY-FORM] Starting form submission...')
+  
   if (!title.value || !date.value || !description.value) {
-    error.value = '请填写所有必填字段'
+    error.value = 'Please fill in all required fields'
+    console.warn('❌ [MEMORY-FORM] Missing required fields')
     return
   }
 
@@ -225,7 +241,7 @@ const handleSubmit = async () => {
   error.value = ''
 
   try {
-    console.log('开始提交表单...', {
+    console.log('📤 [MEMORY-FORM] Preparing form submission...', {
       hasNewImages: newImages.value.length > 0,
       newImagesCount: newImages.value.length,
       hasImagesToDelete: imagesToDelete.value.length > 0,
@@ -242,21 +258,21 @@ const handleSubmit = async () => {
     
     // Add new images
     if (newImages.value.length > 0) {
-      console.log(`添加 ${newImages.value.length} 张新图片到 FormData`)
+      console.log(`🖼️ [MEMORY-FORM] Adding ${newImages.value.length} new images to FormData`)
       newImages.value.forEach((image, index) => {
-        console.log(`添加图片 ${index + 1}: ${image.name}, 大小: ${image.size} bytes`)
+        console.log(`🖼️ [MEMORY-FORM] Adding image ${index + 1}: ${image.name}, size: ${image.size} bytes`)
         formData.append('images', image)
       })
     }
     
     // Add images to delete
     if (imagesToDelete.value.length > 0) {
-      console.log(`标记删除 ${imagesToDelete.value.length} 张图片:`, imagesToDelete.value)
+      console.log(`🗑️ [MEMORY-FORM] Marking deletion of ${imagesToDelete.value.length} images:`, imagesToDelete.value)
       formData.append('imagesToDelete', JSON.stringify(imagesToDelete.value))
     }
 
     // Log FormData contents for debugging
-    console.log('FormData 内容:')
+    console.log('📋 [MEMORY-FORM] FormData contents:')
     const formDataEntries = []
     for (let [key, value] of formData.entries()) {
       if (value instanceof File) {
@@ -269,8 +285,8 @@ const handleSubmit = async () => {
       }
     }
     
-    console.log('FormData 总条目数:', formDataEntries.length)
-    console.log('newImages.value 详情:', newImages.value.map((img, i) => `${i}: ${img.name} (${img.size} bytes)`))
+    console.log('📋 [MEMORY-FORM] FormData total entries:', formDataEntries.length)
+    console.log('📋 [MEMORY-FORM] newImages.value details:', newImages.value.map((img, i) => `${i}: ${img.name} (${img.size} bytes)`))
     
     // 验证FormData中确实包含了图片文件
     const imageEntries = []
@@ -279,36 +295,38 @@ const handleSubmit = async () => {
         imageEntries.push(value.name)
       }
     }
-    console.log('FormData中的图片文件:', imageEntries)
+    console.log('🖼️ [MEMORY-FORM] Image files in FormData:', imageEntries)
 
     let response
     if (props.memory) {
       // 编辑模式
-      console.log(`更新记忆 ID: ${props.memory._id}`)
+      console.log(`✏️ [MEMORY-FORM] Updating memory with ID: ${props.memory._id}`)
       response = await memoryAPI.updateWithImages(props.memory._id, formData)
     } else {
       // 添加模式
-      console.log('创建新记忆')
+      console.log('➕ [MEMORY-FORM] Creating new memory')
       response = await memoryAPI.createWithImages(formData)
     }
 
-    console.log('保存成功:', response.data)
+    console.log('✅ [MEMORY-FORM] Memory saved successfully:', response.data)
     emit('save', response.data)
   } catch (err: any) {
-    console.error('保存记忆时出错:', err)
-    console.error('错误详情:', {
+    console.error('❌ [MEMORY-FORM] Error saving memory:', err)
+    console.error('❌ [MEMORY-FORM] Error details:', {
       message: err.message,
       response: err.response?.data,
-      status: err.response?.status
+      status: err.response?.status,
+      timestamp: new Date().toISOString()
     })
     
     if (err.response?.data?.message) {
       error.value = err.response.data.message
     } else {
-      error.value = '保存记忆时出错，请重试'
+      error.value = 'Error saving memory, please try again'
     }
   } finally {
     isSubmitting.value = false
+    console.log('✅ [MEMORY-FORM] Form submission process completed')
   }
 }
 </script>

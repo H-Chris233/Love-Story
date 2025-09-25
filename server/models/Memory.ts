@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { IUser } from './User';
 
 export interface IImage {
@@ -7,6 +7,7 @@ export interface IImage {
 }
 
 export interface IMemory extends Document {
+  _id: Types.ObjectId;
   title: string;
   description: string;
   date: Date;
@@ -46,10 +47,5 @@ const memorySchema: Schema = new mongoose.Schema({
     default: Date.now,
   },
 });
-
-// 为常用查询字段添加索引
-memorySchema.index({ user: 1, date: -1 }); // 按用户和日期排序的复合索引
-memorySchema.index({ createdAt: -1 }); // 按创建时间排序的索引
-memorySchema.index({ date: -1 }); // 按日期排序的索引
 
 export default mongoose.model<IMemory>('Memory', memorySchema);

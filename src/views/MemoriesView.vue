@@ -26,34 +26,45 @@ const paginatedMemories = computed(() => {
 
 // 获取记忆数据
 const fetchMemories = async () => {
+  console.log('📚 [MEMORIES-VIEW] Fetching memories...')
   try {
     loading.value = true
     const response = await memoryAPI.getAll()
     memories.value = response.data
     // 重置到第一页
     currentPage.value = 1
-  } catch (err) {
-    console.error('获取记忆数据失败:', err)
+    console.log(`✅ [MEMORIES-VIEW] Successfully fetched ${memories.value.length} memories`)
+  } catch (err: any) {
+    console.error('❌ [MEMORIES-VIEW] Error fetching memories:', err)
+    console.error('❌ [MEMORIES-VIEW] Error details:', {
+      message: err.message,
+      status: err.response?.status,
+      timestamp: new Date().toISOString()
+    })
     error.value = '获取记忆数据失败'
   } finally {
     loading.value = false
+    console.log('✅ [MEMORIES-VIEW] Memory fetching process completed')
   }
 }
 
 // 处理添加记忆
 const handleAddMemory = () => {
+  console.log('➕ [MEMORIES-VIEW] Adding new memory')
   editingMemory.value = null
   showForm.value = true
 }
 
 // 处理编辑记忆
 const handleEditMemory = (memory: Memory) => {
+  console.log(`✏️ [MEMORIES-VIEW] Editing memory with ID: ${memory._id}`)
   editingMemory.value = memory
   showForm.value = true
 }
 
 // 处理保存记忆（添加或编辑）
 const handleSaveMemory = (memory: Memory) => {
+  console.log(`✅ [MEMORIES-VIEW] Memory saved with ID: ${memory._id}`)
   showForm.value = false
   editingMemory.value = null
   fetchMemories()
@@ -61,6 +72,7 @@ const handleSaveMemory = (memory: Memory) => {
 
 // 处理删除记忆
 const handleDeleteMemory = async (id: string | number) => {
+  console.log(`🗑️ [MEMORIES-VIEW] Deleting memory with ID: ${id}`)
   try {
     await memoryAPI.delete(id.toString())
     // 从本地状态中移除已删除的记忆
@@ -69,14 +81,22 @@ const handleDeleteMemory = async (id: string | number) => {
     if (paginatedMemories.value.length === 0 && currentPage.value > 1) {
       currentPage.value--
     }
-  } catch (err) {
-    console.error('删除记忆失败:', err)
+    console.log(`✅ [MEMORIES-VIEW] Memory with ID ${id} deleted successfully`)
+  } catch (err: any) {
+    console.error('❌ [MEMORIES-VIEW] Error deleting memory:', err)
+    console.error('❌ [MEMORIES-VIEW] Error details:', {
+      message: err.message,
+      status: err.response?.status,
+      memoryId: id,
+      timestamp: new Date().toISOString()
+    })
     error.value = '删除记忆失败'
   }
 }
 
 // 处理取消表单
 const handleCancelForm = () => {
+  console.log('❌ [MEMORIES-VIEW] Cancelled form')
   showForm.value = false
   editingMemory.value = null
 }
@@ -90,6 +110,7 @@ const goToPage = (page: number) => {
 
 // 页面加载时获取数据
 onMounted(() => {
+  console.log('📚 [MEMORIES-VIEW] Component mounted, fetching memories...')
   fetchMemories()
 })
 </script>

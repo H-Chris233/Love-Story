@@ -2,39 +2,31 @@ import { Request, Response } from 'express';
 import Memory, { IMemory } from '../models/Memory';
 import User from '../models/User';
 import { uploadImage, deleteImage } from '../utils/imageUpload';
-import { 
-  generateCacheKey, 
-  CACHE_PREFIX, 
-  getCache, 
-  setCache, 
-  delCache, 
-  clearCacheByPrefix 
-} from '../utils/cache';
 
 // @desc    Get all memories for a user
 // @route   GET /api/memories
 // @access  Private
 const getMemories = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 检查缓存
-    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all');
-    const cachedMemories = getCache(cacheKey);
-    
-    if (cachedMemories) {
-      console.log('从缓存返回记忆列表');
-      res.json(cachedMemories);
-      return;
-    }
-
-    // 从数据库获取
+    console.log('🔍 [MEMORIES] Fetching memories for user:', req.user?._id);
     const memories = await Memory.find({ user: req.user!._id }).sort({ date: -1 });
-    
-    // 设置缓存
-    setCache(cacheKey, memories, 300); // 缓存5分钟
-    
+    console.log('✅ [MEMORIES] Successfully fetched', memories.length, 'memories');
     res.json(memories);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ [MEMORIES] Error fetching memories:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method,
+      userId: req.user?._id,
+      ip: req.ip || req.connection.remoteAddress
+    });
+    
+    res.status(500).json({ 
+      message: 'Error fetching memories',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -42,43 +34,55 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
 // @route   GET /api/memories/:id
 // @access  Private
 const getMemory = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
-
-  if (!id) {
-    res.status(400).json({ message: 'Memory ID is required' });
-    return;
-  }
-
   try {
-    // 检查缓存
-    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, id);
-    const cachedMemory = getCache(cacheKey);
+    console.log('🔍 [MEMORY] Fetching memory:', req.params.id);
     
-    if (cachedMemory) {
-      console.log('从缓存返回单个记忆');
-      res.json(cachedMemory);
-      return;
-    }
-
-    const memory = await Memory.findById(id);
+    const memory = await Memory.findById(req.params.id);
 
     if (!memory) {
-      res.status(404).json({ message: 'Memory not found' });
+      console.log('❌ [MEMORY] Memory not found:', req.params.id);
+      res.status(404).json({ 
+        message: 'Memory not found',
+        memoryId: req.params.id 
+      });
       return;
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== req.user!._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
+    if ((memory as any).user.toString() !== req.user!._id.toString()) {
+      console.log('❌ [MEMORY] Unauthorized access attempt - user does not own memory:', {
+        userId: req.user?._id,
+        memoryId: req.params.id,
+        memoryOwner: (memory as any).user.toString()
+      });
+      res.status(401).json({ 
+        message: 'Not authorized',
+        authorized: false,
+        userId: req.user?._id,
+        memoryId: req.params.id
+      });
       return;
     }
 
-    // 设置缓存
-    setCache(cacheKey, memory, 600); // 缓存10分钟
-    
+    console.log('✅ [MEMORY] Memory retrieved successfully:', memory._id);
     res.json(memory);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ [MEMORY] Error fetching single memory:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method,
+      userId: req.user?._id,
+      memoryId: req.params.id,
+      ip: req.ip || req.connection.remoteAddress
+    });
+    
+    res.status(500).json({ 
+      message: 'Error fetching memory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      memoryId: req.params.id
+    });
   }
 };
 
@@ -90,26 +94,66 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
   const images: { url: string; publicId: string }[] = [];
 
   try {
-    console.log('创建记忆请求:', {
+    console.log('📝 [MEMORY] Starting to create new memory:', {
       title,
       description,
       date,
       hasFiles: !!(req.files && (req.files as Express.Multer.File[]).length > 0),
       filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
-      userId: req.user!._id
+      userId: req.user?._id
     });
+
+    // Validate required fields
+    if (!title || !description || !date) {
+      console.log('❌ [MEMORY] Missing required fields in create memory request:', {
+        hasTitle: !!title,
+        hasDescription: !!description,
+        hasDate: !!date
+      });
+      res.status(400).json({ 
+        message: 'Title, description, and date are required',
+        missingFields: [
+          !title && 'title',
+          !description && 'description', 
+          !date && 'date'
+        ].filter(Boolean)
+      });
+      return;
+    }
 
     // Upload images if provided
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
-      console.log(`正在上传 ${(req.files as Express.Multer.File[]).length} 张图片...`);
+      console.log(`🖼️ [IMAGES] Uploading ${(req.files as Express.Multer.File[]).length} images...`);
       for (const file of req.files as Express.Multer.File[]) {
-        console.log(`上传图片: ${file.originalname}, 大小: ${file.size} bytes, 类型: ${file.mimetype}`);
-        const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
-        console.log(`图片上传成功:`, uploadedImage);
-        images.push(uploadedImage);
+        console.log(`🖼️ [IMAGE] Processing file: ${file.originalname}, Size: ${file.size} bytes, Type: ${file.mimetype}`);
+        try {
+          const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
+          console.log(`✅ [IMAGE] Image uploaded successfully:`, uploadedImage);
+          images.push(uploadedImage);
+        } catch (uploadError: any) {
+          console.error('❌ [IMAGE] Error uploading image:', {
+            error: uploadError.message,
+            fileName: file.originalname,
+            fileSize: file.size,
+            fileType: file.mimetype,
+            timestamp: new Date().toISOString(),
+            userId: req.user?._id,
+            path: req.path,
+            method: req.method,
+            ip: req.ip || req.connection.remoteAddress
+          });
+          
+          // If an image fails to upload, we should return an error
+          res.status(500).json({ 
+            message: `Error uploading image: ${file.originalname}`,
+            error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+          });
+          return;
+        }
       }
     }
 
+    console.log('💾 [MEMORY] Creating memory in database for user:', req.user?._id);
     const memory = await Memory.create({
       title,
       description,
@@ -118,15 +162,29 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
       user: req.user!._id,
     });
 
-    console.log('记忆创建成功:', { id: memory._id, imagesCount: images.length });
-    
-    // 清除相关的缓存
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
-    
+    console.log('✅ [MEMORY] Memory created successfully:', { id: memory._id, imagesCount: images.length });
     res.status(201).json(memory);
   } catch (error: any) {
-    console.error('创建记忆失败:', error);
-    res.status(500).json({ message: error.message });
+    console.error('❌ [MEMORY] Error creating memory:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method,
+      userId: req.user?._id,
+      payload: {
+        title: req.body.title,
+        description: req.body.description ? 'provided' : 'missing',
+        date: req.body.date,
+        filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0
+      },
+      ip: req.ip || req.connection.remoteAddress
+    });
+    
+    res.status(500).json({ 
+      message: 'Error creating memory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -134,38 +192,56 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
 // @route   PUT /api/memories/:id
 // @access  Private
 const updateMemory = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
-  if (!id) {
-    res.status(400).json({ message: 'Memory ID is required' });
-    return;
-  }
-
   const { title, description, date } = req.body;
   let images: { url: string; publicId: string }[] = [];
   let imagesToDelete: string[] = [];
 
   try {
-    console.log('更新记忆请求:', {
-      id: id,
+    console.log('✏️ [MEMORY] Starting update for memory:', {
+      id: req.params.id,
       title,
       description,
       date,
       hasFiles: !!(req.files && (req.files as Express.Multer.File[]).length > 0),
       filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
       imagesToDeleteRaw: req.body.imagesToDelete,
-      userId: req.user!._id
+      userId: req.user?._id
     });
 
-    let memory = await Memory.findById(id);
+    let memory = await Memory.findById(req.params.id);
 
     if (!memory) {
-      res.status(404).json({ message: 'Memory not found' });
+      console.log('❌ [MEMORY] Attempt to update non-existent memory:', req.params.id);
+      res.status(404).json({ 
+        message: 'Memory not found',
+        memoryId: req.params.id
+      });
       return;
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== req.user!._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
+    if ((memory as any).user.toString() !== req.user!._id.toString()) {
+      console.log('❌ [MEMORY] Unauthorized update attempt - user does not own memory:', {
+        userId: req.user?._id,
+        memoryId: req.params.id,
+        memoryOwner: (memory as any).user.toString()
+      });
+      res.status(401).json({ 
+        message: 'Not authorized',
+        authorized: false,
+        userId: req.user?._id,
+        memoryId: req.params.id
+      });
+      return;
+    }
+
+    // Validate request data
+    if (!title && !description && !date && !(req.files && (req.files as Express.Multer.File[]).length > 0) && !req.body.imagesToDelete) {
+      console.log('❌ [MEMORY] No data provided to update memory:', req.params.id);
+      res.status(400).json({ 
+        message: 'No data provided for update',
+        memoryId: req.params.id
+      });
       return;
     }
 
@@ -173,53 +249,135 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     if (req.body.imagesToDelete) {
       try {
         imagesToDelete = JSON.parse(req.body.imagesToDelete);
-        console.log('解析要删除的图片:', imagesToDelete);
-      } catch (e) {
-        console.error('Error parsing imagesToDelete:', e);
+        console.log('🗑️ [IMAGES] Marked for deletion:', imagesToDelete);
+      } catch (parseError: any) {
+        console.error('❌ [MEMORY] Error parsing imagesToDelete:', {
+          error: parseError.message,
+          imagesToDeleteRaw: req.body.imagesToDelete,
+          timestamp: new Date().toISOString(),
+          path: req.path,
+          method: req.method,
+          userId: req.user?._id,
+          memoryId: req.params.id,
+          ip: req.ip || req.connection.remoteAddress
+        });
+        
+        res.status(400).json({ 
+          message: 'Invalid imagesToDelete format',
+          error: process.env.NODE_ENV === 'development' ? parseError.message : undefined
+        });
+        return;
       }
     }
 
     // Delete specified images from MongoDB GridFS
     for (const publicId of imagesToDelete) {
-      console.log(`删除图片: ${publicId}`);
-      await deleteImage(publicId);
+      console.log(`🗑️ [IMAGE] Deleting: ${publicId}`);
+      try {
+        await deleteImage(publicId);
+        console.log(`✅ [IMAGE] Deleted successfully: ${publicId}`);
+      } catch (deleteError: any) {
+        console.error('❌ [IMAGE] Error deleting image:', {
+          error: deleteError.message,
+          publicId,
+          timestamp: new Date().toISOString(),
+          path: req.path,
+          method: req.method,
+          userId: req.user?._id,
+          memoryId: req.params.id,
+          ip: req.ip || req.connection.remoteAddress
+        });
+        
+        // Continue processing other images even if one fails
+      }
     }
 
     // Filter out deleted images from existing images
     const existingImages = memory.images.filter(img => !imagesToDelete.includes(img.publicId));
-    console.log(`保留现有图片: ${existingImages.length} 张`);
+    console.log(`🖼️ [IMAGES] Retaining ${existingImages.length} existing images`);
 
     // Upload new images if provided
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
-      console.log(`正在上传 ${(req.files as Express.Multer.File[]).length} 张新图片...`);
+      console.log(`🖼️ [IMAGES] Uploading ${(req.files as Express.Multer.File[]).length} new images...`);
       for (const file of req.files as Express.Multer.File[]) {
-        console.log(`上传图片: ${file.originalname}, 大小: ${file.size} bytes, 类型: ${file.mimetype}`);
-        const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
-        console.log(`图片上传成功:`, uploadedImage);
-        images.push(uploadedImage);
+        console.log(`🖼️ [IMAGE] Processing file: ${file.originalname}, Size: ${file.size} bytes, Type: ${file.mimetype}`);
+        try {
+          const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
+          console.log(`✅ [IMAGE] New image uploaded:`, uploadedImage);
+          images.push(uploadedImage);
+        } catch (uploadError: any) {
+          console.error('❌ [IMAGE] Error uploading new image:', {
+            error: uploadError.message,
+            fileName: file.originalname,
+            fileSize: file.size,
+            fileType: file.mimetype,
+            timestamp: new Date().toISOString(),
+            userId: req.user?._id,
+            memoryId: req.params.id,
+            ip: req.ip || req.connection.remoteAddress
+          });
+          
+          res.status(500).json({ 
+            message: `Error uploading new image: ${file.originalname}`,
+            error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+          });
+          return;
+        }
       }
     }
 
     // Combine existing images (excluding deleted ones) with new images
     images = [...existingImages, ...images];
-    console.log(`最终图片数量: ${images.length} 张`);
+    console.log(`🖼️ [IMAGES] Total images after update: ${images.length}`);
 
     memory = await Memory.findByIdAndUpdate(
-      id,
+      req.params.id,
       { title, description, date, images },
       { new: true, runValidators: true }
     );
 
-    console.log('记忆更新成功:', { id: memory?._id, imagesCount: images.length });
-    
-    // 清除相关的缓存
-    delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
-    
+    if (!memory) {
+      console.error('❌ [MEMORY] Failed to update memory (update returned null):', {
+        id: req.params.id,
+        timestamp: new Date().toISOString(),
+        path: req.path,
+        method: req.method,
+        userId: req.user?._id,
+        ip: req.ip || req.connection.remoteAddress
+      });
+      res.status(500).json({ 
+        message: 'Failed to update memory in database',
+        memoryId: req.params.id
+      });
+      return;
+    }
+
+    console.log('✅ [MEMORY] Memory updated successfully:', { id: memory._id, imagesCount: images.length });
     res.json(memory);
   } catch (error: any) {
-    console.error('更新记忆失败:', error);
-    res.status(500).json({ message: error.message });
+    console.error('❌ [MEMORY] Error updating memory:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method,
+      userId: req.user?._id,
+      memoryId: req.params.id,
+      payload: {
+        title: req.body.title,
+        description: req.body.description ? 'provided' : 'missing',
+        date: req.body.date,
+        filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
+        imagesToDelete: req.body.imagesToDelete
+      },
+      ip: req.ip || req.connection.remoteAddress
+    });
+    
+    res.status(500).json({ 
+      message: 'Error updating memory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      memoryId: req.params.id
+    });
   }
 };
 
@@ -227,40 +385,83 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
 // @route   DELETE /api/memories/:id
 // @access  Private
 const deleteMemory = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
-  if (!id) {
-    res.status(400).json({ message: 'Memory ID is required' });
-    return;
-  }
-
   try {
-    const memory = await Memory.findById(id);
+    console.log('🗑️ [MEMORY] Starting deletion process for:', req.params.id);
+    
+    const memory = await Memory.findById(req.params.id);
 
     if (!memory) {
-      res.status(404).json({ message: 'Memory not found' });
+      console.log('❌ [MEMORY] Attempt to delete non-existent memory:', req.params.id);
+      res.status(404).json({ 
+        message: 'Memory not found',
+        memoryId: req.params.id 
+      });
       return;
     }
 
     // Check if user owns memory
-    if (memory.user.toString() !== req.user!._id.toString()) {
-      res.status(401).json({ message: 'Not authorized' });
+    if ((memory as any).user.toString() !== req.user!._id.toString()) {
+      console.log('❌ [MEMORY] Unauthorized deletion attempt - user does not own memory:', {
+        userId: req.user?._id,
+        memoryId: req.params.id,
+        memoryOwner: (memory as any).user.toString()
+      });
+      res.status(401).json({ 
+        message: 'Not authorized',
+        authorized: false,
+        userId: req.user?._id,
+        memoryId: req.params.id
+      });
       return;
     }
 
     // Delete images from MongoDB GridFS
+    console.log(`🗑️ [IMAGES] Deleting ${memory.images.length} images from GridFS...`);
     for (const image of memory.images) {
-      await deleteImage(image.publicId);
+      console.log(`🗑️ [IMAGE] Deleting image: ${image.publicId}`);
+      try {
+        await deleteImage(image.publicId);
+        console.log(`✅ [IMAGE] GridFS image deleted: ${image.publicId}`);
+      } catch (deleteError: any) {
+        console.error('❌ [IMAGE] Error deleting image from GridFS:', {
+          error: deleteError.message,
+          publicId: image.publicId,
+          timestamp: new Date().toISOString(),
+          path: req.path,
+          method: req.method,
+          userId: req.user?._id,
+          memoryId: req.params.id,
+          ip: req.ip || req.connection.remoteAddress
+        });
+        
+        // Continue even if image deletion fails
+      }
     }
 
+    // Delete the memory document
     await memory.deleteOne();
-
-    // 清除相关的缓存
-    delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
-
-    res.json({ message: 'Memory removed' });
+    console.log('✅ [MEMORY] Memory deleted successfully:', req.params.id);
+    res.json({ 
+      message: 'Memory removed',
+      memoryId: req.params.id
+    });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ [MEMORY] Error deleting memory:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: req.path,
+      method: req.method,
+      userId: req.user?._id,
+      memoryId: req.params.id,
+      ip: req.ip || req.connection.remoteAddress
+    });
+    
+    res.status(500).json({ 
+      message: 'Error deleting memory',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      memoryId: req.params.id
+    });
   }
 };
 

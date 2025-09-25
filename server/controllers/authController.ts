@@ -3,6 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import * as config from '../config';
+import mongoose from 'mongoose';
 
 interface JwtPayload {
   id: string;
@@ -50,7 +51,7 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
-        token: generateToken(user._id.toString()),
+        token: generateToken((user._id as mongoose.Types.ObjectId).toString()),
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -75,7 +76,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
-        token: generateToken(user._id.toString()),
+        token: generateToken((user._id as mongoose.Types.ObjectId).toString()),
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
