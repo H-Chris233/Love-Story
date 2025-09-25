@@ -102,7 +102,14 @@ const register = async () => {
   } catch (err: any) {
     console.error('注册错误:', err)
     if (err.response?.status === 400) {
-      error.value = '用户已存在或数据无效'
+      const errorData = err.response?.data
+      if (errorData?.message === 'User already exists') {
+        error.value = '用户已存在'
+      } else if (errorData?.message === 'Validation failed') {
+        error.value = errorData.errors?.[0] || errorData.details || '数据验证失败'
+      } else {
+        error.value = errorData?.message || '用户已存在或数据无效'
+      }
     } else {
       error.value = '注册失败，请重试'
     }

@@ -57,7 +57,24 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error: any) {
-    res.status(500).json({ message: (error as Error).message });
+    console.error('❌ [AUTH] Registration failed:', {
+      error: error.message,
+      stack: error.stack,
+      requestBody: { name, email, password: '***' },
+      timestamp: new Date().toISOString()
+    });
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: validationErrors,
+        details: error.message 
+      });
+    } else {
+      res.status(500).json({ message: (error as Error).message });
+    }
   }
 };
 
@@ -120,9 +137,111 @@ const checkRegistrationAllowed = async (req: Request, res: Response): Promise<vo
   }
 };
 
+// Get all users (Admin only)
+const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    console.log('👥 [USERS] Admin fetching all users:', req.user?._id);
+
+    // Check if current user is admin
+    if (!req.user?.isAdmin) {
+      console.log('❌ [USERS] Unauthorized access attempt - user is not admin:', req.user?._id);
+      res.status(403).json({ message: 'Access denied - admin privileges required' });
+      return;
+    }
+
+    // Get all users (excluding passwords)
+    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    
+    console.log('✅ [USERS] Successfully fetched users:', {
+      count: users.length,
+      adminId: req.user._id,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json(users);
+    
+  } catch (error: any) {
+    console.error('❌ [USERS] Error fetching users:', {
+      error: error.message,
+      stack: error.stack,
+      adminId: req.user?._id,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.status(500).json({ message: (error as Error).message });
+  }
+};
+
+// Delete user (Admin only)
+const deleteUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🗑️ [USER] Admin attempting to delete user:', {
+      adminId: req.user?._id,
+      targetUserId: id,
+      timestamp: new Date().toISOString()
+    });
+
+    // Check if current user is admin
+    if (!req.user?.isAdmin) {
+      console.log('❌ [USER] Unauthorized delete attempt - user is not admin:', req.user?._id);
+      res.status(403).json({ message: 'Access denied - admin privileges required' });
+      return;
+    }
+
+    // Prevent admin from deleting themselves
+    if (req.user._id.toString() === id) {
+      console.log('❌ [USER] Admin attempting to delete themselves:', req.user._id);
+      res.status(400).json({ message: 'Cannot delete your own account' });
+      return;
+    }
+
+    // Find and delete user
+    const user = await User.findById(id);
+    
+    if (!user) {
+      console.log('❌ [USER] User not found for deletion:', id);
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    await User.findByIdAndDelete(id);
+    
+    console.log('✅ [USER] User deleted successfully:', {
+      deletedUserId: id,
+      deletedUserEmail: user.email,
+      adminId: req.user._id,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({
+      message: 'User deleted successfully',
+      deletedUser: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('❌ [USER] Error deleting user:', {
+      error: error.message,
+      stack: error.stack,
+      targetUserId: req.params.id,
+      adminId: req.user?._id,
+      timestamp: new Date().toISOString()
+    });
+    
+    res.status(500).json({ message: (error as Error).message });
+  }
+};
+
 export {
   registerUser,
   loginUser,
   getUserProfile,
   checkRegistrationAllowed,
+  getAllUsers,
+  deleteUser,
 };

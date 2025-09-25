@@ -174,6 +174,31 @@ export const authAPI = {
         throw error;
       });
   },
+  
+  getAllUsers: (): Promise<AxiosResponse<User[]>> => {
+    console.log('👥 [API] Get all users request');
+    return apiClient.get<User[]>('/auth/users')
+      .catch(error => {
+        console.error('❌ [API] Get all users failed:', {
+          message: error.message,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      });
+  },
+  
+  deleteUser: (userId: string): Promise<AxiosResponse<{ message: string; deletedUser: { id: string; name: string; email: string } }>> => {
+    console.log('🗑️ [API] Delete user request:', { userId });
+    return apiClient.delete<{ message: string; deletedUser: { id: string; name: string; email: string } }>(`/auth/users/${userId}`)
+      .catch(error => {
+        console.error('❌ [API] Delete user failed:', {
+          message: error.message,
+          userId,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      });
+  },
 };
 
 // 记忆相关API
