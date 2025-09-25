@@ -23,7 +23,7 @@ const protect = async (req: Request, res: Response, next: NextFunction): Promise
       const decoded = jwt.verify(token as string, config.default.jwtSecret) as JwtPayload;
 
       // Get user from token
-      (req as any).user = await User.findById(decoded.id).select('-password');
+      req.user = await User.findById(decoded.id).select('-password');
 
       next();
     } catch (error) {

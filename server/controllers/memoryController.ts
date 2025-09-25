@@ -17,7 +17,7 @@ import {
 const getMemories = async (req: Request, res: Response): Promise<void> => {
   try {
     // 检查缓存
-    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, (req as any).user._id, 'all');
+    const cacheKey = generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all');
     const cachedMemories = getCache(cacheKey);
     
     if (cachedMemories) {
@@ -27,7 +27,7 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 从数据库获取
-    const memories = await Memory.find({ user: (req as any).user._id }).sort({ date: -1 });
+    const memories = await Memory.find({ user: req.user!._id }).sort({ date: -1 });
     
     // 设置缓存
     setCache(cacheKey, memories, 300); // 缓存5分钟
@@ -68,7 +68,7 @@ const getMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
+    if (memory.user.toString() !== req.user!._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -96,7 +96,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
       date,
       hasFiles: !!(req.files && (req.files as Express.Multer.File[]).length > 0),
       filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
-      userId: (req as any).user._id
+      userId: req.user!._id
     });
 
     // Upload images if provided
@@ -115,14 +115,13 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
       description,
       date,
       images,
-      user: (req as any).user._id,
+      user: req.user!._id,
     });
 
     console.log('记忆创建成功:', { id: memory._id, imagesCount: images.length });
     
     // 清除相关的缓存
-    const userId = (req as any).user._id;
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
     
     res.status(201).json(memory);
   } catch (error: any) {
@@ -154,7 +153,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       hasFiles: !!(req.files && (req.files as Express.Multer.File[]).length > 0),
       filesCount: req.files ? (req.files as Express.Multer.File[]).length : 0,
       imagesToDeleteRaw: req.body.imagesToDelete,
-      userId: (req as any).user._id
+      userId: req.user!._id
     });
 
     let memory = await Memory.findById(id);
@@ -165,7 +164,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
+    if (memory.user.toString() !== req.user!._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -215,8 +214,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     
     // 清除相关的缓存
     delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
-    const userId = (req as any).user._id;
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
     
     res.json(memory);
   } catch (error: any) {
@@ -244,7 +242,7 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check if user owns memory
-    if ((memory as any).user.toString() !== (req as any).user._id.toString()) {
+    if (memory.user.toString() !== req.user!._id.toString()) {
       res.status(401).json({ message: 'Not authorized' });
       return;
     }
@@ -258,8 +256,7 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
 
     // 清除相关的缓存
     delCache(generateCacheKey(CACHE_PREFIX.MEMORY, id)); // 删除单个记忆缓存
-    const userId = (req as any).user._id;
-    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, userId, 'all')); // 清除用户记忆列表缓存
+    clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.MEMORY, req.user!._id, 'all')); // 清除用户记忆列表缓存
 
     res.json({ message: 'Memory removed' });
   } catch (error: any) {

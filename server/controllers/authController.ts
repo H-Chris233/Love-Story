@@ -46,11 +46,11 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
 
     if (user) {
       res.status(201).json({
-        _id: (user as any)._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
-        token: generateToken((user as any)._id.toString()),
+        token: generateToken(user._id.toString()),
       });
     } else {
       res.status(400).json({ message: 'Invalid user data' });
@@ -71,11 +71,11 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
     // Check if user exists and password is correct
     if (user && (await bcrypt.compare(password as string, user.password as string))) {
       res.json({
-        _id: (user as any)._id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
-        token: generateToken((user as any)._id.toString()),
+        token: generateToken(user._id.toString()),
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -89,7 +89,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
 const getUserProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     // req.user is attached by auth middleware
-    const user = await User.findById((req as any).user._id);
+    const user = await User.findById(req.user!._id);
 
     if (user) {
       res.json({

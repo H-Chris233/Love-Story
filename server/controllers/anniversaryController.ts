@@ -17,7 +17,7 @@ import {
 // @access  Private
 const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
   console.log(`📖 [CONTROLLER] GET /api/anniversaries - User requesting all anniversaries`);
-  console.log(`📖 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  console.log(`📖 [CONTROLLER] - Request from user: ${req.user?.name || 'Unknown'} (${req.user?.email || 'Unknown'})`);
   
   try {
     // 检查缓存
@@ -182,7 +182,7 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
 const sendReminder = async (req: Request, res: Response): Promise<void> => {
   const anniversaryId = req.params.id;
   console.log(`📤 [CONTROLLER] POST /api/anniversaries/${anniversaryId}/remind - Single anniversary reminder request`);
-  console.log(`📤 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  console.log(`📤 [CONTROLLER] - Request from user: ${req.user?.name || 'Unknown'} (${req.user?.email || 'Unknown'})`);
   
   try {
     console.log(`📤 [CONTROLLER] - Looking up anniversary by ID: ${anniversaryId}`);
@@ -250,7 +250,7 @@ const sendReminder = async (req: Request, res: Response): Promise<void> => {
 // @access  Private
 const testSendAllReminders = async (req: Request, res: Response): Promise<void> => {
   console.log(`🧪 [CONTROLLER] POST /api/anniversaries/test-reminders - Test all reminders request`);
-  console.log(`🧪 [CONTROLLER] - Request from user: ${(req as any).user?.name || 'Unknown'} (${(req as any).user?.email || 'Unknown'})`);
+  console.log(`🧪 [CONTROLLER] - Request from user: ${req.user?.name || 'Unknown'} (${req.user?.email || 'Unknown'})`);
   console.log(`🧪 [CONTROLLER] - This will test send reminders for anniversaries within next 7 days`);
   
   try {
