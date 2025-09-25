@@ -35,7 +35,6 @@ const userSchema: Schema = new mongoose.Schema({
 
 });
 
-// 为常用查询字段添加索引
-userSchema.index({ email: 1 }); // 按邮箱查询的索引
+// Email index is automatically created by unique: true constraint
 
 export default mongoose.model<IUser>('User', userSchema);

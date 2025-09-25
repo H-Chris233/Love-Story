@@ -97,7 +97,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // 404 handler for undefined routes
-app.use('*', (req: Request, res: Response) => {
+app.use((req: Request, res: Response) => {
   console.log('❌ [SERVER] 404 - Route not found:', {
     path: req.path,
     method: req.method,
