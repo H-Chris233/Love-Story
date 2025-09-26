@@ -1,7 +1,7 @@
 // api/images/[id].ts
 // Vercel Serverless Function for retrieving or deleting an image
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { deleteImage, getImage } from '../utils/imageUpload';
+import { deleteImage, getImage } from '../utils/imageUpload.js';
 import { ObjectId } from 'mongodb';
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
