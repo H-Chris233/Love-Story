@@ -1,9 +1,9 @@
 // api/images/index.ts
-// Vercel Serverless Function for getting all images for a user
+// Vercel Serverless Function for getting all images associated with memories
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db';
 import jwt from 'jsonwebtoken';
-import { Db, GridFSBucket, ObjectId } from 'mongodb';
+import { Db, ObjectId } from 'mongodb';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -12,12 +12,28 @@ interface JwtPayload {
   exp: number;
 }
 
+interface ImageInfo {
+  url: string;
+  publicId: string;
+}
+
+interface MemoryWithImages {
+  _id: ObjectId;
+  title: string;
+  description: string;
+  date: Date;
+  images: ImageInfo[];
+  user: ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface ImageFile {
   id: string;
-  filename: string;
+  url: string;
+  memoryId: string;
+  memoryTitle: string;
   uploadDate: Date;
-  contentType: string;
-  size: number;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
@@ -55,33 +71,43 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // Connect to database
     const { db } = await connectToDatabase();
     
-    // Create GridFS bucket for file storage
-    const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    // Find all memories that have images
+    const memoriesCollection = db.collection('memories');
+    const memoriesWithImages: MemoryWithImages[] = await memoriesCollection
+      .find({ 
+        images: { $exists: true, $ne: [] } // Only memories with images
+      })
+      .toArray();
 
-    // Find all images for the user based on filename pattern
-    // The images are stored with a pattern: user_{userId}_{timestamp}_{randomId}.{ext}
-    const pattern = new RegExp(`^user_${decoded.userId.toString()}_`);
-    
-    const imageFiles = await bucket.find({ 
-      filename: { $regex: pattern } 
-    }).sort({ uploadDate: -1 }).toArray();
-
-    // Format the response
-    const images: ImageFile[] = imageFiles.map(file => ({
-      id: file._id.toString(),
-      filename: file.filename,
-      uploadDate: file.uploadDate,
-      contentType: file.contentType || 'application/octet-stream',
-      size: file.length
-    }));
+    // Extract all images from memories
+    const allImages: ImageFile[] = [];
+    for (const memory of memoriesWithImages) {
+      for (const image of memory.images) {
+        allImages.push({
+          id: image.publicId,
+          url: image.url,
+          memoryId: memory._id.toString(),
+          memoryTitle: memory.title,
+          uploadDate: memory.createdAt // Use memory creation date as upload date
+        });
+      }
+    }
 
     return vercelResponse.status(200).json({
       success: true,
-      images,
-      count: images.length
+      images: allImages,
+      count: allImages.length
     });
   } catch (error: any) {
-    console.error('Error in images index handler:', error);
+    console.error('❌ [IMAGES] Error in images index handler:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      userId: (request.headers.authorization || '').substring(0, 20) + '...',
+      ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+    });
     
     return vercelResponse.status(500).json({
       message: 'Internal server error while fetching images',
