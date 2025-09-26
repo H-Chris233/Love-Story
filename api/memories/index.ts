@@ -18,46 +18,80 @@ interface Memory {
   title: string;
   description: string;
   date: Date;
-  images?: Array<{
-    url: string;
-    publicId: string;
-  }>;
+  images: { url: string; publicId: string }[];
   user: ObjectId;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+// Define User type
+interface User {
+  _id: ObjectId;
+  name: string;
+  email: string;
+  isAdmin: boolean;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   if (request.method === 'GET') {
-    // Get all memories
+    // Get all shared memories
     try {
+      console.log('🔍 [MEMORIES] Fetching all shared memories');
+      
       // Connect to database
       const { db } = await connectToDatabase();
       const memoriesCollection = db.collection('memories');
+      const usersCollection = db.collection('users');
 
-      // Find all memories, sorted by date (newest first)
+      // Find all memories, sorted by date (newest first), and populate user data
       const memories = await memoriesCollection
         .find({})
         .sort({ date: -1 })
         .toArray();
 
-      // Return all memories (without sensitive information)
+      // For each memory, get user data (name and email)
+      const memoriesWithUser = await Promise.all(
+        memories.map(async (memory: any) => {
+          const user = await usersCollection.findOne(
+            { _id: memory.user },
+            { projection: { name: 1, email: 1 } }
+          );
+          
+          return {
+            id: memory._id,
+            title: memory.title,
+            description: memory.description,
+            date: memory.date,
+            images: memory.images || [],
+            user: user ? {
+              id: user._id,
+              name: user.name,
+              email: user.email
+            } : null,
+            createdAt: memory.createdAt,
+            updatedAt: memory.updatedAt
+          };
+        })
+      );
+
+      console.log('✅ [MEMORIES] Successfully fetched', memoriesWithUser.length, 'shared memories');
+      
       return vercelResponse.status(200).json({
         success: true,
-        memories: memories.map(memory => ({
-          id: memory._id,
-          title: memory.title,
-          description: memory.description,
-          date: memory.date,
-          images: memory.images || [],
-          user: memory.user,
-          createdAt: memory.createdAt
-        }))
+        memories: memoriesWithUser
       });
     } catch (error: any) {
-      console.error('Error in memories handler:', error);
+      console.error('❌ [MEMORIES] Error fetching memories:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        method: request.method,
+        ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+      });
       
-      return vercelResponse.status(500).json({
-        message: 'Internal server error while fetching memories',
+      return vercelResponse.status(500).json({ 
+        message: 'Error fetching memories',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
@@ -86,16 +120,28 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     }
 
     // Extract memory data from request body
-    const { title, description, date, images } = request.body;
+    const { title, description, date } = request.body;
 
     // Validate required fields
     if (!title || !description || !date) {
-      return vercelResponse.status(400).json({
-        message: 'Please provide title, description, and date'
+      return vercelResponse.status(400).json({ 
+        message: 'Title, description, and date are required',
+        missingFields: [
+          !title && 'title',
+          !description && 'description', 
+          !date && 'date'
+        ].filter(Boolean)
       });
     }
 
     try {
+      console.log('📝 [MEMORY] Starting to create new memory:', {
+        title,
+        description,
+        date,
+        userId: decoded.userId
+      });
+
       // Connect to database
       const { db } = await connectToDatabase();
       const memoriesCollection = db.collection('memories');
@@ -105,13 +151,16 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         title,
         description,
         date: new Date(date), // Ensure date is a proper Date object
-        images: images || [],
-        user: decoded.userId, // Use the authenticated user's ID
-        createdAt: new Date()
+        images: [], // Initialize with empty images array
+        user: decoded.userId,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       // Insert new memory into database
       const result = await memoriesCollection.insertOne(newMemory);
+
+      console.log('✅ [MEMORY] Memory created successfully:', { id: result.insertedId });
 
       // Return success response with the created memory
       return vercelResponse.status(201).json({
@@ -123,15 +172,29 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           description: newMemory.description,
           date: newMemory.date,
           images: newMemory.images,
-          user: newMemory.user,
-          createdAt: newMemory.createdAt
+          user: decoded.userId,
+          createdAt: newMemory.createdAt,
+          updatedAt: newMemory.updatedAt
         }
       });
     } catch (error: any) {
-      console.error('Error in create memory handler:', error);
+      console.error('❌ [MEMORY] Error creating memory:', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        method: request.method,
+        userId: decoded.userId,
+        payload: {
+          title: request.body.title,
+          description: request.body.description ? 'provided' : 'missing',
+          date: request.body.date
+        },
+        ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+      });
       
-      return vercelResponse.status(500).json({
-        message: 'Internal server error during memory creation',
+      return vercelResponse.status(500).json({ 
+        message: 'Error creating memory',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

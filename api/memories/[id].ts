@@ -10,6 +10,7 @@ interface JwtPayload {
   userId: ObjectId;
   iat: number;
   exp: number;
+  isAdmin?: boolean;
 }
 
 // Define Memory type
@@ -18,12 +19,18 @@ interface Memory {
   title: string;
   description: string;
   date: Date;
-  images?: Array<{
-    url: string;
-    publicId: string;
-  }>;
+  images: { url: string; publicId: string }[];
   user: ObjectId;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+// Define User type
+interface User {
+  _id: ObjectId;
+  name: string;
+  email: string;
+  isAdmin: boolean;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
@@ -68,16 +75,25 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // Connect to database
     const { db } = await connectToDatabase();
     const memoriesCollection = db.collection('memories');
+    const usersCollection = db.collection('users');
 
     if (request.method === 'GET') {
       // Get a specific memory
       const memory = await memoriesCollection.findOne({ _id: memoryId });
 
       if (!memory) {
+        console.log('❌ [MEMORY] Memory not found:', memoryId);
         return vercelResponse.status(404).json({
-          message: 'Memory not found'
+          message: 'Memory not found',
+          memoryId: id
         });
       }
+
+      // Get user info for this memory
+      const user = await usersCollection.findOne(
+        { _id: memory.user },
+        { projection: { name: 1, email: 1 } }
+      );
 
       // Return the memory
       return vercelResponse.status(200).json({
@@ -88,8 +104,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           description: memory.description,
           date: memory.date,
           images: memory.images || [],
-          user: memory.user,
-          createdAt: memory.createdAt
+          user: user ? {
+            id: user._id,
+            name: user.name,
+            email: user.email
+          } : null,
+          createdAt: memory.createdAt,
+          updatedAt: memory.updatedAt
         }
       });
     } 
@@ -100,12 +121,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
       
       // Extract memory data from request body
-      const { title, description, date, images } = request.body;
+      const { title, description, date } = request.body;
 
       // Validate required fields
-      if (!title || !description || !date) {
+      if (!title && !description && !date) {
         return vercelResponse.status(400).json({
-          message: 'Please provide title, description, and date'
+          message: 'At least one field (title, description, or date) must be provided for update',
+          memoryId: id
         });
       }
 
@@ -113,50 +135,70 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       const memory = await memoriesCollection.findOne({ _id: memoryId });
       
       if (!memory) {
+        console.log('❌ [MEMORY] Attempt to update non-existent memory:', memoryId);
         return vercelResponse.status(404).json({
-          message: 'Memory not found'
+          message: 'Memory not found',
+          memoryId: id
         });
       }
 
-      // Check if the user owns this memory
-      if (memory.user.toString() !== decoded.userId.toString()) {
-        return vercelResponse.status(403).json({
-          message: 'Not authorized to update this memory'
+      // Check if user owns memory or is admin
+      const isOwner = memory.user.toString() === decoded.userId.toString();
+      
+      // Get user to check if admin
+      const currentUser = await usersCollection.findOne({ _id: decoded.userId });
+      const isAdmin = currentUser?.isAdmin;
+      
+      if (!isOwner && !isAdmin) {
+        console.log('❌ [MEMORY] Unauthorized update attempt - user does not own memory and is not admin:', {
+          userId: decoded.userId,
+          memoryId: id,
+          memoryOwner: memory.user.toString(),
+          isAdmin: isAdmin
+        });
+        return vercelResponse.status(401).json({ 
+          message: 'Not authorized - only the creator or admin can edit this memory',
+          authorized: false,
+          userId: decoded.userId,
+          memoryId: id
         });
       }
+
+      // Prepare update data
+      const updateData: any = { updatedAt: new Date() };
+      if (title) updateData.title = title;
+      if (description) updateData.description = description;
+      if (date) updateData.date = new Date(date);
 
       // Update the memory in the database
       const result = await memoriesCollection.updateOne(
         { _id: memoryId },
-        { 
-          $set: { 
-            title,
-            description,
-            date: new Date(date),
-            images: images || [],
-            // Don't update user field or createdAt
-          } 
-        }
+        { $set: updateData }
       );
 
       if (result.matchedCount === 0) {
         return vercelResponse.status(404).json({
-          message: 'Memory not found'
+          message: 'Memory not found',
+          memoryId: id
         });
       }
+
+      // Fetch the updated memory to return
+      const updatedMemory = await memoriesCollection.findOne({ _id: memoryId });
 
       // Return success response
       return vercelResponse.status(200).json({
         success: true,
         message: 'Memory updated successfully',
         memory: {
-          id: memoryId,
-          title,
-          description,
-          date: new Date(date),
-          images: images || [],
-          user: decoded.userId,
-          createdAt: memory.createdAt // Keep original creation date
+          id: updatedMemory!._id,
+          title: updatedMemory!.title,
+          description: updatedMemory!.description,
+          date: updatedMemory!.date,
+          images: updatedMemory!.images || [],
+          user: updatedMemory!.user,
+          createdAt: updatedMemory!.createdAt,
+          updatedAt: updatedMemory!.updatedAt
         }
       });
     } 
@@ -170,15 +212,32 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       const memory = await memoriesCollection.findOne({ _id: memoryId });
       
       if (!memory) {
+        console.log('❌ [MEMORY] Attempt to delete non-existent memory:', memoryId);
         return vercelResponse.status(404).json({
-          message: 'Memory not found'
+          message: 'Memory not found',
+          memoryId: id
         });
       }
 
-      // Check if the user owns this memory
-      if (memory.user.toString() !== decoded.userId.toString()) {
-        return vercelResponse.status(403).json({
-          message: 'Not authorized to delete this memory'
+      // Check if user owns memory or is admin
+      const isOwner = memory.user.toString() === decoded.userId.toString();
+      
+      // Get user to check if admin
+      const currentUser = await usersCollection.findOne({ _id: decoded.userId });
+      const isAdmin = currentUser?.isAdmin;
+      
+      if (!isOwner && !isAdmin) {
+        console.log('❌ [MEMORY] Unauthorized deletion attempt - user does not own memory and is not admin:', {
+          userId: decoded.userId,
+          memoryId: id,
+          memoryOwner: memory.user.toString(),
+          isAdmin: isAdmin
+        });
+        return vercelResponse.status(401).json({ 
+          message: 'Not authorized - only the creator or admin can delete this memory',
+          authorized: false,
+          userId: decoded.userId,
+          memoryId: id
         });
       }
 
@@ -187,14 +246,18 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       if (result.deletedCount === 0) {
         return vercelResponse.status(404).json({
-          message: 'Memory not found'
+          message: 'Memory not found',
+          memoryId: id
         });
       }
 
+      console.log('✅ [MEMORY] Memory deleted successfully:', memoryId);
+      
       // Return success response
       return vercelResponse.status(200).json({
         success: true,
-        message: 'Memory deleted successfully'
+        message: 'Memory deleted successfully',
+        memoryId: id
       });
     } 
     else {
@@ -204,11 +267,21 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     }
   } catch (error: any) {
-    console.error('Error in memory handler:', error);
+    console.error('❌ [MEMORY] Error in memory handler:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      userId: decoded?.userId,
+      memoryId: id,
+      ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+    });
     
     return vercelResponse.status(500).json({
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      memoryId: id
     });
   }
 }

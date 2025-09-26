@@ -1,5 +1,5 @@
 // api/anniversaries/index.ts
-// Vercel Serverless Function for getting all anniversaries and creating a new one
+// Vercel Serverless Function for getting all anniversaries
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db';
 import jwt from 'jsonwebtoken';
@@ -23,123 +23,73 @@ interface Anniversary {
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
-  if (request.method === 'GET') {
-    // Get all anniversaries
-    try {
-      // Connect to database
-      const { db } = await connectToDatabase();
-      const anniversariesCollection = db.collection('anniversaries');
-
-      // Find all anniversaries, sorted by date (closest first)
-      const anniversaries = await anniversariesCollection
-        .find({})
-        .sort({ date: 1 })
-        .toArray();
-
-      // Return all anniversaries (without sensitive information)
-      return vercelResponse.status(200).json({
-        success: true,
-        anniversaries: anniversaries.map(anniversary => ({
-          id: anniversary._id,
-          title: anniversary.title,
-          date: anniversary.date,
-          reminderDays: anniversary.reminderDays,
-          createdAt: anniversary.createdAt,
-          updatedAt: anniversary.updatedAt
-        }))
-      });
-    } catch (error: any) {
-      console.error('Error in anniversaries handler:', error);
-      
-      return vercelResponse.status(500).json({
-        message: 'Internal server error while fetching anniversaries',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  } else if (request.method === 'POST') {
-    // Extract token from Authorization header
-    const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return vercelResponse.status(401).json({
-        message: 'Authorization token required'
-      });
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify JWT token
-    let decoded: JwtPayload;
-    try {
-      decoded = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-      ) as JwtPayload;
-    } catch (error) {
-      return vercelResponse.status(401).json({
-        message: 'Invalid or expired token'
-      });
-    }
-
-    // Extract anniversary data from request body
-    const { title, date, reminderDays } = request.body;
-
-    // Validate required fields
-    if (!title || !date || reminderDays === undefined) {
-      return vercelResponse.status(400).json({
-        message: 'Please provide title, date, and reminderDays'
-      });
-    }
-
-    try {
-      // Connect to database
-      const { db } = await connectToDatabase();
-      const anniversariesCollection = db.collection('anniversaries');
-
-      // Check if an anniversary with the same title already exists
-      const existingAnniversary = await anniversariesCollection.findOne({ title });
-      if (existingAnniversary) {
-        return vercelResponse.status(409).json({
-          message: 'An anniversary with this title already exists'
-        });
-      }
-
-      // Create new anniversary object
-      const newAnniversary: Anniversary = {
-        title,
-        date: new Date(date), // Ensure date is a proper Date object
-        reminderDays: parseInt(reminderDays),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      // Insert new anniversary into database
-      const result = await anniversariesCollection.insertOne(newAnniversary);
-
-      // Return success response with the created anniversary
-      return vercelResponse.status(201).json({
-        success: true,
-        message: 'Anniversary created successfully',
-        anniversary: {
-          id: result.insertedId,
-          title: newAnniversary.title,
-          date: newAnniversary.date,
-          reminderDays: newAnniversary.reminderDays,
-          createdAt: newAnniversary.createdAt,
-          updatedAt: newAnniversary.updatedAt
-        }
-      });
-    } catch (error: any) {
-      console.error('Error in create anniversary handler:', error);
-      
-      return vercelResponse.status(500).json({
-        message: 'Internal server error during anniversary creation',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  } else {
-    // Method not allowed
+  if (request.method !== 'GET') {
+    // For creating anniversaries, use the create.ts file
     return vercelResponse.status(405).json({ 
-      message: 'Method not allowed' 
+      message: 'Method not allowed. Use POST /api/anniversaries/create for creating anniversaries.' 
+    });
+  }
+
+  // Extract token from Authorization header
+  const authHeader = request.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return vercelResponse.status(401).json({
+      message: 'Authorization token required'
+    });
+  }
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+  // Verify JWT token
+  let decoded: JwtPayload;
+  try {
+    decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
+    ) as JwtPayload;
+  } catch (error) {
+    return vercelResponse.status(401).json({
+      message: 'Invalid or expired token'
+    });
+  }
+
+  try {
+    // Connect to database
+    const { db } = await connectToDatabase();
+    const anniversariesCollection = db.collection('anniversaries');
+
+    // Find all anniversaries, sorted by date (closest first)
+    const anniversaries = await anniversariesCollection
+      .find({})
+      .sort({ date: 1 })
+      .toArray();
+
+    // Return all anniversaries (without sensitive information)
+    return vercelResponse.status(200).json({
+      success: true,
+      anniversaries: anniversaries.map(anniversary => ({
+        id: anniversary._id,
+        title: anniversary.title,
+        date: anniversary.date,
+        reminderDays: anniversary.reminderDays,
+        createdAt: anniversary.createdAt,
+        updatedAt: anniversary.updatedAt
+      }))
+    });
+  } catch (error: any) {
+    console.error('❌ [ANNIVERSARY] Error in anniversaries handler:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      userId: decoded.userId,
+      ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+    });
+    
+    return vercelResponse.status(500).json({
+      message: 'Internal server error while fetching anniversaries',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }

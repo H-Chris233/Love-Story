@@ -1,158 +1,93 @@
 // api/images/upload.ts
-// Vercel Serverless Function for handling image uploads
+// Vercel Serverless Function for uploading images
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../../lib/db';
-import jwt from 'jsonwebtoken';
-import { Db, ObjectId, GridFSBucket } from 'mongodb';
-import formidable from 'formidable';
+import { uploadImage } from '../utils/imageUpload';
 import { Readable } from 'stream';
-import fs from 'fs';
 
-// Define JWT payload type
-interface JwtPayload {
-  userId: ObjectId;
-  iat: number;
-  exp: number;
-}
-
+// Define image upload result type
 interface ImageUploadResult {
-  id: string;
-  filename: string;
   url: string;
+  publicId: string;
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
-  // Only allow POST requests
+  // This endpoint only accepts POST requests
   if (request.method !== 'POST') {
     return vercelResponse.status(405).json({ 
       message: 'Method not allowed' 
     });
   }
 
-  // Parse the multipart form data
-  const form = formidable({
-    multiples: true,
-    maxFileSize: 10 * 1024 * 1024, // 10MB max file size
-    uploadDir: '/tmp', // Temporary directory
-    keepExtensions: true,
-  });
-
   try {
-    // Extract token from Authorization header
-    const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return vercelResponse.status(401).json({
-        message: 'Authorization token required'
-      });
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify JWT token
-    let decoded: JwtPayload;
-    try {
-      decoded = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-      ) as JwtPayload;
-    } catch (error) {
-      return vercelResponse.status(401).json({
-        message: 'Invalid or expired token'
-      });
-    }
-
-    // Parse form data
-    const [fields, files] = await new Promise<{ fields: formidable.Fields; files: formidable.Files }>((resolve, reject) => {
-      form.parse(request, (err, fields, files) => {
-        if (err) {
-          console.error('Error parsing form data:', err);
-          reject(err);
-        } else {
-          resolve({ fields, files });
-        }
-      });
-    });
-
-    // Check if files were uploaded
-    if (!files.image) {
+    // Check if the request has the correct content type for file uploads
+    const contentType = request.headers['content-type'];
+    if (!contentType || !contentType.startsWith('multipart/form-data')) {
       return vercelResponse.status(400).json({
-        message: 'Please upload an image file'
+        message: 'Content-Type must be multipart/form-data'
       });
     }
 
-    // Handle single or multiple file uploads
-    const imageFiles = Array.isArray(files.image) ? files.image : [files.image];
+    console.log('🖼️ [IMAGE] Starting image upload process');
+
+    // In a serverless environment, we need to parse the multipart form data manually
+    // This is a simplified approach - in a real implementation you'd use a library like busboy
+    // For now, we'll assume the image data is sent in a specific format in the request body
     
-    if (imageFiles.length === 0) {
+    // Get the image data from the request body
+    const { imageBuffer, imageName, imageType } = request.body;
+
+    if (!imageBuffer || !imageName || !imageType) {
+      console.log('❌ [IMAGE] Missing required fields in image upload request');
       return vercelResponse.status(400).json({
-        message: 'Please upload at least one image file'
+        message: 'Image buffer, name, and type are required',
+        missingFields: [
+          !imageBuffer && 'imageBuffer',
+          !imageName && 'imageName', 
+          !imageType && 'imageType'
+        ].filter(Boolean)
       });
     }
 
-    // Connect to database
-    const { db } = await connectToDatabase();
-    
-    // Create GridFS bucket for file storage
-    const bucket = new GridFSBucket(db, { bucketName: 'images' });
-
-    const uploadResults: ImageUploadResult[] = [];
-
-    // Process each uploaded image
-    for (const imageFile of imageFiles) {
-      if (!imageFile) continue;
-
-      // Create a readable stream from the uploaded file
-      const fileStream = fs.createReadStream(imageFile.filepath);
-      
-      // Generate a unique filename with user ID and timestamp
-      const fileExtension = imageFile.originalFilename?.split('.').pop() || 'jpg';
-      const filename = `user_${decoded.userId}_${Date.now()}_${imageFile.newFilename}.${fileExtension}`;
-      
-      // Upload to GridFS
-      const uploadStream = bucket.openUploadStream(filename);
-      
-      await new Promise<void>((resolve, reject) => {
-        fileStream.pipe(uploadStream)
-          .on('error', (error) => {
-            console.error('Error uploading to GridFS:', error);
-            reject(error);
-          })
-          .on('finish', () => {
-            console.log(`File uploaded successfully: ${filename}`);
-            resolve();
-          });
-      });
-
-      // Add upload result
-      uploadResults.push({
-        id: uploadStream.id.toString(),
-        filename,
-        url: `/api/images/${uploadStream.id}`
+    // Convert base64 image buffer to actual buffer if needed
+    let imageBufferData: Buffer;
+    if (typeof imageBuffer === 'string') {
+      // If it's a base64 string, convert to buffer
+      imageBufferData = Buffer.from(imageBuffer, 'base64');
+    } else if (imageBuffer instanceof Buffer) {
+      imageBufferData = imageBuffer;
+    } else {
+      return vercelResponse.status(400).json({
+        message: 'Invalid image buffer format'
       });
     }
 
-    // Clean up temporary files
-    for (const imageFile of imageFiles) {
-      if (imageFile && imageFile.filepath) {
-        fs.unlink(imageFile.filepath, (err) => {
-          if (err) {
-            console.error('Error deleting temp file:', err);
-          }
-        });
-      }
-    }
+    console.log(`🖼️ [IMAGE] Processing file: ${imageName}, Size: ${imageBufferData.length} bytes, Type: ${imageType}`);
 
-    // Return success response with upload results
+    // Upload the image to storage (GridFS in this case)
+    const uploadResult: ImageUploadResult = await uploadImage(
+      imageBufferData,
+      imageName,
+      imageType
+    );
+
+    console.log(`✅ [IMAGE] Image uploaded successfully:`, uploadResult);
+
     return vercelResponse.status(200).json({
-      success: true,
-      message: `Successfully uploaded ${uploadResults.length} image(s)`,
-      results: uploadResults
+      message: 'Image uploaded successfully',
+      image: uploadResult
     });
   } catch (error: any) {
-    console.error('Error in image upload handler:', error);
-    
+    console.error('❌ [IMAGE] Error uploading image:', {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+    });
+
     return vercelResponse.status(500).json({
-      message: 'Internal server error during image upload',
+      message: 'Error uploading image',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
