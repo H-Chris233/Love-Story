@@ -4,7 +4,9 @@ This file contains important information for CodeBuddy Code to operate effective
 
 ## Project Overview
 
-This is a full-stack love story website built with Vue 3 + TypeScript frontend and Express + MongoDB backend. The project uses a JAMstack architecture where the frontend can be deployed to Vercel and the backend to Railway.
+This is a full-stack love story website built with Vue 3 + TypeScript frontend and Vercel Serverless Functions + MongoDB backend. The project uses a JAMstack architecture with dual deployment modes: 
+1. Serverless mode (recommended): Frontend and backend API deployed to Vercel
+2. Traditional mode: Frontend to Vercel, backend to Railway
 
 ## Development Commands
 
@@ -24,13 +26,19 @@ pnpm test:unit             # Run unit tests with Vitest
 pnpm test:e2e              # Run E2E tests with Playwright
 ```
 
-### Backend (server/ Directory)
+### Backend (server/ Directory - Traditional Mode)
 ```bash
 cd server
 pnpm dev                   # Start development server with ts-node
 pnpm build                 # Compile TypeScript to JavaScript
 pnpm start                 # Start production server (requires build first)
 ```
+
+### Serverless Functions (api/ Directory - Recommended)
+Serverless functions are deployed directly to Vercel and run on-demand. No separate server process needed.
+- Functions are located in `/api/` directory
+- Each file represents a separate API endpoint
+- Deploy using `vercel deploy` command
 
 ## Architecture Overview
 
@@ -43,12 +51,22 @@ pnpm start                 # Start production server (requires build first)
 - **Lightning CSS**: Used instead of PostCSS for CSS processing (configured in vite.config.ts)
 
 ### Backend Architecture
+
+#### Traditional Mode (server/ Directory)
 - **Express + TypeScript**: RESTful API with full type safety
 - **MongoDB + Mongoose**: Document database with schema validation
 - **JWT Authentication**: Token-based auth with automatic token refresh
 - **Route Structure**: Organized by feature (auth, memories, anniversaries, images)
 - **Middleware**: CORS, Helmet security, Morgan logging, custom auth middleware
 - **Environment-aware CORS**: Automatically switches between localhost (dev) and production URLs
+
+#### Serverless Mode (api/ Directory) - Recommended
+- **Vercel Serverless Functions**: On-demand execution with automatic scaling
+- **MongoDB + Native Driver**: Direct database operations using MongoDB native driver
+- **JWT Authentication**: Manual token validation in each function
+- **Route Structure**: Each file in `/api/` directory represents an endpoint
+- **Caching**: Connection reuse between function invocations
+- **Environment Configuration**: Managed in Vercel dashboard
 
 ### Key Architectural Patterns
 1. **API Client Pattern**: Single axios instance with request/response interceptors
@@ -62,11 +80,36 @@ pnpm start                 # Start production server (requires build first)
 
 **Frontend (.env)**:
 ```
-VITE_API_BASE_URL=http://localhost:3000/api
+# Serverless Mode (Recommended)
+VITE_USE_SERVERLESS_FUNCTIONS=true
+VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
+
+# Traditional Mode (Deprecated)
+# VITE_USE_SERVERLESS_FUNCTIONS=false
+# VITE_API_BASE_URL=http://localhost:3000/api
 VITE_ADMIN_PASSWORD=123456
 ```
 
-**Backend (server/.env)**:
+**Serverless Environment Variables (Vercel Dashboard)**:
+```
+# MongoDB Connection (Vercel Environment Variables)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+
+# JWT Secret (Vercel Environment Variables)
+JWT_SECRET=your-secure-jwt-secret-key
+
+# EmailJS Configuration (Vercel Environment Variables)
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID=your_emailjs_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_emailjs_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+EMAILJS_PRIVATE_KEY=your_emailjs_private_key
+
+# Cron Job Authentication (Optional, for protecting automatic reminder endpoint)
+CRON_AUTH_TOKEN=your_secure_cron_auth_token
+```
+
+**Traditional Backend (server/.env)**:
 ```
 MONGODB_URI=mongodb://localhost:27017/love-story  # or MongoDB Atlas
 JWT_SECRET=your-secret-key
@@ -90,9 +133,13 @@ EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 - **Database**: MongoDB Atlas recommended for production
 
 ### Key Files
-- `vercel.json`: SPA routing configuration for Vercel
-- `server/railway.json`: Railway deployment configuration
-- `server/server.ts`: Environment-aware CORS configuration
+- `vercel.json`: SPA routing configuration and Vercel Cron Jobs for Vercel
+- `server/railway.json`: Railway deployment configuration (traditional mode)
+- `server/server.ts`: Environment-aware CORS configuration (traditional mode)
+- `api/`: Vercel Serverless Functions directory (recommended mode)
+- `lib/db.ts`: Database connection utility for serverless functions
+- `lib/email.ts`: Email utilities for serverless functions
+- `lib/scheduler.ts`: Scheduling utilities for serverless functions
 - `.env.production`: Production environment variables template
 
 ## Important Implementation Details
@@ -111,11 +158,13 @@ EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 - File uploads handled with multipart/form-data for images
 
 ### Anniversary Email System
-- **Automated Daily Reminders**: Cron job runs at 7:00 AM daily (Asia/Shanghai timezone)
+- **Automated Daily Reminders**: Vercel Cron Job runs at 7:00 AM daily (Asia/Shanghai timezone)
 - **Global Anniversaries**: All anniversaries are shared globally, not user-specific
 - **Batch Email Sending**: Each anniversary reminder is sent to all registered users
 - **Test Functionality**: Manual trigger API and frontend buttons for testing email sending
 - **EmailJS Integration**: Uses private key authentication for secure email delivery
+- **Two-Template System**: Different templates for advance reminders vs. same-day celebrations
+- **Serverless Implementation**: Email sending logic implemented in serverless functions
 
 ### Styling System
 - Custom "Romantic Theme" with CSS variables (--romantic-*)

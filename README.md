@@ -118,6 +118,46 @@ EMAILJS_PUBLIC_KEY=your_public_key
 EMAILJS_PRIVATE_KEY=your_private_key
 ```
 
+#### 环境变量配置 (Serverless 模式)
+Serverless模式下，环境变量配置如下：
+
+**前端环境变量 (.env):**
+```
+# 架构模式设置 (true = Serverless 模式，推荐)
+VITE_USE_SERVERLESS_FUNCTIONS=true
+
+# Serverless 模式下的 API URL (生产环境)
+VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
+
+# 开发环境（可选，用于本地开发连接到Vercel函数）
+# VITE_SERVERLESS_API_URL=http://localhost:3000/api
+
+# 管理员密码
+VITE_ADMIN_PASSWORD=123456
+```
+
+**Serverless 环境变量 (Vercel Dashboard):**
+```
+# MongoDB连接 (Vercel Environment Variables)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+
+# JWT密钥 (Vercel Environment Variables)
+JWT_SECRET=your_secure_jwt_secret_key
+
+# EmailJS配置（纪念日邮件提醒，Vercel Environment Variables）
+EMAILJS_SERVICE_ID=your_service_id
+EMAILJS_TEMPLATE_ID=your_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_public_key
+EMAILJS_PRIVATE_KEY=your_private_key
+
+# Cron Job认证令牌（可选，用于保护自动提醒端点）
+CRON_AUTH_TOKEN=your_secure_cron_auth_token
+
+# 时区设置（用于Cron Jobs）
+TZ=Asia/Shanghai
+```
+
 #### 传统模式环境变量 (已弃用)
 如果使用传统模式（不推荐），环境变量配置如下：
 
@@ -315,6 +355,7 @@ railway up
   - `GET /api/anniversaries/[id]` - 获取单个纪念日
   - `PUT /api/anniversaries/[id]` - 更新纪念日
   - `DELETE /api/anniversaries/[id]` - 删除纪念日
+  - `POST /api/anniversaries/remind` - 发送纪念日提醒给所有用户
   - `POST /api/anniversaries/test-reminders` - 测试纪念日提醒
 
 - **图片管理**
@@ -325,7 +366,7 @@ railway up
 
 - **系统功能**
   - `GET /api/health` - 健康检查
-  - `POST /api/cron/anniversary-reminders` - 纪念日提醒定时任务 (Vercel Cron)
+  - `POST /api/cron/send-anniversary-reminders` - 纪念日提醒定时任务 (Vercel Cron)
 
 ## 功能模块
 
@@ -358,6 +399,7 @@ railway up
 - [x] 自动邮件提醒（每日早上7点，通过 Vercel Cron Job）
 - [x] 批量邮件发送（向所有用户发送）
 - [x] 测试发送功能 (`POST /api/anniversaries/test-reminders`)
+- [x] 单个纪念日提醒发送 (`POST /api/anniversaries/remind`)
 
 ## 重构说明
 

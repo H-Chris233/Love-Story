@@ -36,13 +36,15 @@
 
 ### 后端技术栈
 - **Node.js**: JavaScript运行时环境
-- **Express**: 轻量级后端API框架
+- **Vercel Serverless Functions**: 无服务器函数执行环境
 - **TypeScript**: 全局使用TypeScript进行类型安全开发
 - **MongoDB**: NoSQL文档数据库
-- **Mongoose**: MongoDB对象建模工具
+- **MongoDB Native Driver**: 原生数据库驱动（Serverless模式）
+- **Mongoose**: MongoDB对象建模工具（传统模式）
 - **JWT**: 身份认证令牌
 - **EmailJS**: 邮件发送服务
-- **Multer**: 文件上传中间件
+- **Multer**: 文件上传中间件（传统模式）
+- **Formidable**: 文件上传解析（Serverless模式）
 
 ### 开发与部署工具
 - **PNPM**: 高效的包管理器
@@ -123,10 +125,20 @@ love-story-website/
 
 #### 前端环境变量 (.env)
 ```
-VITE_API_BASE_URL=http://localhost:3000/api
+# 架构模式设置 (true = Serverless 模式，推荐)
+VITE_USE_SERVERLESS_FUNCTIONS=true
+
+# Serverless 模式下的 API URL (生产环境)
+VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
+
+# 开发环境（可选，用于本地开发连接到Vercel函数）
+# VITE_SERVERLESS_API_URL=http://localhost:3000/api
+
+# 管理员密码
+VITE_ADMIN_PASSWORD=123456
 ```
 
-#### 后端环境变量 (.env)
+#### 后端环境变量 (.env) - 传统模式
 ```
 # 服务器端口
 PORT=3000
@@ -143,51 +155,87 @@ EMAILJS_TEMPLATE_ID=your_reminder_template_id
 EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
 EMAILJS_PUBLIC_KEY=your_public_key
 EMAILJS_PRIVATE_KEY=your_private_key
+
+# Cron Job认证令牌（可选，用于保护自动提醒端点）
+CRON_AUTH_TOKEN=your_secure_cron_auth_token
+```
+
+#### Serverless 环境变量 (Vercel Dashboard) - 推荐模式
+```
+# MongoDB连接
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database_name
+
+# JWT密钥
+JWT_SECRET=your_secure_jwt_secret_key
+
+# EmailJS配置（纪念日邮件提醒）
+EMAILJS_SERVICE_ID=your_service_id
+EMAILJS_TEMPLATE_ID=your_reminder_template_id
+EMAILJS_TODAY_TEMPLATE_ID=your_celebration_template_id
+EMAILJS_PUBLIC_KEY=your_public_key
+EMAILJS_PRIVATE_KEY=your_private_key
+
+# Cron Job认证令牌（可选，用于保护自动提醒端点）
+CRON_AUTH_TOKEN=your_secure_cron_auth_token
+
+# 时区设置（用于Cron Jobs）
+TZ=Asia/Shanghai
 ```
 
 ## 部署方案
 
 ### JAMstack 部署（推荐）
 
-#### 前端部署到 Vercel
-- 使用Vite构建生产版本
-- 已配置 `vercel.json` 支持 Vue Router
-- 自动处理静态资源缓存
-- 支持环境变量配置
+#### Serverless 部署模式 (新推荐)
+- **架构**: Vue.js 前端 + Vercel Serverless Functions + MongoDB Atlas
+- **前端部署到 Vercel**:
+  - 使用Vite构建生产版本
+  - 已配置 `vercel.json` 支持 Vue Router 和 Cron Jobs
+  - 自动处理静态资源缓存
+  - 支持环境变量配置
 
-#### 后端部署到 Railway
-- 已配置 `railway.json` 部署文件
-- 支持健康检查端点 `/health`
-- 自动构建和部署
-- 环境变量管理
+- **后端部署到 Vercel**:
+  - Serverless Functions 部署在 Vercel 平台
+  - 无需管理服务器实例
+  - 自动扩展，按需付费
+  - 集成日志和监控
 
 #### 环境配置
-- **开发环境**: 本地 `http://localhost:5173` 和 `http://localhost:3000`
-- **生产环境**: Vercel + Railway 云服务
-- **CORS配置**: 根据环境自动切换允许的域名
+- **开发环境**: 本地 `http://localhost:5173` (前端) + Vercel Functions (后端)
+- **生产环境**: Vercel 前后端 + MongoDB Atlas
+- **环境变量**: 通过 `VITE_USE_SERVERLESS_FUNCTIONS` 控制架构模式
 
-#### 部署步骤
-1. **后端Railway部署**:
-   ```bash
-   cd server
-   railway login
-   railway init
-   railway up
-   ```
-
-2. **前端Vercel部署**:
+#### 部署步骤 (Serverless 模式)
+1. **Vercel 部署**:
    ```bash
    vercel login
    vercel --prod
    ```
 
-3. **环境变量设置**:
-   - Railway: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL`
-   - Vercel: `VITE_API_BASE_URL`
+2. **环境变量设置**:
+   - Vercel Dashboard: 
+     - `VITE_USE_SERVERLESS_FUNCTIONS=true`
+     - `MONGODB_URI`, `JWT_SECRET`, `EMAILJS_*` 系列变量
+     - `CRON_AUTH_TOKEN` (可选)
+
+#### 传统部署模式 (已弃用)
+- **架构**: Vue.js 前端 + Express.js 后端服务器 + MongoDB
+- **前端部署到 Vercel**:
+  - 使用Vite构建生产版本
+  - 已配置 `vercel.json` 支持 Vue Router
+  - 自动处理静态资源缓存
+  - 支持环境变量配置
+
+- **后端部署到 Railway**:
+  - 已配置 `railway.json` 部署文件
+  - 支持健康检查端点 `/health`
+  - 自动构建和部署
+  - 环境变量管理
 
 ### 数据库
 - MongoDB Atlas云数据库（推荐）
 - 支持本地MongoDB开发
+- Serverless Functions 使用原生 MongoDB 驱动连接数据库
 
 ## 项目特点
 
@@ -291,7 +339,7 @@ pnpm remove postcss autoprefixer
 5. **错误处理**: 记录发送成功和失败的数量，并输出详细错误信息
 6. **速率限制**: 每封邮件之间间隔1秒，避免触发邮件服务商的速率限制
 
-### 纪念日模型变更
+#### 纪念日模型变更
 - **移除用户关联**: 纪念日不再属于特定用户
 - **全局共享**: 所有用户都能看到和管理所有纪念日
 - **统一提醒**: 一个纪念日会向所有用户发送邮件提醒
@@ -301,6 +349,18 @@ pnpm remove postcss autoprefixer
 - **测试范围**: 发送未来7天内的所有纪念日提醒
 - **前端按钮**: "测试发送所有邮件提醒" 按钮
 - **单个发送**: 每个纪念日卡片上的 📧 按钮可单独测试发送
+
+### Serverless 架构增强
+- **新增API端点**: 
+  - `POST /api/anniversaries/remind` - 发送单个纪念日提醒给所有用户
+  - `POST /api/cron/send-anniversary-reminders` - 自动邮件提醒cron任务
+  - `POST /api/images/upload` - 图片上传
+  - `DELETE /api/images/[id]` - 删除图片
+- **Serverless优化**: 
+  - 数据库连接复用
+  - 无状态函数设计
+  - Vercel Cron Jobs集成
+- **架构灵活性**: 支持Serverless和传统两种部署模式
 
 ### 邮件发送状态
 - **成功统计**: 记录成功发送的邮件数量

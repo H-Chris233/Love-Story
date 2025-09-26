@@ -24,6 +24,7 @@ Both architectures implement the same core functionality:
 - **create** (`POST /api/anniversaries/create`): Create new anniversary with validation
 - **update** (`PUT /api/anniversaries/[id]`): Update existing anniversary
 - **delete** (`DELETE /api/anniversaries/[id]`): Delete specific anniversary
+- **send reminder** (`POST /api/anniversaries/remind`): Send reminder for specific anniversary to all users
 - **test reminders** (`POST /api/anniversaries/test-reminders`): Test anniversary reminder system
 
 ### Images Management
@@ -34,7 +35,7 @@ Both architectures implement the same core functionality:
 
 ### System Functionality
 - **health check** (`GET /api/health`): Verify system status
-- **cron job** (`POST /api/cron/anniversary-reminders`): Daily anniversary reminder processing
+- **cron job** (`POST /api/cron/send-anniversary-reminders`): Daily anniversary reminder processing
 
 ## Architectural Differences
 
@@ -45,6 +46,7 @@ Both architectures implement the same core functionality:
 ### 2. Scheduling
 - **Traditional**: node-cron module running continuously on the server to trigger daily anniversary reminders
 - **Serverless**: Vercel Cron Jobs making HTTP requests to trigger anniversary reminder processing
+- **Authentication**: Serverless cron jobs require authentication token for security (CRON_AUTH_TOKEN)
 
 ### 3. File Upload Handling
 - **Traditional**: Multer middleware integrated into Express.js pipeline
@@ -57,6 +59,7 @@ Both architectures implement the same core functionality:
 ### 5. Configuration
 - **Traditional**: Environment variables loaded via dotenv, server started explicitly
 - **Serverless**: Environment variables configured in Vercel dashboard, functions automatically deployed
+- **Cron Jobs**: Vercel Cron Jobs configured in vercel.json, requiring authentication for security
 
 ### 6. Error Handling and Logging
 - **Traditional**: Comprehensive logging using morgan and custom error handlers

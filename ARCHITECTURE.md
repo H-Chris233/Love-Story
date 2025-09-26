@@ -88,20 +88,49 @@ EMAILJS_PRIVATE_KEY=your_private_key
 Serverless 函数存放在 `api/` 目录下：
 ```
 api/
-├── auth/
-│   ├── register.ts     # 用户注册
-│   ├── login.ts        # 用户登录
-│   └── profile.ts      # 用户资料
-├── memories/
-│   ├── index.ts        # 获取所有记忆
-│   └── create.ts       # 创建记忆
 ├── anniversaries/
+│   ├── [id].ts         # 获取、更新、删除特定纪念日
+│   ├── create.ts       # 创建纪念日
 │   ├── index.ts        # 获取所有纪念日
-│   └── create.ts       # 创建纪念日
+│   ├── remind.ts       # 发送纪念日提醒
+│   └── test-reminders.ts # 测试发送所有纪念日提醒
+├── auth/
+│   ├── [endpoint].ts   # 认证相关操作（注册、登录、资料等）
+│   ├── login.ts        # 用户登录
+│   ├── profile.ts      # 用户资料
+│   └── register.ts     # 用户注册
 ├── cron/
-│   └── anniversary-reminders.ts  # 定时任务：纪念日提醒
-└── health.ts           # 健康检查
+│   └── send-anniversary-reminders.ts # 定时任务：纪念日提醒
+├── images/
+│   ├── [id].ts         # 获取、删除特定图片
+│   └── upload.ts       # 上传图片
+├── memories/
+│   ├── [id].ts         # 获取、更新、删除特定记忆
+│   ├── index.ts        # 获取所有记忆
+│   └── create.ts       # 创建记忆（在index.ts中实现POST）
+├── utils/
+│   └── imageUpload.ts  # 图片上传工具
+├── health.ts           # 健康检查
+└── vercel.json         # Vercel配置文件
 ```
+
+## 功能兼容性
+
+### 完全兼容的功能
+- 用户注册与登录
+- 记忆（Memories）管理
+- 纪念日（Anniversaries）管理
+- 用户资料管理
+- 图片上传和管理
+- 纪念日邮件提醒
+- 自动邮件提醒调度
+- 手动提醒测试
+
+### 需要特殊配置的功能
+- **定时任务**：在 Serverless 模式下使用 Vercel Cron Jobs 替代 node-cron
+  - 路径: `/api/cron/send-anniversary-reminders`
+  - 调度: `0 7 * * *` (每天早上 7 点)
+  - 需要设置环境变量 `CRON_AUTH_TOKEN` 来保护端点
 
 ## 数据库适配
 
