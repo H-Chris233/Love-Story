@@ -28,6 +28,7 @@
     "bcryptjs": "^2.4.3",
     "dayjs": "^1.11.18",
     "emailjs": "^4.0.3",
+    "eruda": "^3.0.1",
     "formidable": "^3.5.4",
     "heroicons": "^2.2.0",
     "jsonwebtoken": "^9.0.0",

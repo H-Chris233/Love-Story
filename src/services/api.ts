@@ -59,6 +59,27 @@ const determineBaseURL = (): string => {
   }
 };
 
+// 运行时配置验证
+const validateApiConfig = () => {
+  const useServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true';
+  
+  if (useServerless) {
+    const serverlessUrl = import.meta.env.VITE_SERVERLESS_API_URL;
+    if (!serverlessUrl) {
+      console.warn('⚠️  [API] Using serverless functions but VITE_SERVERLESS_API_URL is not set. Defaulting to /api');
+    } else {
+      console.log('✅ [API] Using serverless functions with URL:', serverlessUrl);
+    }
+  } else {
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    console.log('✅ [API] Using traditional server with URL:', apiBaseUrl);
+  }
+  console.log('🌐 [API] Current mode - Serverless:', useServerless);
+};
+
+// 验证配置
+validateApiConfig();
+
 // 创建axios实例
 const apiClient: AxiosInstance = axios.create({
   baseURL: determineBaseURL(),
@@ -68,15 +89,34 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// 前端日志控制函数
+const shouldLog = (level: 'debug' | 'info' | 'warn' | 'error' = 'info'): boolean => {
+  // 在开发模式下，所有级别的日志都显示
+  // 在生产模式下，只显示warn和error级别的日志
+  if (import.meta.env.DEV) {
+    return true;
+  }
+  
+  // 生产模式下只显示warn和error
+  const logLevel = import.meta.env.VITE_LOG_LEVEL || 'warn';
+  const levels = ['error', 'warn', 'info', 'debug'];
+  const minLevelIndex = levels.indexOf(logLevel) || 1; // 默认是warn (index=1)
+  const currentLevelIndex = levels.indexOf(level);
+  
+  return currentLevelIndex >= minLevelIndex;
+};
+
 // 请求拦截器
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    console.log('🔍 [API] Request sent:', {
-      url: config.url,
-      method: config.method,
-      headers: config.headers,
-      data: config.data instanceof FormData ? 'FormData with ' + Array.from(config.data.entries()).length + ' entries' : config.data
-    });
+    if (shouldLog('info')) {
+      console.log('🔍 [API] Request sent:', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data instanceof FormData ? 'FormData with ' + Array.from(config.data.entries()).length + ' entries' : config.data
+      });
+    }
     
     // 添加认证token
     const token = localStorage.getItem('token');
@@ -92,11 +132,13 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ [API] Request error:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
+    if (shouldLog('error')) {
+      console.error('❌ [API] Request error:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+    }
     
     return Promise.reject(error);
   }
@@ -105,30 +147,36 @@ apiClient.interceptors.request.use(
 // 响应拦截器
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('✅ [API] Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.config.url,
-      method: response.config.method,
-      data: response.data
-    });
+    if (shouldLog('info')) {
+      console.log('✅ [API] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.config.url,
+        method: response.config.method,
+        data: response.data
+      });
+    }
     
     return response;
   },
   (error) => {
-    console.error('❌ [API] Response error:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      config: error.config,
-      timestamp: new Date().toISOString(),
-      url: error.config?.url,
-      method: error.config?.method
-    });
+    if (shouldLog('error')) {
+      console.error('❌ [API] Response error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        config: error.config,
+        timestamp: new Date().toISOString(),
+        url: error.config?.url,
+        method: error.config?.method
+      });
+    }
     
     if (error.response?.status === 401) {
       // 处理未授权错误
-      console.log('🔒 [API] Unauthorized - clearing token and redirecting to login');
+      if (shouldLog('info')) {
+        console.log('🔒 [API] Unauthorized - clearing token and redirecting to login');
+      }
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

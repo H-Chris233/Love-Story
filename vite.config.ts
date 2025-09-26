@@ -49,7 +49,9 @@ export default defineConfig(({ mode }) => {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // For Vercel dev server, target should be the same port where vercel runs functions
+        // In most cases this will be the same port as the Vite dev server when using vercel dev
+        target: process.env.API_TARGET || 'http://localhost:3000',
         changeOrigin: true,
         secure: false
       }

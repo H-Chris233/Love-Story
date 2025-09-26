@@ -29,6 +29,7 @@ class Logger {
     }
     
     console.log(`🔧 [LOGGER] Log level set to: ${LogLevel[this.logLevel]}`);
+    console.log(`🔧 [LOGGER] Environment: ${process.env.NODE_ENV || 'development'}`);
   }
 
   error(message: string, ...args: any[]): void {

@@ -41,6 +41,7 @@ class ServerlessLogger {
     
     if (typeof window === 'undefined') { // Only log in server environment
       console.log(`🔧 [LOGGER] Log level set to: ${LogLevel[this.logLevel]} (serverless)`);
+      console.log(`🔧 [LOGGER] Environment: ${process.env.NODE_ENV || 'development'}`);
     }
   }
 
