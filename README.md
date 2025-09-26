@@ -336,14 +336,17 @@ railway up
 ```
 
 #### API 端点列表 (Serverless 模式)
-- **用户认证**
+- **用户认证** (动态路由端点: /api/auth/[endpoint])
   - `POST /api/auth/register` - 用户注册
   - `POST /api/auth/login` - 用户登录
   - `GET /api/auth/profile` - 获取用户资料
+  - `GET /api/auth/users` - 获取所有用户 (管理员)
+  - `DELETE /api/auth/users/:userId` - 删除用户 (管理员)
+  - `GET /api/auth/check-registration` - 检查注册是否允许
 
 - **回忆管理**
   - `GET /api/memories` - 获取回忆列表
-  - `POST /api/memories/create` - 创建新回忆
+  - `POST /api/memories` - 创建新回忆
   - `GET /api/memories/[id]` - 获取单个回忆
   - `PUT /api/memories/[id]` - 更新回忆
   - `DELETE /api/memories/[id]` - 删除回忆
@@ -359,7 +362,7 @@ railway up
 
 - **图片管理**
   - `POST /api/images/upload` - 上传图片
-  - `GET /api/images` - 获取用户图片列表
+  - `GET /api/images` - 获取所有图片
   - `GET /api/images/[id]` - 获取/下载特定图片
   - `DELETE /api/images/[id]` - 删除特定图片
 
@@ -376,13 +379,7 @@ railway up
 - [x] 用户资料
 
 ### 记忆时光轴
-- [x] 创建记忆 (`POST /api/memories/create`)
-- [x] 获取记忆列表 (`GET /api/memories`)
-- [x] 获取单个记忆 (`GET /api/memories/[id]`)
-- [x] 编辑记忆 (`PUT /api/memories/[id]`)
-- [x] 删除记忆 (`DELETE /api/memories/[id]`)
-- [x] 查看记忆详情
-- [x] 时间排序
+- [x] 创建记忆 (`POST /api/memories`)
 
 ### 照片相册
 - [x] 图片上传与管理 (`POST /api/images/upload`)

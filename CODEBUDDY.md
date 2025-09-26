@@ -60,11 +60,11 @@ Serverless functions are deployed directly to Vercel and run on-demand. No separ
 - **Middleware**: CORS, Helmet security, Morgan logging, custom auth middleware
 - **Environment-aware CORS**: Automatically switches between localhost (dev) and production URLs
 
-#### Serverless Mode (api/ Directory) - Recommended
+#### Serverless Mode (Recommended) (api/ Directory) - Recommended
 - **Vercel Serverless Functions**: On-demand execution with automatic scaling
 - **MongoDB + Native Driver**: Direct database operations using MongoDB native driver
 - **JWT Authentication**: Manual token validation in each function
-- **Route Structure**: Each file in `/api/` directory represents an endpoint
+- **Route Structure**: Each file in `/api/` directory represents an endpoint, with dynamic routes using [endpoint].ts and [id].ts patterns
 - **Caching**: Connection reuse between function invocations
 - **Environment Configuration**: Managed in Vercel dashboard
 

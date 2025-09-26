@@ -45,6 +45,7 @@
 - **EmailJS**: 邮件发送服务
 - **Multer**: 文件上传中间件（传统模式）
 - **Formidable**: 文件上传解析（Serverless模式）
+- **动态路由**: 使用 [endpoint].ts 和 [id].ts 实现灵活的端点映射
 
 ### 开发与部署工具
 - **PNPM**: 高效的包管理器
