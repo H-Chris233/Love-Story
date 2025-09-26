@@ -1,7 +1,7 @@
 // api/images/upload.ts
 // Vercel Serverless Function for uploading images
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { uploadImage } from '../utils/imageUpload';
+import { uploadImage } from '../utils/imageUpload.js';
 import { Readable } from 'stream';
 
 // Define image upload result type
