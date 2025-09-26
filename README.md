@@ -123,7 +123,9 @@ Serverless模式下，环境变量配置如下：
 
 **前端环境变量 (.env):**
 ```
-# 架构模式设置 (true = Serverless 模式，推荐)
+# 架构模式开关
+# true = 使用 Vercel Serverless Functions (推荐)
+# false = 使用传统 Express 服务器 (已弃用)
 VITE_USE_SERVERLESS_FUNCTIONS=true
 
 # Serverless 模式下的 API URL (生产环境)
@@ -131,9 +133,6 @@ VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
 
 # 开发环境（可选，用于本地开发连接到Vercel函数）
 # VITE_SERVERLESS_API_URL=http://localhost:3000/api
-
-# 管理员密码
-VITE_ADMIN_PASSWORD=123456
 ```
 
 **Serverless 环境变量 (Vercel Dashboard):**

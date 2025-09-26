@@ -133,9 +133,6 @@ VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
 
 # 开发环境（可选，用于本地开发连接到Vercel函数）
 # VITE_SERVERLESS_API_URL=http://localhost:3000/api
-
-# 管理员密码
-VITE_ADMIN_PASSWORD=123456
 ```
 
 #### 后端环境变量 (.env) - 传统模式

@@ -87,7 +87,6 @@ VITE_SERVERLESS_API_URL=https://your-vercel-project.vercel.app/api
 # Traditional Mode (Deprecated)
 # VITE_USE_SERVERLESS_FUNCTIONS=false
 # VITE_API_BASE_URL=http://localhost:3000/api
-VITE_ADMIN_PASSWORD=123456
 ```
 
 **Serverless Environment Variables (Vercel Dashboard)**:
