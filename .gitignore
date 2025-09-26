@@ -34,3 +34,4 @@ coverage
 .env.local
 .env.production
 server/.env
+.vercel

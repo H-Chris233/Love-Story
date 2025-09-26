@@ -13,7 +13,8 @@
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
     "format": "prettier --write src/",
-    "vercel-build": "vite build"
+    "vercel-build": "vite build",
+    "clear-db": "tsx scripts/clear-database.ts"
   },
   "dependencies": {
     "@types/axios": "^0.14.4",
@@ -24,7 +25,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "axios": "^1.12.2",
-    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
     "dayjs": "^1.11.18",
     "emailjs": "^4.0.3",
     "formidable": "^3.5.4",
@@ -48,6 +49,7 @@
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
+    "dotenv": "^17.2.2",
     "eslint": "^9.36.0",
     "eslint-plugin-playwright": "^2.2.2",
     "eslint-plugin-vue": "^10.5.0",
@@ -56,6 +58,7 @@
     "lightningcss": "^1.30.1",
     "npm-run-all2": "^8.0.4",
     "prettier": "^3.6.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-plugin-pwa": "^1.0.3",
