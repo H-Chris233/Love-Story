@@ -4,7 +4,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';
-import { triggerManualReminderCheck } from '../../lib/scheduler';
+import { triggerManualReminderCheck } from '../../lib/scheduler.js';
 
 // Define JWT payload type
 interface JwtPayload {

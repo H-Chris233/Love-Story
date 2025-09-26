@@ -2,7 +2,7 @@
 // Vercel Serverless Function for automatically sending anniversary reminders
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
-import { sendAnniversaryReminderToAllUsers } from '../../lib/email';
+import { sendAnniversaryReminderToAllUsers } from '../../lib/email.js';
 import { Db, ObjectId } from 'mongodb';
 
 // Define Anniversary type
