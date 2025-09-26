@@ -1,8 +1,66 @@
 // api/images/[id].ts
 // Vercel Serverless Function for retrieving or deleting an image
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { deleteImage, getImage } from '../utils/imageUpload.js';
-import { ObjectId } from 'mongodb';
+import { connectToDatabase } from '../../lib/db.js';
+import { GridFSBucket, ObjectId } from 'mongodb';
+
+// Define image upload result type
+interface ImageUploadResult {
+  url: string;
+  publicId: string;
+}
+
+/**
+ * Delete an image from GridFS
+ * @param publicId - The public ID of the image to delete
+ */
+async function deleteImage(publicId: string): Promise<void> {
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Create a GridFS bucket
+    const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    
+    // Convert the publicId string back to ObjectId
+    const fileId = new ObjectId(publicId);
+    
+    // Delete the file from GridFS
+    await bucket.delete(fileId);
+    
+    console.log(`Image with ID ${publicId} deleted from GridFS`);
+  } catch (error) {
+    console.error(`Error deleting image with ID ${publicId} from GridFS:`, error);
+    throw new Error(`Failed to delete image: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Get an image from GridFS
+ * @param publicId - The public ID of the image to retrieve
+ */
+async function getImage(publicId: string) {
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Create a GridFS bucket
+    const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    
+    // Convert the publicId string back to ObjectId
+    const fileId = new ObjectId(publicId);
+    
+    // Find the file in GridFS
+    const file = await bucket.find({ _id: fileId }).limit(1).toArray();
+    
+    if (file.length === 0) {
+      throw new Error('File not found');
+    }
+    
+    return file[0];
+  } catch (error) {
+    console.error(`Error retrieving image with ID ${publicId} from GridFS:`, error);
+    throw new Error(`Failed to retrieve image: ${(error as Error).message}`);
+  }
+}
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   const { id } = request.query;

@@ -1,8 +1,63 @@
 // api/images/upload.ts
 // Vercel Serverless Function for uploading images
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { uploadImage } from '../utils/imageUpload.js';
+import { connectToDatabase } from '../../lib/db.js';
+import { GridFSBucket, ObjectId } from 'mongodb';
 import { Readable } from 'stream';
+
+// Define image upload result type
+interface ImageUploadResult {
+  url: string;
+  publicId: string;
+}
+
+/**
+ * Upload an image to GridFS
+ * @param buffer - The image buffer to upload
+ * @param originalName - The original name of the file
+ * @param mimeType - The MIME type of the file
+ * @returns The upload result containing URL and public ID
+ */
+async function uploadImage(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string
+): Promise<ImageUploadResult> {
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Create a GridFS bucket
+    const bucket = new GridFSBucket(db, { bucketName: 'images' });
+    
+    // Generate a unique filename
+    const filename = `${Date.now()}-${originalName}`;
+    
+    // Upload the image to GridFS
+    const uploadStream = bucket.openUploadStream(filename, {
+      contentType: mimeType,
+      metadata: {
+        originalName,
+        uploadDate: new Date(),
+      }
+    });
+    
+    // Write the buffer to the upload stream
+    const result = await new Promise<ObjectId>((resolve, reject) => {
+      uploadStream.on('error', reject);
+      uploadStream.on('finish', () => resolve(uploadStream.id));
+      uploadStream.end(buffer);
+    });
+    
+    // Return the result with the image ID as the public ID
+    return {
+      url: `/api/images/${result}`, // This would be the path to retrieve the image
+      publicId: result.toString()
+    };
+  } catch (error) {
+    console.error('Error uploading image to GridFS:', error);
+    throw new Error(`Failed to upload image: ${(error as Error).message}`);
+  }
+}
 
 // Define image upload result type
 interface ImageUploadResult {
