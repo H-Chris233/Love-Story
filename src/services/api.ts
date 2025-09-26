@@ -487,7 +487,7 @@ export const anniversaryAPI = {
     
   sendReminder: (id: string): Promise<AxiosResponse<{ message: string; details: any }>> => {
     console.log('🎉 [API] Send anniversary reminder request:', id);
-    return apiClient.post<{ message: string; details: any }>(`/anniversaries/${id}/remind`)
+    return apiClient.post<{ message: string; details: any }>('/anniversaries/remind', { anniversaryId: id })
       .catch(error => {
         console.error('❌ [API] Send anniversary reminder failed:', {
           message: error.message,
@@ -500,7 +500,7 @@ export const anniversaryAPI = {
     
   testSendAllReminders: (): Promise<AxiosResponse<{ message: string; details?: any }>> => {
     console.log('🎉 [API] Test send all anniversary reminders request');
-    return apiClient.post<{ message: string; details?: any }>('/anniversaries/test-reminders')
+    return apiClient.post<{ message: string; details?: any }>('/anniversaries/remind', { testAllReminders: true })
       .catch(error => {
         console.error('❌ [API] Test send all anniversary reminders failed:', {
           message: error.message,

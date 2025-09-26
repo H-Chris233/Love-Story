@@ -353,12 +353,11 @@ railway up
 
 - **纪念日管理**
   - `GET /api/anniversaries` - 获取纪念日列表
-  - `POST /api/anniversaries/create` - 创建新纪念日
+  - `POST /api/anniversaries` - 创建新纪念日
   - `GET /api/anniversaries/[id]` - 获取单个纪念日
   - `PUT /api/anniversaries/[id]` - 更新纪念日
   - `DELETE /api/anniversaries/[id]` - 删除纪念日
-  - `POST /api/anniversaries/remind` - 发送纪念日提醒给所有用户
-  - `POST /api/anniversaries/test-reminders` - 测试纪念日提醒
+  - `POST /api/anniversaries/remind` - 发送纪念日提醒给所有用户 (需提供 anniversaryId) 或测试发送所有提醒 (需提供 testAllReminders=true)
 
 - **图片管理**
   - `POST /api/images/upload` - 上传图片
@@ -387,15 +386,15 @@ railway up
 - [x] 照片浏览与删除 (`GET /api/images`, `GET /api/images/[id]`, `DELETE /api/images/[id]`)
 
 ### 纪念日提醒
-- [x] 创建纪念日 (`POST /api/anniversaries/create`)
+- [x] 创建纪念日 (`POST /api/anniversaries`)
 - [x] 获取纪念日列表 (`GET /api/anniversaries`)
 - [x] 获取单个纪念日 (`GET /api/anniversaries/[id]`)
 - [x] 编辑纪念日 (`PUT /api/anniversaries/[id]`)
 - [x] 删除纪念日 (`DELETE /api/anniversaries/[id]`)
 - [x] 自动邮件提醒（每日早上7点，通过 Vercel Cron Job）
 - [x] 批量邮件发送（向所有用户发送）
-- [x] 测试发送功能 (`POST /api/anniversaries/test-reminders`)
-- [x] 单个纪念日提醒发送 (`POST /api/anniversaries/remind`)
+- [x] 测试发送功能 (`POST /api/anniversaries/remind` with testAllReminders=true)
+- [x] 单个纪念日提醒发送 (`POST /api/anniversaries/remind` with anniversaryId)
 
 ## 重构说明
 

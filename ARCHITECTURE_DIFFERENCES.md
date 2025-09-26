@@ -27,7 +27,7 @@ Both architectures implement the same core functionality:
 - **update** (`PUT /api/anniversaries/[id]`): Update existing anniversary
 - **delete** (`DELETE /api/anniversaries/[id]`): Delete specific anniversary
 - **send reminder** (`POST /api/anniversaries/remind`): Send reminder for specific anniversary to all users
-- **test reminders** (`POST /api/anniversaries/test-reminders`): Test anniversary reminder system
+- **test reminders** (`POST /api/anniversaries/remind` with `testAllReminders=true`): Test anniversary reminder system
 
 ### Images Management
 - **upload** (`POST /api/images/upload`): Upload images to GridFS
