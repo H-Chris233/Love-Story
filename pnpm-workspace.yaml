@@ -1,0 +1,5 @@
+# pnpm-workspace.yaml
+# 定义工作区包
+packages:
+  - 'server'
+  - 'api'
