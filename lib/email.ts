@@ -1,6 +1,6 @@
 // lib/email.ts
 // Email utilities for serverless functions
-import emailjs from 'emailjs';
+import * as emailjs from 'emailjs';
 
 // Email service configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || '';
