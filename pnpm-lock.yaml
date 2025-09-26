@@ -41,6 +41,9 @@ importers:
       emailjs:
         specifier: ^4.0.3
         version: 4.0.3(typescript@5.9.2)
+      eruda:
+        specifier: ^3.0.1
+        version: 3.4.3
       formidable:
         specifier: ^3.5.4
         version: 3.5.4
@@ -2358,6 +2361,9 @@ packages:
 
   error-stack-parser-es@1.0.5:
     resolution: {integrity: sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA==}
+
+  eruda@3.4.3:
+    resolution: {integrity: sha512-J2TsF4dXSspOXev5bJ6mljv0dRrxj21wklrDzbvPmYaEmVoC+2psylyRi70nUPFh1mTQfIBsSusUtAMZtUN+/w==}
 
   es-abstract@1.24.0:
     resolution: {integrity: sha512-WSzPgsdLtTcQwm4CROfS5ju2Wa1QQcVeT37jFjYzdFz1r9ahadC8B8/a4qxJxM+09F18iumCdRmlr96ZYkQvEg==}
@@ -7035,6 +7041,8 @@ snapshots:
   entities@6.0.1: {}
 
   error-stack-parser-es@1.0.5: {}
+
+  eruda@3.4.3: {}
 
   es-abstract@1.24.0:
     dependencies:

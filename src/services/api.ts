@@ -83,7 +83,7 @@ validateApiConfig();
 // 创建axios实例
 const apiClient: AxiosInstance = axios.create({
   baseURL: determineBaseURL(),
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
