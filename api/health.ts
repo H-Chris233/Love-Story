@@ -1,6 +1,6 @@
 // Vercel Serverless Function - API Health Check
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../lib/db';
+import { connectToDatabase } from '../lib/db.js';
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   console.log('🔍 [HEALTH-CHECK] Health check endpoint called');

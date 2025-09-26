@@ -1,7 +1,7 @@
 // api/auth/[endpoint].ts
 // Vercel Serverless Function for authentication-related operations
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../../lib/db';
+import { connectToDatabase } from '../../lib/db.js';
 import { hash, compare } from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';

@@ -2,7 +2,7 @@
 // Image upload utilities for serverless functions
 
 import { GridFSBucket, ObjectId } from 'mongodb';
-import { connectToDatabase } from '../../lib/db';
+import { connectToDatabase } from '../../lib/db.js';
 
 // Define image upload result type
 interface ImageUploadResult {

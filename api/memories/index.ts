@@ -1,7 +1,7 @@
 // api/memories/index.ts
 // Vercel Serverless Function for getting all memories and creating a new one
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../../lib/db';
+import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';
 

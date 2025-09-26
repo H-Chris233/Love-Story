@@ -1,7 +1,7 @@
 // api/anniversaries/test-reminders.ts
 // Vercel Serverless Function for testing sending all anniversary reminders
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../../lib/db';
+import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';
 import { triggerManualReminderCheck } from '../../lib/scheduler';
