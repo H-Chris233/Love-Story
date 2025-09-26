@@ -10,6 +10,8 @@ Both architectures implement the same core functionality:
 - **register** (`POST /api/auth/register`): Create new user accounts with validation
 - **login** (`POST /api/auth/login`): Authenticate users with email/password
 - **profile** (`GET /api/auth/profile`): Retrieve authenticated user profile
+- **users management** (`GET /api/auth/users`, `DELETE /api/auth/users/:userId`): Admin user management
+- **registration check** (`GET /api/auth/check-registration`): Check if registration is allowed
 
 ### Memories Management
 - **get all** (`GET /api/memories`): Retrieve all memories for authenticated user

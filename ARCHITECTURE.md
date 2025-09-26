@@ -95,24 +95,33 @@ api/
 │   ├── remind.ts       # 发送纪念日提醒
 │   └── test-reminders.ts # 测试发送所有纪念日提醒
 ├── auth/
-│   ├── [endpoint].ts   # 认证相关操作（注册、登录、资料等）
-│   ├── login.ts        # 用户登录
-│   ├── profile.ts      # 用户资料
-│   └── register.ts     # 用户注册
+│   └── [endpoint].ts   # 综合认证端点（注册、登录、资料、用户管理等）
 ├── cron/
 │   └── send-anniversary-reminders.ts # 定时任务：纪念日提醒
 ├── images/
 │   ├── [id].ts         # 获取、删除特定图片
+│   ├── index.ts        # 获取所有图片
 │   └── upload.ts       # 上传图片
 ├── memories/
 │   ├── [id].ts         # 获取、更新、删除特定记忆
-│   ├── index.ts        # 获取所有记忆
-│   └── create.ts       # 创建记忆（在index.ts中实现POST）
+│   └── index.ts        # 获取所有记忆
 ├── utils/
 │   └── imageUpload.ts  # 图片上传工具
 ├── health.ts           # 健康检查
 └── vercel.json         # Vercel配置文件
 ```
+
+## API 端点映射
+
+### 动态路由端点
+
+#### 认证端点 (api/auth/[endpoint].ts)
+- `POST /api/auth/register` - 用户注册
+- `POST /api/auth/login` - 用户登录
+- `GET /api/auth/profile` - 获取用户资料
+- `GET /api/auth/users` - 获取所有用户（管理员）
+- `DELETE /api/auth/users/:userId` - 删除用户（管理员）
+- `GET /api/auth/check-registration` - 检查注册是否允许
 
 ## 功能兼容性
 
