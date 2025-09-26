@@ -396,6 +396,11 @@ railway up
 - [x] 测试发送功能 (`POST /api/anniversaries/remind` with testAllReminders=true)
 - [x] 单个纪念日提醒发送 (`POST /api/anniversaries/remind` with anniversaryId)
 
+### 系统功能
+- [x] 结构化日志记录（兼容 Serverless 和传统服务器架构）
+- [x] 健康检查 (`GET /api/health`)
+- [x] 定时任务处理（通过 Vercel Cron Job）
+
 ## 重构说明
 
 ### Tailwind CSS优先策略
