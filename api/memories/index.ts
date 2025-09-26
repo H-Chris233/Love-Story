@@ -4,6 +4,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';
+import logger from '../../lib/logger.js';
+import { getClientIP } from '../utils.js';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -33,10 +35,17 @@ interface User {
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
+  const ip = getClientIP(request);
+  
   if (request.method === 'GET') {
     // Get all shared memories
     try {
-      console.log('🔍 [MEMORIES] Fetching all shared memories');
+      logger.memory('Fetching all shared memories', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
       
       // Connect to database
       const { db } = await connectToDatabase();
@@ -74,20 +83,23 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         })
       );
 
-      console.log('✅ [MEMORIES] Successfully fetched', memoriesWithUser.length, 'shared memories');
+      logger.memory(`Successfully fetched ${memoriesWithUser.length} shared memories`, {
+        count: memoriesWithUser.length,
+        timestamp: new Date().toISOString()
+      });
       
       return vercelResponse.status(200).json({
         success: true,
         memories: memoriesWithUser
       });
     } catch (error: any) {
-      console.error('❌ [MEMORIES] Error fetching memories:', {
+      logger.error('Error fetching memories', {
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
-        ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+        ip
       });
       
       return vercelResponse.status(500).json({ 
@@ -99,6 +111,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // Extract token from Authorization header
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('Authorization token required', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
       return vercelResponse.status(401).json({
         message: 'Authorization token required'
       });
@@ -114,6 +133,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
     } catch (error) {
+      logger.warn('Invalid or expired token', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
       return vercelResponse.status(401).json({
         message: 'Invalid or expired token'
       });
@@ -124,6 +150,19 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
     // Validate required fields
     if (!title || !description || !date) {
+      logger.warn('Missing required fields in memory creation request', {
+        missingFields: [
+          !title && 'title',
+          !description && 'description', 
+          !date && 'date'
+        ].filter(Boolean),
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        userId: decoded.userId?.toString(),
+        ip
+      });
+      
       return vercelResponse.status(400).json({ 
         message: 'Title, description, and date are required',
         missingFields: [
@@ -135,11 +174,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     }
 
     try {
-      console.log('📝 [MEMORY] Starting to create new memory:', {
+      logger.memory('Starting to create new memory', {
         title,
-        description,
-        date,
-        userId: decoded.userId
+        userId: decoded.userId?.toString(),
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
       });
 
       // Connect to database
@@ -160,7 +201,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       // Insert new memory into database
       const result = await memoriesCollection.insertOne(newMemory);
 
-      console.log('✅ [MEMORY] Memory created successfully:', { id: result.insertedId });
+      logger.memory('Memory created successfully', {
+        memoryId: result.insertedId.toString(),
+        userId: decoded.userId?.toString(),
+        title: newMemory.title,
+        timestamp: new Date().toISOString()
+      });
 
       // Return success response with the created memory
       return vercelResponse.status(201).json({
@@ -178,19 +224,19 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         }
       });
     } catch (error: any) {
-      console.error('❌ [MEMORY] Error creating memory:', {
+      logger.error('Error creating memory', {
         error: error.message,
         stack: error.stack,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
-        userId: decoded.userId,
+        userId: decoded.userId?.toString(),
         payload: {
           title: request.body.title,
           description: request.body.description ? 'provided' : 'missing',
           date: request.body.date
         },
-        ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+        ip
       });
       
       return vercelResponse.status(500).json({ 
@@ -200,6 +246,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     }
   } else {
     // Method not allowed
+    logger.warn('Method not allowed', {
+      path: request.url,
+      method: request.method,
+      timestamp: new Date().toISOString(),
+      ip
+    });
+    
     return vercelResponse.status(405).json({ 
       message: 'Method not allowed' 
     });
