@@ -1,7 +1,6 @@
 // lib/db.ts
 // Database connection utilities for serverless functions
 import { MongoClient, Db } from 'mongodb';
-import { attachDatabasePool } from '@vercel/functions';
 
 // Store the database connection globally to reuse in serverless functions
 const globalWithMongo = global as typeof globalThis & {
@@ -50,9 +49,6 @@ export async function connectToDatabase() {
       console.log('🌍 [DB] Creating new MongoDB connection (production)...');
       const client = new MongoClient(MONGODB_URI, options);
       await client.connect();
-      
-      // Attach the client to ensure proper cleanup on function suspension
-      attachDatabasePool(client);
       
       const db = client.db(); // Use default database from URI or 'test'
       
