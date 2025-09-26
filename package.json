@@ -26,6 +26,7 @@
     "axios": "^1.12.2",
     "bcrypt": "^5.1.0",
     "dayjs": "^1.11.18",
+    "emailjs": "^4.0.3",
     "formidable": "^3.5.4",
     "heroicons": "^2.2.0",
     "jsonwebtoken": "^9.0.0",

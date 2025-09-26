@@ -1,43 +1,40 @@
-// lib/db.ts - Database connection for Vercel Serverless Functions
-import { MongoClient, ServerApiVersion, Db } from 'mongodb';
-import { attachDatabasePool } from '@vercel/functions';
+// lib/db.ts
+// Database connection utilities for serverless functions
+import { MongoClient, Db } from 'mongodb';
 
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/love-story';
-const options = {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
+// Store the database connection globally to reuse in serverless functions
+const globalWithMongo = global as typeof globalThis & {
+  mongo: {
+    client: MongoClient;
+    db: Db;
+  };
 };
 
-let client: MongoClient;
-let db: Db;
+// MongoDB connection string from environment variables
+const MONGODB_URI = process.env.MONGODB_URI;
 
-declare global {
-  var _mongoClient: MongoClient | undefined;
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable');
 }
 
+/**
+ * Connect to the MongoDB database
+ * @returns The database connection
+ */
 export async function connectToDatabase() {
-  if (db) {
-    return { client, db };
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    // In development, use a global variable to preserve connection across hot reloads
-    if (!global._mongoClient) {
-      global._mongoClient = new MongoClient(uri, options);
-      await global._mongoClient.connect();
-    }
-    client = global._mongoClient;
-  } else {
-    // In production, create a new client each time but attach for cleanup
-    client = new MongoClient(uri, options);
+  if (!globalWithMongo.mongo) {
+    console.log('🌍 [DB] Creating new MongoDB connection...');
+    const client = new MongoClient(MONGODB_URI);
     await client.connect();
-    attachDatabasePool(client);
+    
+    const db = client.db(); // Use default database from URI or 'test'
+    
+    globalWithMongo.mongo = { client, db };
+    console.log('✅ [DB] MongoDB connection established');
   }
-
-  db = client.db();
-
-  return { client, db };
+  
+  return {
+    client: globalWithMongo.mongo.client,
+    db: globalWithMongo.mongo.db
+  };
 }
