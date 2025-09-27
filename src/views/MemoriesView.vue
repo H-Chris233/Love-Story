@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 import MemoryCard from '../components/MemoryCard.vue'
 import MemoryForm from '../components/MemoryForm.vue'
 import { memoryAPI } from '../services/api'
 import type { Memory } from '../types/api'
+
+// 路由和用户状态
+const router = useRouter()
+const userStore = useUserStore()
 
 // 记忆数据
 const memories = ref<Memory[]>([])
@@ -133,10 +139,24 @@ const goToPage = (page: number) => {
   }
 }
 
-// 页面加载时获取数据
-onMounted(() => {
-  console.log('📚 [MEMORIES-VIEW] Component mounted, fetching memories...')
+// 检查用户登录状态并获取数据
+const checkAuthAndFetchMemories = () => {
+  console.log('🔐 [MEMORIES-VIEW] Checking user authentication...')
+  
+  if (!userStore.isLoggedIn) {
+    console.log('❌ [MEMORIES-VIEW] User not logged in, redirecting to login page')
+    router.push('/login')
+    return
+  }
+  
+  console.log('✅ [MEMORIES-VIEW] User is authenticated, fetching memories...')
   fetchMemories()
+}
+
+// 页面加载时检查用户登录状态并获取数据
+onMounted(() => {
+  console.log('📚 [MEMORIES-VIEW] Component mounted, checking authentication...')
+  checkAuthAndFetchMemories()
 })
 </script>
 

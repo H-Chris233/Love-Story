@@ -15,6 +15,15 @@ onMounted(() => {
     userStore.fetchUserProfile()
   }
 })
+
+// Also check on route changes to ensure user info is always available
+import { useRouter } from 'vue-router'
+const router = useRouter()
+router.afterEach(() => {
+  if (userStore.token && !userStore.user) {
+    userStore.fetchUserProfile()
+  }
+})
 </script>
 
 <template>
