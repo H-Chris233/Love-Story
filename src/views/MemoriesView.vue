@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import MemoryCard from '../components/MemoryCard.vue'
@@ -49,6 +49,12 @@ const fetchMemories = async () => {
     loading.value = true
     const response = await memoryAPI.getAll()
     
+    // 检查组件是否仍然挂载
+    if (!isMounted) {
+      console.log('📚 [MEMORIES-VIEW] Component unmounted, skipping state update')
+      return
+    }
+    
     // 防御性编程：确保响应数据是数组
     if (Array.isArray(response.data)) {
       memories.value = response.data
@@ -68,12 +74,19 @@ const fetchMemories = async () => {
       data: err instanceof Object && 'response' in err ? (err as any).response?.data : undefined,
       timestamp: new Date().toISOString()
     })
-    error.value = '获取记忆数据失败'
-    // 确保在错误情况下 memories 也是数组
-    memories.value = []
+    
+    // 检查组件是否仍然挂载
+    if (isMounted) {
+      error.value = '获取记忆数据失败'
+      // 确保在错误情况下 memories 也是数组
+      memories.value = []
+    }
   } finally {
-    loading.value = false
-    console.log('✅ [MEMORIES-VIEW] Memory fetching process completed')
+    // 检查组件是否仍然挂载
+    if (isMounted) {
+      loading.value = false
+      console.log('✅ [MEMORIES-VIEW] Memory fetching process completed')
+    }
   }
 }
 
@@ -154,9 +167,17 @@ const checkAuthAndFetchMemories = () => {
 }
 
 // 页面加载时检查用户登录状态并获取数据
+let isMounted = true
+
 onMounted(() => {
   console.log('📚 [MEMORIES-VIEW] Component mounted, checking authentication...')
   checkAuthAndFetchMemories()
+})
+
+// 组件卸载时设置标志
+onUnmounted(() => {
+  console.log('📚 [MEMORIES-VIEW] Component unmounted')
+  isMounted = false
 })
 </script>
 

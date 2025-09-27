@@ -125,7 +125,7 @@ const handleTestSendReminders = async () => {
   try {
     const response = await anniversaryAPI.testSendAllReminders()
     console.log('测试发送所有提醒成功:', response.data)
-    alert(`测试发送完成: ${response.data.details?.successful || 0} 个成功, ${response.data.details?.failed || 0} 个失败`)
+    alert(`测试发送完成: ${(response.data as any).details?.successful || 0} 个成功, ${(response.data as any).details?.failed || 0} 个失败`)
   } catch (err) {
     console.error('测试发送提醒失败:', err)
     alert('测试发送提醒失败')

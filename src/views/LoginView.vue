@@ -58,7 +58,7 @@ const login = async () => {
     router.push('/')
   } catch (err: unknown) {
     console.error('登录错误:', err)
-    if (err instanceof Object && 'response' in err && err.response?.status === 401) {
+    if (err instanceof Object && 'response' in err && (err as any).response?.status === 401) {
       error.value = '邮箱或密码错误'
     } else {
       error.value = '登录失败，请重试'
@@ -101,8 +101,8 @@ const register = async () => {
     router.push('/')
   } catch (err: unknown) {
     console.error('注册错误:', err)
-    if (err instanceof Object && 'response' in err && err.response?.status === 400) {
-      const errorData = err.response?.data
+    if (err instanceof Object && 'response' in err && (err as any).response?.status === 400) {
+      const errorData = (err as any).response?.data
       if (errorData?.message === 'User already exists') {
         error.value = '用户已存在'
       } else if (errorData?.message === 'Validation failed') {
