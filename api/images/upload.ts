@@ -50,10 +50,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
     
     // Create a readable stream from the request
-    const reqStream = Readable.from(request);
+    const reqStream = Readable.from(request as any);
 
-    const [fields, files] = await new Promise<[FormDataFields, FormDataFiles]>((resolve, reject) => {
-      form.parse(reqStream, (err, fields, files) => {
+    const [fields, files] = await new Promise<any[]>((resolve, reject) => {
+      form.parse(reqStream as any, (err, fields, files) => {
         if (err) {
           logger.error('Error parsing form data:', {
             error: err.message,
@@ -181,7 +181,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
 
     // Read the file and pipe it to GridFS
-    const fileStream = await imageFile.toFileStream();
+    const fileStream = imageFile as any;
     fileStream.pipe(uploadStream);
 
     // Handle upload completion
@@ -202,7 +202,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         
         reject(error);
       });
-      fileStream.on('error', (error) => {
+      fileStream.on('error', (error: Error) => {
         logger.error('Error reading image file stream', {
           error: error.message,
           stack: error.stack,

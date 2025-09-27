@@ -73,7 +73,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     
     // Find all memories that have images
     const memoriesCollection = db.collection('memories');
-    const memoriesWithImages: MemoryWithImages[] = await memoriesCollection
+    const memoriesWithImages = await memoriesCollection
       .find({ 
         images: { $exists: true, $ne: [] } // Only memories with images
       })

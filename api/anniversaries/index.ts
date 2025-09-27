@@ -98,7 +98,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: anniversary.updatedAt
         }))
       });
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.error('Error in anniversaries handler', {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',
@@ -138,12 +138,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
+    let decoded: JwtPayload;
     try {
-        const _decoded = jwt.verify(
+        decoded = jwt.verify(
           token, 
           process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
         ) as JwtPayload;
-      } catch (_error) {
+      } catch (error) {
       logger.warn('Invalid or expired token for anniversary creation', {
         path: request.url,
         method: request.method,
@@ -235,7 +236,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: newAnniversary.updatedAt
         }
       });
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.error('Error creating anniversary', {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',

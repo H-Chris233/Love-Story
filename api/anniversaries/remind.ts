@@ -121,7 +121,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(404).json({ message: 'No users found in the system' });
     }
 
-    const userList = users.map((user: { email: string; name: string }) => ({
+    const userList = users.map((user: any) => ({
       email: user.email,
       name: user.name
     }));
@@ -135,7 +135,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
 
       // Fetch all anniversaries
-      const anniversaries: Anniversary[] = await anniversariesCollection
+      const anniversaries = await anniversariesCollection
         .find({})
         .toArray();
 
@@ -257,7 +257,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       console.log(`📤 [ANNIVERSARY] - Fetching all users from database...`);
       console.log(`📤 [ANNIVERSARY] - Found ${users.length} users in database`);
 
-      users.forEach((user: { email: string; name: string }, index) => {
+      users.forEach((user: any, index) => {
         console.log(`📤 [ANNIVERSARY] - User ${index + 1}: ${user.name} <${user.email}>`);
       });
 

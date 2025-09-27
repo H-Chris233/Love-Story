@@ -1,11 +1,11 @@
 // api/memories/[id].ts
 // Vercel Serverless Function for getting, updating, and deleting a specific memory
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { connectToDatabase } from '../../../lib/db.js';
+import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
-import logger from '../../../lib/logger.js';
-import { getClientIP } from '../../utils.js';
+import logger from '../../lib/logger.js';
+import { getClientIP } from '../utils.js';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -99,7 +99,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: memory.updatedAt
         }
       });
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
     logger.error('Error fetching memory', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
@@ -141,7 +141,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         token, 
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.warn('Invalid or expired token for memory update', {
         memoryId,
         path: request.url,
@@ -159,6 +159,22 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     const { db } = await connectToDatabase();
     const usersCollection = db.collection('users');
     const user = await usersCollection.findOne({ _id: decoded.userId });
+
+    // Check if request body exists
+    if (!request.body) {
+      logger.warn('Request body is required for memory update', {
+        memoryId,
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        userId: decoded.userId?.toString(),
+        ip
+      });
+      
+      return vercelResponse.status(400).json({ 
+        message: 'Request body is required for memory update'
+      });
+    }
 
     // Extract memory data from request body
     const { title, description, date } = request.body;
@@ -226,11 +242,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
 
       // Prepare update data
-      const updateData: { [key: string]: unknown; updatedAt: Date } = {};
+      const updateData: { [key: string]: unknown } & { updatedAt: Date } = {
+        updatedAt: new Date()
+      };
       if (title) updateData.title = title;
       if (description) updateData.description = description;
       if (date) updateData.date = new Date(date);
-      updateData.updatedAt = new Date(); // Update the timestamp
+      // updatedAt is already set in the initial object
 
       // Update memory in database
       const result = await memoriesCollection.updateOne(
@@ -260,7 +278,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: updateData.updatedAt
         }
       });
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.error('Error updating memory', {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',
@@ -308,7 +326,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         token, 
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.warn('Invalid or expired token for memory deletion', {
         memoryId,
         path: request.url,
@@ -387,7 +405,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory deleted successfully'
       });
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       logger.error('Error handling memory request', {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : 'No stack trace',

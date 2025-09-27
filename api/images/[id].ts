@@ -75,7 +75,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       const image = await getImage(imageId);
       
       // Set the appropriate content type
-      vercelResponse.setHeader('Content-Type', image.contentType);
+      if (image.contentType) {
+        vercelResponse.setHeader('Content-Type', image.contentType);
+      }
       
       // In a real implementation, you'd stream the image data
       // For now, return a placeholder response
