@@ -319,8 +319,8 @@ const handleSubmit = async () => {
       timestamp: new Date().toISOString()
     })
     
-    if (err instanceof Object && 'response' in err && err.response?.data?.message) {
-      error.value = err.response.data.message
+    if (err instanceof Object && 'response' in err && (err as any).response?.data?.message) {
+      error.value = (err as any).response.data.message
     } else {
       error.value = 'Error saving memory, please try again'
     }

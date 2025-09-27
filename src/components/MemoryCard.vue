@@ -85,7 +85,7 @@ const canEdit = computed(() => {
   
   // 创建者可以编辑自己的回忆
   const creatorId = typeof props.memory.user === 'object' 
-    ? props.memory.user._id 
+    ? props.memory.user?._id 
     : props.memory.user
   
   return userStore.user._id === creatorId
