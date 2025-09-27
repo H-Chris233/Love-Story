@@ -4,7 +4,7 @@ import type { AuthResponse, User, Memory, Anniversary } from '../types/api';
 
 // 简单的内存缓存实现
 interface CacheEntry {
-  data: any;
+  data: unknown;
   timestamp: number;
   ttl: number; // Time to live in milliseconds
 }
@@ -12,7 +12,7 @@ interface CacheEntry {
 class ApiCache {
   private cache: Map<string, CacheEntry> = new Map();
 
-  get(key: string): any {
+  get(key: string): unknown {
     const entry = this.cache.get(key);
     if (entry && Date.now() - entry.timestamp < entry.ttl) {
       console.log(`🔍 [CACHE] Cache hit for key: ${key}`);
@@ -27,7 +27,7 @@ class ApiCache {
     return null;
   }
 
-  set(key: string, data: any, ttl: number = 5 * 60 * 1000): void { // 默认5分钟
+  set(key: string, data: unknown, ttl: number = 5 * 60 * 1000): void { // 默认5分钟
     console.log(`💾 [CACHE] Setting cache for key: ${key}, TTL: ${ttl}ms`);
     this.cache.set(key, { data, timestamp: Date.now(), ttl });
   }
@@ -134,7 +134,7 @@ apiClient.interceptors.request.use(
   (error) => {
     if (shouldLog('error')) {
       console.error('❌ [API] Request error:', {
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
         stack: error.stack,
         timestamp: new Date().toISOString()
       });
@@ -162,7 +162,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (shouldLog('error')) {
       console.error('❌ [API] Response error:', {
-        message: error.message,
+        message: error instanceof Error ? error.message : 'Unknown error',
         status: error.response?.status,
         data: error.response?.data,
         config: error.config,
@@ -192,7 +192,7 @@ export const authAPI = {
     return apiClient.post<AuthResponse>('/auth/register', data)
       .catch(error => {
         console.error('❌ [API] Register failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           email: data.email,
           timestamp: new Date().toISOString()
         });
@@ -205,7 +205,7 @@ export const authAPI = {
     return apiClient.post<AuthResponse>('/auth/login', data)
       .catch(error => {
         console.error('❌ [API] Login failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           email: data.email,
           timestamp: new Date().toISOString()
         });
@@ -218,7 +218,7 @@ export const authAPI = {
     return apiClient.get<User>('/auth/profile')
       .catch(error => {
         console.error('❌ [API] Get profile failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -230,7 +230,7 @@ export const authAPI = {
     return apiClient.get<{ registrationAllowed: boolean; message: string }>('/auth/check-registration')
       .catch(error => {
         console.error('❌ [API] Check registration failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -242,7 +242,7 @@ export const authAPI = {
     return apiClient.get<User[]>('/auth/users')
       .catch(error => {
         console.error('❌ [API] Get all users failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -254,7 +254,7 @@ export const authAPI = {
     return apiClient.delete<{ message: string; deletedUser: { id: string; name: string; email: string } }>(`/auth/users/${userId}`)
       .catch(error => {
         console.error('❌ [API] Delete user failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           userId,
           timestamp: new Date().toISOString()
         });
@@ -262,6 +262,12 @@ export const authAPI = {
       });
   },
 };
+
+// 定义后端响应类型
+interface MemoriesResponse {
+  success: boolean;
+  memories: Memory[];
+}
 
 // 记忆相关API
 export const memoryAPI = {
@@ -275,15 +281,22 @@ export const memoryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<Memory[]>('/memories')
+    return apiClient.get<MemoriesResponse>('/memories')
       .then(response => {
-        console.log(`✅ [API] Fetched ${response.data.length} memories`);
-        apiCache.set(cacheKey, response.data, 5 * 60 * 1000); // 缓存5分钟
-        return response;
+        // 提取 memories 数组
+        const memories = response.data.memories || [];
+        console.log(`✅ [API] Fetched ${memories.length} memories`);
+        apiCache.set(cacheKey, memories, 5 * 60 * 1000); // 缓存5分钟
+        
+        // 返回符合预期格式的响应
+        return {
+          ...response,
+          data: memories
+        } as AxiosResponse<Memory[]>;
       })
       .catch(error => {
         console.error('❌ [API] Get all memories failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -308,7 +321,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Get memory by ID failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -327,7 +340,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Create memory failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           title: data.title,
           timestamp: new Date().toISOString()
         });
@@ -348,7 +361,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Create memory with images failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -367,7 +380,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Update memory failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           data,
           timestamp: new Date().toISOString()
@@ -391,7 +404,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Update memory with images failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -411,7 +424,7 @@ export const memoryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Delete memory failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -440,7 +453,7 @@ export const anniversaryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Get all anniversaries failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;
@@ -465,7 +478,7 @@ export const anniversaryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Get anniversary by ID failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -484,7 +497,7 @@ export const anniversaryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Create anniversary failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           title: data.title,
           timestamp: new Date().toISOString()
         });
@@ -504,7 +517,7 @@ export const anniversaryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Update anniversary failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           data,
           timestamp: new Date().toISOString()
@@ -525,7 +538,7 @@ export const anniversaryAPI = {
       })
       .catch(error => {
         console.error('❌ [API] Delete anniversary failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -538,7 +551,7 @@ export const anniversaryAPI = {
     return apiClient.post<{ message: string; details: any }>('/anniversaries/remind', { anniversaryId: id })
       .catch(error => {
         console.error('❌ [API] Send anniversary reminder failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           id,
           timestamp: new Date().toISOString()
         });
@@ -551,7 +564,7 @@ export const anniversaryAPI = {
     return apiClient.post<{ message: string; details?: any }>('/anniversaries/remind', { testAllReminders: true })
       .catch(error => {
         console.error('❌ [API] Test send all anniversary reminders failed:', {
-          message: error.message,
+          message: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
         });
         throw error;

@@ -15,10 +15,22 @@ const editingMemory = ref<Memory | null>(null)
 // 分页相关
 const currentPage = ref(1)
 const memoriesPerPage = 10 // 每页显示10个记忆
-const totalPages = computed(() => Math.ceil(memories.value.length / memoriesPerPage))
+const totalPages = computed(() => {
+  // 防御性编程：确保 memories.value 是数组
+  if (!Array.isArray(memories.value)) {
+    return 0
+  }
+  return Math.ceil(memories.value.length / memoriesPerPage)
+})
 
 // 获取当前页的记忆数据
 const paginatedMemories = computed(() => {
+  // 防御性编程：确保 memories.value 是数组
+  if (!Array.isArray(memories.value)) {
+    console.warn('⚠️ [MEMORIES-VIEW] memories.value is not an array:', memories.value)
+    return []
+  }
+  
   const startIndex = (currentPage.value - 1) * memoriesPerPage
   const endIndex = startIndex + memoriesPerPage
   return memories.value.slice(startIndex, endIndex)
@@ -30,7 +42,15 @@ const fetchMemories = async () => {
   try {
     loading.value = true
     const response = await memoryAPI.getAll()
-    memories.value = response.data
+    
+    // 防御性编程：确保响应数据是数组
+    if (Array.isArray(response.data)) {
+      memories.value = response.data
+    } else {
+      console.warn('⚠️ [MEMORIES-VIEW] API response is not an array, setting empty array:', response.data)
+      memories.value = []
+    }
+    
     // 重置到第一页
     currentPage.value = 1
     console.log(`✅ [MEMORIES-VIEW] Successfully fetched ${memories.value.length} memories`)
@@ -39,9 +59,12 @@ const fetchMemories = async () => {
     console.error('❌ [MEMORIES-VIEW] Error details:', {
       message: err.message,
       status: err.response?.status,
+      data: err.response?.data,
       timestamp: new Date().toISOString()
     })
     error.value = '获取记忆数据失败'
+    // 确保在错误情况下 memories 也是数组
+    memories.value = []
   } finally {
     loading.value = false
     console.log('✅ [MEMORIES-VIEW] Memory fetching process completed')
@@ -75,8 +98,10 @@ const handleDeleteMemory = async (id: string | number) => {
   console.log(`🗑️ [MEMORIES-VIEW] Deleting memory with ID: ${id}`)
   try {
     await memoryAPI.delete(id.toString())
-    // 从本地状态中移除已删除的记忆
-    memories.value = memories.value.filter(memory => memory._id !== id.toString())
+    // 防御性编程：确保 memories.value 是数组后再过滤
+    if (Array.isArray(memories.value)) {
+      memories.value = memories.value.filter(memory => memory._id !== id.toString())
+    }
     // 如果当前页没有记忆了，且不是第一页，则跳转到上一页
     if (paginatedMemories.value.length === 0 && currentPage.value > 1) {
       currentPage.value--

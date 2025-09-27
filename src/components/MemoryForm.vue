@@ -274,7 +274,7 @@ const handleSubmit = async () => {
     // Log FormData contents for debugging
     console.log('📋 [MEMORY-FORM] FormData contents:')
     const formDataEntries = []
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
         const fileInfo = `File(${value.name}, ${value.size} bytes, ${value.type})`
         console.log(`${key}: ${fileInfo}`)
@@ -290,7 +290,7 @@ const handleSubmit = async () => {
     
     // 验证FormData中确实包含了图片文件
     const imageEntries = []
-    for (let [key, value] of formData.entries()) {
+    for (const [key, value] of formData.entries()) {
       if (key === 'images' && value instanceof File) {
         imageEntries.push(value.name)
       }

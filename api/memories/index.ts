@@ -67,13 +67,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           );
           
           return {
-            id: memory._id,
+            _id: memory._id,
             title: memory.title,
             description: memory.description,
             date: memory.date,
             images: memory.images || [],
             user: user ? {
-              id: user._id,
+              _id: user._id,
               name: user.name,
               email: user.email
             } : null,
