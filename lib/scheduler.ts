@@ -49,14 +49,14 @@ export async function triggerManualReminderCheck(): Promise<ManualReminderCheckR
     const usersCollection = db.collection('users');
 
     // Get all anniversaries
-    const anniversaries: Anniversary[] = await anniversariesCollection
+    const anniversaries = await anniversariesCollection
       .find({})
       .toArray();
 
     console.log(`🧪 [SCHEDULER] Found ${anniversaries.length} anniversaries to check`);
 
     // Get all users
-    const users: User[] = await usersCollection
+    const users = await usersCollection
       .find({}, { projection: { name: 1, email: 1 } })
       .toArray();
 

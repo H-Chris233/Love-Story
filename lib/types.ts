@@ -14,3 +14,41 @@ export interface JwtPayload {
 export const toObjectId = (userId: string | ObjectId): ObjectId => {
   return typeof userId === 'string' ? new ObjectId(userId) : userId;
 };
+
+// Anniversary type
+export interface Anniversary {
+  _id?: ObjectId;
+  title: string;
+  date: Date;
+  reminderDays: number[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// User type
+export interface User {
+  _id?: ObjectId;
+  name: string;
+  email: string;
+  password: string;
+  isAdmin: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Memory type
+export interface Memory {
+  _id?: ObjectId;
+  title: string;
+  description: string;
+  date: Date;
+  images: string[];
+  user: ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Memory with images type
+export interface MemoryWithImages extends Memory {
+  images: string[];
+}

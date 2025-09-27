@@ -32,7 +32,7 @@ export async function connectToDatabase() {
     // is preserved across module reloads caused by HMR (Hot Module Replacement).
     if (!globalWithMongo._mongoClient) {
       console.log('🌍 [DB] Creating new MongoDB connection (development)...');
-      const client = new MongoClient(MONGODB_URI, options);
+      const client = new MongoClient(MONGODB_URI || '', options);
       await client.connect();
       globalWithMongo._mongoClient = client;
     }
@@ -47,7 +47,7 @@ export async function connectToDatabase() {
     // but we'll still use global variable for the connection result to avoid reconnecting
     if (!globalWithMongo.mongo) {
       console.log('🌍 [DB] Creating new MongoDB connection (production)...');
-      const client = new MongoClient(MONGODB_URI, options);
+      const client = new MongoClient(MONGODB_URI || '', options);
       await client.connect();
       
       const db = client.db(); // Use default database from URI or 'test'

@@ -180,7 +180,7 @@ export async function sendAnniversaryReminderToAllUsers(
       failed++;
       errors.push({
         email: user.email,
-        error: error.message || 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }
