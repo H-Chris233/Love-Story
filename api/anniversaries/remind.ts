@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { sendAnniversaryReminderToAllUsers } from '../../lib/email.js';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
@@ -43,23 +43,7 @@ interface JwtPayload {
   isAdmin?: boolean;
 }
 
-// Define Anniversary type
-interface Anniversary {
-  _id: ObjectId;
-  title: string;
-  date: Date;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
-// Define User type
-interface User {
-  _id: ObjectId;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   const ip = getClientIP(request);
@@ -137,7 +121,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(404).json({ message: 'No users found in the system' });
     }
 
-    const userList = users.map((user: any) => ({
+    const userList = users.map((user: { email: string; name: string }) => ({
       email: user.email,
       name: user.name
     }));
@@ -219,8 +203,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           } else {
             console.log(`🧪 [ANNIVERSARY] Skipping "${anniversary.title}" (in ${daysUntil} days - outside 0-7 day range)`);
           }
-        } catch (anniversaryError: any) {
-          console.error(`❌ [ANNIVERSARY] Error processing anniversary "${anniversary.title}" during test:`, anniversaryError.message);
+        } catch (anniversaryError: unknown) {
+          console.error(`❌ [ANNIVERSARY] Error processing anniversary "${anniversary.title}" during test:`, anniversaryError instanceof Error ? anniversaryError.message : 'Unknown error');
           totalFailed++;
           failedAnniversaries.push(anniversary.title);
         }
@@ -273,7 +257,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       console.log(`📤 [ANNIVERSARY] - Fetching all users from database...`);
       console.log(`📤 [ANNIVERSARY] - Found ${users.length} users in database`);
 
-      users.forEach((user: any, index) => {
+      users.forEach((user: { email: string; name: string }, index) => {
         console.log(`📤 [ANNIVERSARY] - User ${index + 1}: ${user.name} <${user.email}>`);
       });
 
@@ -309,10 +293,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         }
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [ANNIVERSARY] - Error in sendReminder:`, error);
-    console.error(`❌ [ANNIVERSARY] - Error message: ${error.message}`);
+    console.error(`❌ [ANNIVERSARY] - Error message:`, error instanceof Error ? error.message : 'Unknown error');
     
-    return vercelResponse.status(500).json({ message: error.message });
+    return vercelResponse.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 }

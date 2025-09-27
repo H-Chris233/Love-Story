@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { anniversaryAPI } from '../services/api'
 import type { Anniversary } from '../types/api'
 

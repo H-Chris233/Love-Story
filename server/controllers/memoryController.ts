@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
-import Memory, { IMemory } from '../models/Memory';
-import User from '../models/User';
+import Memory from '../models/Memory';
 import { uploadImage, deleteImage } from '../utils/imageUpload';
 
 // @desc    Get all memories (shared for all users)
@@ -12,10 +11,10 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
     const memories = await Memory.find({}).sort({ date: -1 }).populate('user', 'name email');
     console.log('✅ [MEMORIES] Successfully fetched', memories.length, 'shared memories');
     res.json(memories);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [MEMORIES] Error fetching memories:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
@@ -25,7 +24,7 @@ const getMemories = async (req: Request, res: Response): Promise<void> => {
     
     res.status(500).json({ 
       message: 'Error fetching memories',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 };
@@ -50,10 +49,10 @@ const getMemory = async (req: Request, res: Response): Promise<void> => {
 
     console.log('✅ [MEMORY] Memory retrieved successfully:', memory._id);
     res.json(memory);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [MEMORY] Error fetching single memory:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
@@ -64,7 +63,7 @@ const getMemory = async (req: Request, res: Response): Promise<void> => {
     
     res.status(500).json({ 
       message: 'Error fetching memory',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined,
       memoryId: req.params.id
     });
   }
@@ -148,10 +147,10 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
 
     console.log('✅ [MEMORY] Memory created successfully:', { id: memory._id, imagesCount: images.length });
     res.status(201).json(memory);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [MEMORY] Error creating memory:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
@@ -167,7 +166,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
     
     res.status(500).json({ 
       message: 'Error creating memory',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 };
@@ -238,24 +237,24 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       try {
         imagesToDelete = JSON.parse(req.body.imagesToDelete);
         console.log('🗑️ [IMAGES] Marked for deletion:', imagesToDelete);
-      } catch (parseError: any) {
-        console.error('❌ [MEMORY] Error parsing imagesToDelete:', {
-          error: parseError.message,
-          imagesToDeleteRaw: req.body.imagesToDelete,
-          timestamp: new Date().toISOString(),
-          path: req.path,
-          method: req.method,
-          userId: req.user?._id,
-          memoryId: req.params.id,
-          ip: req.ip || req.connection.remoteAddress
-        });
-        
-        res.status(400).json({ 
-          message: 'Invalid imagesToDelete format',
-          error: process.env.NODE_ENV === 'development' ? parseError.message : undefined
-        });
-        return;
-      }
+      } catch (parseError: unknown) {
+          console.error('❌ [MEMORY] Error parsing imagesToDelete:', {
+            error: parseError instanceof Error ? parseError.message : 'Unknown error',
+            imagesToDeleteRaw: req.body.imagesToDelete,
+            timestamp: new Date().toISOString(),
+            path: req.path,
+            method: req.method,
+            userId: req.user?._id,
+            memoryId: req.params.id,
+            ip: req.ip || req.connection.remoteAddress
+          });
+          
+          res.status(400).json({ 
+            message: 'Invalid imagesToDelete format',
+            error: process.env.NODE_ENV === 'development' && parseError instanceof Error ? parseError.message : undefined
+          });
+          return;
+        }
     }
 
     // Delete specified images from MongoDB GridFS
@@ -264,20 +263,20 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
       try {
         await deleteImage(publicId);
         console.log(`✅ [IMAGE] Deleted successfully: ${publicId}`);
-      } catch (deleteError: any) {
-        console.error('❌ [IMAGE] Error deleting image:', {
-          error: deleteError.message,
-          publicId,
-          timestamp: new Date().toISOString(),
-          path: req.path,
-          method: req.method,
-          userId: req.user?._id,
-          memoryId: req.params.id,
-          ip: req.ip || req.connection.remoteAddress
-        });
-        
-        // Continue processing other images even if one fails
-      }
+      } catch (deleteError: unknown) {
+          console.error('❌ [IMAGE] Error deleting image:', {
+            error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+            publicId,
+            timestamp: new Date().toISOString(),
+            path: req.path,
+            method: req.method,
+            userId: req.user?._id,
+            memoryId: req.params.id,
+            ip: req.ip || req.connection.remoteAddress
+          });
+          
+          // Continue processing other images even if one fails
+        }
     }
 
     // Filter out deleted images from existing images
@@ -293,9 +292,9 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
           const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
           console.log(`✅ [IMAGE] New image uploaded:`, uploadedImage);
           images.push(uploadedImage);
-        } catch (uploadError: any) {
+        } catch (uploadError: unknown) {
           console.error('❌ [IMAGE] Error uploading new image:', {
-            error: uploadError.message,
+            error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
             fileName: file.originalname,
             fileSize: file.size,
             fileType: file.mimetype,
@@ -307,7 +306,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
           
           res.status(500).json({ 
             message: `Error uploading new image: ${file.originalname}`,
-            error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+            error: process.env.NODE_ENV === 'development' && uploadError instanceof Error ? uploadError.message : undefined
           });
           return;
         }
@@ -342,10 +341,10 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
 
     console.log('✅ [MEMORY] Memory updated successfully:', { id: memory._id, imagesCount: images.length });
     res.json(memory);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [MEMORY] Error updating memory:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
@@ -363,7 +362,7 @@ const updateMemory = async (req: Request, res: Response): Promise<void> => {
     
     res.status(500).json({ 
       message: 'Error updating memory',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined,
       memoryId: req.params.id
     });
   }
@@ -414,20 +413,20 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
       try {
         await deleteImage(image.publicId);
         console.log(`✅ [IMAGE] GridFS image deleted: ${image.publicId}`);
-      } catch (deleteError: any) {
-        console.error('❌ [IMAGE] Error deleting image from GridFS:', {
-          error: deleteError.message,
-          publicId: image.publicId,
-          timestamp: new Date().toISOString(),
-          path: req.path,
-          method: req.method,
-          userId: req.user?._id,
-          memoryId: req.params.id,
-          ip: req.ip || req.connection.remoteAddress
-        });
-        
-        // Continue even if image deletion fails
-      }
+      } catch (deleteError: unknown) {
+          console.error('❌ [IMAGE] Error deleting image from GridFS:', {
+            error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+            publicId: image.publicId,
+            timestamp: new Date().toISOString(),
+            path: req.path,
+            method: req.method,
+            userId: req.user?._id,
+            memoryId: req.params.id,
+            ip: req.ip || req.connection.remoteAddress
+          });
+          
+          // Continue even if image deletion fails
+        }
     }
 
     // Delete the memory document
@@ -437,10 +436,10 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
       message: 'Memory removed',
       memoryId: req.params.id
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [MEMORY] Error deleting memory:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: req.path,
       method: req.method,
@@ -451,7 +450,7 @@ const deleteMemory = async (req: Request, res: Response): Promise<void> => {
     
     res.status(500).json({ 
       message: 'Error deleting memory',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined,
       memoryId: req.params.id
     });
   }

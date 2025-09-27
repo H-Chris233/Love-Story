@@ -546,9 +546,9 @@ export const anniversaryAPI = {
       });
   },
     
-  sendReminder: (id: string): Promise<AxiosResponse<{ message: string; details: any }>> => {
+  sendReminder: (id: string): Promise<AxiosResponse<{ message: string; details: unknown }>> => {
     console.log('🎉 [API] Send anniversary reminder request:', id);
-    return apiClient.post<{ message: string; details: any }>('/anniversaries/remind', { anniversaryId: id })
+    return apiClient.post<{ message: string; details: unknown }>('/anniversaries/remind', { anniversaryId: id })
       .catch(error => {
         console.error('❌ [API] Send anniversary reminder failed:', {
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -559,9 +559,9 @@ export const anniversaryAPI = {
       });
   },
     
-  testSendAllReminders: (): Promise<AxiosResponse<{ message: string; details?: any }>> => {
+  testSendAllReminders: (): Promise<AxiosResponse<{ message: string; details?: unknown }>> => {
     console.log('🎉 [API] Test send all anniversary reminders request');
-    return apiClient.post<{ message: string; details?: any }>('/anniversaries/remind', { testAllReminders: true })
+    return apiClient.post<{ message: string; details?: unknown }>('/anniversaries/remind', { testAllReminders: true })
       .catch(error => {
         console.error('❌ [API] Test send all anniversary reminders failed:', {
           message: error instanceof Error ? error.message : 'Unknown error',

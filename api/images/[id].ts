@@ -4,12 +4,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import { GridFSBucket, ObjectId } from 'mongodb';
 
-// Define image upload result type
-interface ImageUploadResult {
-  url: string;
-  publicId: string;
-}
-
 /**
  * Delete an image from GridFS
  * @param publicId - The public ID of the image to delete
@@ -94,9 +88,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           uploadDate: image.uploadDate
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ [IMAGE] Error retrieving image:', {
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         imageId,
         timestamp: new Date().toISOString(),
         path: request.url,
@@ -106,7 +100,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       return vercelResponse.status(404).json({
         message: 'Image not found',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else if (request.method === 'DELETE') {
@@ -123,9 +117,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         message: 'Image deleted successfully',
         imageId
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ [IMAGE] Error deleting image:', {
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         imageId,
         timestamp: new Date().toISOString(),
         path: request.url,
@@ -135,7 +129,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       return vercelResponse.status(500).json({
         message: 'Error deleting image',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else {

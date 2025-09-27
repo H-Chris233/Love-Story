@@ -72,10 +72,10 @@ router.beforeEach(async (to, from, next) => {
     if (!userStore.user && userStore.token) {
       try {
         await userStore.fetchUserProfile()
-      } catch (error) {
-        next('/login')
-        return
-      }
+      } catch (error: unknown) {
+      next('/login')
+      return
+    }
     }
     
     // Check if user is admin

@@ -33,15 +33,15 @@ const generateCacheKey = (prefix: string, id: string, suffix?: string): string =
  * @param data - 要缓存的数据
  * @param ttl - 过期时间（秒）
  */
-const setCache = (key: string, data: any, ttl?: number): boolean => {
+const setCache = <T>(key: string, data: T, ttl?: number): boolean => {
   try {
     if (ttl !== undefined) {
       return cache.set(key, data, ttl);
     } else {
       return cache.set(key, data);
     }
-  } catch (error) {
-    console.error('缓存设置失败:', error);
+  } catch (error: unknown) {
+    console.error('缓存设置失败:', error instanceof Error ? error.message : 'Unknown error');
     return false;
   }
 };
@@ -50,11 +50,11 @@ const setCache = (key: string, data: any, ttl?: number): boolean => {
  * 获取缓存数据
  * @param key - 缓存键
  */
-const getCache = (key: string): any => {
+const getCache = <T>(key: string): T | undefined => {
   try {
     return cache.get(key);
-  } catch (error) {
-    console.error('缓存获取失败:', error);
+  } catch (error: unknown) {
+    console.error('缓存获取失败:', error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
 };
@@ -68,8 +68,8 @@ const delCache = (key: string): boolean => {
     const result = cache.del(key);
     // NodeCache.del() 返回删除的键数量，我们需要返回boolean
     return typeof result === 'number' ? result > 0 : result;
-  } catch (error) {
-    console.error('缓存删除失败:', error);
+  } catch (error: unknown) {
+    console.error('缓存删除失败:', error instanceof Error ? error.message : 'Unknown error');
     return false;
   }
 };
@@ -82,8 +82,8 @@ const clearCacheByPrefix = (prefix: string): number => {
   try {
     const keys = cache.keys().filter(key => key.startsWith(prefix));
     return cache.del(keys) as number; // 返回删除的键数量
-  } catch (error) {
-    console.error('按前缀清除缓存失败:', error);
+  } catch (error: unknown) {
+    console.error('按前缀清除缓存失败:', error instanceof Error ? error.message : 'Unknown error');
     return 0;
   }
 };

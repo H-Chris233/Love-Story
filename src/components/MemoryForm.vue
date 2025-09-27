@@ -310,16 +310,16 @@ const handleSubmit = async () => {
 
     console.log('✅ [MEMORY-FORM] Memory saved successfully:', response.data)
     emit('save', response.data)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ [MEMORY-FORM] Error saving memory:', err)
     console.error('❌ [MEMORY-FORM] Error details:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
+      message: err instanceof Error ? err.message : 'Unknown error',
+      response: err instanceof Object && 'response' in err ? (err as any).response?.data : undefined,
+      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
       timestamp: new Date().toISOString()
     })
     
-    if (err.response?.data?.message) {
+    if (err instanceof Object && 'response' in err && err.response?.data?.message) {
       error.value = err.response.data.message
     } else {
       error.value = 'Error saving memory, please try again'

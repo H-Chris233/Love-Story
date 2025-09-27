@@ -307,7 +307,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           token, 
           process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
         ) as JwtPayload;
-      } catch (error) {
+      } catch (_error: unknown) {
         logger.warn('Invalid or expired token for profile access', {
           path: request.url,
           method: request.method,
@@ -407,7 +407,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           token, 
           process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
         ) as JwtPayload;
-      } catch (error) {
+      } catch (_error: unknown) {
         logger.warn('Invalid or expired token for users access', {
           path: request.url,
           method: request.method,
@@ -522,7 +522,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           token, 
           process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
         ) as JwtPayload;
-      } catch (error) {
+      } catch (_error: unknown) {
         logger.warn('Invalid or expired token for user deletion', {
           targetUserId: userId,
           path: request.url,

@@ -43,10 +43,10 @@ const getAnniversaries = async (req: Request, res: Response): Promise<void> => {
     
     console.log(`✅ [CONTROLLER] - Successfully returning ${anniversaries.length} anniversaries`);
     res.json(anniversaries);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [CONTROLLER] - Error fetching anniversaries:`, error);
-    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
-    res.status(500).json({ message: error.message });
+    console.error(`❌ [CONTROLLER] - Error message:`, error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -82,8 +82,8 @@ const getAnniversary = async (req: Request, res: Response): Promise<void> => {
     setCache(cacheKey, anniversary, 600); // 缓存10分钟
     
     res.json(anniversary);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -104,8 +104,8 @@ const createAnniversary = async (req: Request, res: Response): Promise<void> => 
     clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
 
     res.status(201).json(anniversary);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -140,8 +140,8 @@ const updateAnniversary = async (req: Request, res: Response): Promise<void> => 
     clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
 
     res.json(updatedAnniversary);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -171,8 +171,8 @@ const deleteAnniversary = async (req: Request, res: Response): Promise<void> => 
     clearCacheByPrefix(generateCacheKey(CACHE_PREFIX.ANNIVERSARY, 'all')); // 清除纪念日列表缓存
 
     res.json({ message: 'Anniversary removed' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error: unknown) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -238,10 +238,10 @@ const sendReminder = async (req: Request, res: Response): Promise<void> => {
         errors: result.errors
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [CONTROLLER] - Error in sendReminder:`, error);
-    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
-    res.status(500).json({ message: error.message });
+    console.error(`❌ [CONTROLLER] - Error message:`, error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 
@@ -270,10 +270,10 @@ const testSendAllReminders = async (req: Request, res: Response): Promise<void> 
         message: result.message
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [CONTROLLER] - Error in testSendAllReminders:`, error);
-    console.error(`❌ [CONTROLLER] - Error message: ${error.message}`);
-    res.status(500).json({ message: error.message });
+    console.error(`❌ [CONTROLLER] - Error message:`, error instanceof Error ? error.message : 'Unknown error');
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Internal server error' });
   }
 };
 

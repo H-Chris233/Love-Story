@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -62,7 +62,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         token, 
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
-    } catch (error) {
+    } catch (_error: unknown) {
       return vercelResponse.status(401).json({
         message: 'Invalid or expired token'
       });
@@ -98,10 +98,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       images: allImages,
       count: allImages.length
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [IMAGES] Error in images index handler:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
@@ -111,7 +111,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     
     return vercelResponse.status(500).json({
       message: 'Internal server error while fetching images',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 }

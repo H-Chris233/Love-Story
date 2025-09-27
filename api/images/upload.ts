@@ -185,7 +185,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     fileStream.pipe(uploadStream);
 
     // Handle upload completion
-    const uploadResult = await new Promise<any>((resolve, reject) => {
+    const uploadResult = await new Promise<{ _id: ObjectId; filename: string; metadata: Record<string, unknown> }>((resolve, reject) => {
       uploadStream.on('finish', resolve);
       uploadStream.on('error', (error) => {
         logger.error('Error uploading image to GridFS', {
@@ -237,10 +237,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       filename: uploadResult.filename,
       metadata: uploadResult.metadata
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Error in image upload handler', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
@@ -249,7 +249,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
     return vercelResponse.status(500).json({
       message: 'Error uploading image',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 }

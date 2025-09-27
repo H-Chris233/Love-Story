@@ -79,7 +79,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error('❌ [SERVER] Unhandled application error:', {
     error: err.message,
     stack: err.stack,

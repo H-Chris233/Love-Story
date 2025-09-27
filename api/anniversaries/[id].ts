@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -12,15 +12,7 @@ interface JwtPayload {
   exp: number;
 }
 
-// Define Anniversary type
-interface Anniversary {
-  _id: ObjectId;
-  title: string;
-  date: Date;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   const { id } = request.query;
@@ -47,13 +39,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify JWT token
     try {
-      decoded = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-      ) as JwtPayload;
-    } catch (error) {
+        decoded = jwt.verify(
+          token, 
+          process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
+        ) as JwtPayload;
+      } catch (_error) {
       return vercelResponse.status(401).json({
         message: 'Invalid or expired token'
       });
@@ -182,12 +173,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         message: 'Method not allowed' 
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in anniversary handler:', error);
     
     return vercelResponse.status(500).json({
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 }

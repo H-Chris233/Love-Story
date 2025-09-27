@@ -54,12 +54,12 @@ const fetchMemories = async () => {
     // 重置到第一页
     currentPage.value = 1
     console.log(`✅ [MEMORIES-VIEW] Successfully fetched ${memories.value.length} memories`)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ [MEMORIES-VIEW] Error fetching memories:', err)
     console.error('❌ [MEMORIES-VIEW] Error details:', {
-      message: err.message,
-      status: err.response?.status,
-      data: err.response?.data,
+      message: err instanceof Error ? err.message : 'Unknown error',
+      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
+      data: err instanceof Object && 'response' in err ? (err as any).response?.data : undefined,
       timestamp: new Date().toISOString()
     })
     error.value = '获取记忆数据失败'
@@ -107,11 +107,11 @@ const handleDeleteMemory = async (id: string | number) => {
       currentPage.value--
     }
     console.log(`✅ [MEMORIES-VIEW] Memory with ID ${id} deleted successfully`)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ [MEMORIES-VIEW] Error deleting memory:', err)
     console.error('❌ [MEMORIES-VIEW] Error details:', {
-      message: err.message,
-      status: err.response?.status,
+      message: err instanceof Error ? err.message : 'Unknown error',
+      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
       memoryId: id,
       timestamp: new Date().toISOString()
     })

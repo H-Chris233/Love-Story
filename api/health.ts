@@ -43,10 +43,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         version: dbInfo.version
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Health check failed due to database connection issue', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
@@ -57,7 +57,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       status: 'ERROR', 
       message: 'Love Story API is unhealthy!',
       timestamp: new Date().toISOString(),
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 }

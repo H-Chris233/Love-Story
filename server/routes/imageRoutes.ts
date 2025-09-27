@@ -19,7 +19,7 @@ router.get('/:id', async (req, res) => {
     
     // Pipe the stream to response
     stream.pipe(res);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error retrieving image:', error);
     res.status(404).json({ message: 'Image not found' });
   }

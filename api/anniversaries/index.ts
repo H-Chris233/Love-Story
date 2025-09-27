@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
 
@@ -53,14 +53,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-      // Verify JWT token
-      let decoded: JwtPayload;
       try {
-        decoded = jwt.verify(
+        const decoded = jwt.verify(
           token, 
           process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
         ) as JwtPayload;
-      } catch (error) {
+      } catch (_error) {
         logger.warn('Invalid or expired token for anniversaries access', {
           path: request.url,
           method: request.method,
@@ -100,10 +98,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: anniversary.updatedAt
         }))
       });
-    } catch (error: any) {
+    } catch (_error: unknown) {
       logger.error('Error in anniversaries handler', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -112,7 +110,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({
         message: 'Internal server error while fetching anniversaries',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else if (request.method === 'POST') {
@@ -140,14 +138,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify JWT token
-    let decoded: JwtPayload;
     try {
-      decoded = jwt.verify(
-        token, 
-        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-      ) as JwtPayload;
-    } catch (error) {
+        const _decoded = jwt.verify(
+          token, 
+          process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
+        ) as JwtPayload;
+      } catch (_error) {
       logger.warn('Invalid or expired token for anniversary creation', {
         path: request.url,
         method: request.method,
@@ -239,10 +235,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: newAnniversary.updatedAt
         }
       });
-    } catch (error: any) {
+    } catch (_error: unknown) {
       logger.error('Error creating anniversary', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -257,7 +253,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({
         message: 'Internal server error during anniversary creation',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else {

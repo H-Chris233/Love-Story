@@ -17,6 +17,8 @@ declare global {
   }
 }
 
+export {};
+
 const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   let token: string | undefined;
 
@@ -51,10 +53,10 @@ const protect = async (req: Request, res: Response, next: NextFunction): Promise
       req.user = user;
       console.log('✅ [AUTH] User authenticated successfully:', req.user.email);
       next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ [AUTH] Token verification failed:', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: req.path,
         method: req.method,
@@ -63,7 +65,7 @@ const protect = async (req: Request, res: Response, next: NextFunction): Promise
       
       res.status(401).json({ 
         message: 'Not authorized, token failed',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
       return;
     }

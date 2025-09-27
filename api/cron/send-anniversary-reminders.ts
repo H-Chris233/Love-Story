@@ -3,25 +3,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import { sendAnniversaryReminderToAllUsers } from '../../lib/email.js';
-import { Db, ObjectId } from 'mongodb';
 
-// Define Anniversary type
-interface Anniversary {
-  _id: ObjectId;
-  title: string;
-  date: Date;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
-// Define User type
-interface User {
-  _id: ObjectId;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   // Only allow GET requests for this endpoint
@@ -127,8 +110,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         } else {
           console.log(`🔔 [CRON] Not time to send reminder for "${anniversary.title}" (daysUntil: ${daysUntil}, reminderDays: ${anniversary.reminderDays})`);
         }
-      } catch (anniversaryError: any) {
-        console.error(`❌ [CRON] Error processing anniversary "${anniversary.title}":`, anniversaryError.message);
+      } catch (anniversaryError: unknown) {
+        console.error(`❌ [CRON] Error processing anniversary "${anniversary.title}":`, anniversaryError instanceof Error ? anniversaryError.message : 'Unknown error');
         totalFailed++;
         failedAnniversaries.push(anniversary.title);
       }
@@ -147,13 +130,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         failedAnniversaries
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [CRON] Error in automatic reminder check:`, error);
-    console.error(`❌ [CRON] Error message: ${error.message}`);
+    console.error(`❌ [CRON] Error message:`, error instanceof Error ? error.message : 'Unknown error');
     
     return vercelResponse.status(500).json({ 
       message: 'Error in automatic anniversary reminder check',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
     });
   }
 }

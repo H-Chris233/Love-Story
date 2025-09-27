@@ -36,16 +36,6 @@ const imageLayoutClass = computed(() => {
   return 'multiple-images'
 })
 
-// 格式化日期
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
 // 处理编辑事件
 const handleEdit = () => {
   emit('edit', props.memory)
@@ -76,11 +66,6 @@ const getImageContainerClass = (totalCount: number, index: number) => {
   if (totalCount === 3 && index === 0) return 'main-image'
   if (totalCount === 3 && index > 0) return 'side-image'
   return ''
-}
-
-// 格式化内容，支持换行
-const formatContent = (content: string) => {
-  return content.replace(/\n/g, '<br>')
 }
 
 // 获取创建者信息

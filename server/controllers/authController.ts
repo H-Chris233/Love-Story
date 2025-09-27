@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
-import User, { IUser } from '../models/User';
+import User from '../models/User';
 import * as config from '../config';
 import mongoose from 'mongoose';
 
@@ -56,24 +56,27 @@ const registerUser = async (req: Request, res: Response): Promise<void> => {
     } else {
       res.status(400).json({ message: 'Invalid user data' });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [AUTH] Registration failed:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       requestBody: { name, email, password: '***' },
       timestamp: new Date().toISOString()
     });
     
     // Handle Mongoose validation errors
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+    if (error instanceof Error && error.name === 'ValidationError' && 'errors' in error) {
+      const mongooseError = error as mongoose.Error.ValidationError;
+      const validationErrors = Object.values(mongooseError.errors).map(err => err.message);
       res.status(400).json({ 
         message: 'Validation failed', 
         errors: validationErrors,
         details: error.message 
       });
     } else {
-      res.status(500).json({ message: (error as Error).message });
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : 'Internal server error' 
+      });
     }
   }
 };
@@ -98,8 +101,10 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
-  } catch (error: any) {
-    res.status(500).json({ message: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 };
 
@@ -119,8 +124,10 @@ const getUserProfile = async (req: Request, res: Response): Promise<void> => {
     } else {
       res.status(404).json({ message: 'User not found' });
     }
-  } catch (error: any) {
-    res.status(500).json({ message: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 };
 
@@ -132,8 +139,10 @@ const checkRegistrationAllowed = async (req: Request, res: Response): Promise<vo
       registrationAllowed: userCount === 0,
       message: userCount === 0 ? 'Registration allowed for first admin user' : 'Registration not allowed'
     });
-  } catch (error: any) {
-    res.status(500).json({ message: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 };
 
@@ -160,15 +169,17 @@ const getAllUsers = async (req: Request, res: Response): Promise<void> => {
 
     res.json(users);
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [USERS] Error fetching users:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       adminId: req.user?._id,
       timestamp: new Date().toISOString()
     });
     
-    res.status(500).json({ message: (error as Error).message });
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 };
 
@@ -224,16 +235,18 @@ const deleteUser = async (req: Request, res: Response): Promise<void> => {
       }
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [USER] Error deleting user:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       targetUserId: req.params.id,
       adminId: req.user?._id,
       timestamp: new Date().toISOString()
     });
     
-    res.status(500).json({ message: (error as Error).message });
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : 'Internal server error' 
+    });
   }
 };
 

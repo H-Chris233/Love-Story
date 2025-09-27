@@ -1,6 +1,5 @@
 import multer from 'multer';
 import { uploadImageToGridFS, deleteImageFromGridFS } from './imageStorage';
-import mongoose from 'mongoose';
 
 console.log('🖼️ [IMAGE_UPLOAD] Initializing image upload module with strict file format validation');
 
@@ -114,10 +113,10 @@ const uploadImage = async (fileBuffer: Buffer, filename: string, mimeType: strin
       url: result.url,
       publicId: result.fileId.toString(), // Use MongoDB ObjectId as publicId
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [GRIDFS] Image upload failed:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       filename,
       mimeType,
       size: fileBuffer.length,
@@ -126,7 +125,7 @@ const uploadImage = async (fileBuffer: Buffer, filename: string, mimeType: strin
       message: 'Image upload failed'
     });
     
-    throw new Error('Image upload failed: ' + (error as Error).message);
+    throw new Error(`Image upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
@@ -136,16 +135,16 @@ const deleteImage = async (publicId: string): Promise<void> => {
     console.log('🗑️ [GRIDFS] Starting image deletion from GridFS:', publicId);
     await deleteImageFromGridFS(publicId);
     console.log('✅ [GRIDFS] Image deleted successfully:', publicId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [GRIDFS] Image deletion failed:', {
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
       publicId,
       timestamp: new Date().toISOString(),
       message: 'Image deletion failed'
     });
     
-    throw new Error('Image deletion failed: ' + (error as Error).message);
+    throw new Error(`Image deletion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

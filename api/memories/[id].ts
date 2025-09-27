@@ -3,7 +3,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../../lib/db.js';
 import jwt from 'jsonwebtoken';
-import { Db, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import logger from '../../../lib/logger.js';
 import { getClientIP } from '../../utils.js';
 
@@ -14,25 +14,7 @@ interface JwtPayload {
   exp: number;
 }
 
-// Define Memory type
-interface Memory {
-  _id?: ObjectId;
-  title: string;
-  description: string;
-  date: Date;
-  images: { url: string; publicId: string }[];
-  user: ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
-// Define User type
-interface User {
-  _id: ObjectId;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
   const ip = getClientIP(request);
@@ -117,22 +99,22 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: memory.updatedAt
         }
       });
-    } catch (error: any) {
-      logger.error('Error fetching memory', {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-        path: request.url,
-        method: request.method,
-        memoryId,
-        ip
-      });
-      
-      return vercelResponse.status(500).json({ 
-        message: 'Error fetching memory',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
+    } catch (_error: unknown) {
+    logger.error('Error fetching memory', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      memoryId,
+      ip
+    });
+    
+    return vercelResponse.status(500).json({ 
+      message: 'Error fetching memory',
+      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+    });
+  }
   } else if (request.method === 'PUT') {
     // Extract token from Authorization header
     const authHeader = request.headers.authorization;
@@ -159,7 +141,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         token, 
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
-    } catch (error) {
+    } catch (_error: unknown) {
       logger.warn('Invalid or expired token for memory update', {
         memoryId,
         path: request.url,
@@ -244,7 +226,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
 
       // Prepare update data
-      const updateData: any = {};
+      const updateData: { [key: string]: unknown; updatedAt: Date } = {};
       if (title) updateData.title = title;
       if (description) updateData.description = description;
       if (date) updateData.date = new Date(date);
@@ -278,10 +260,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: updateData.updatedAt
         }
       });
-    } catch (error: any) {
+    } catch (_error: unknown) {
       logger.error('Error updating memory', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -297,7 +279,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({ 
         message: 'Error updating memory',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else if (request.method === 'DELETE') {
@@ -326,7 +308,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         token, 
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
-    } catch (error) {
+    } catch (_error: unknown) {
       logger.warn('Invalid or expired token for memory deletion', {
         memoryId,
         path: request.url,
@@ -405,10 +387,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory deleted successfully'
       });
-    } catch (error: any) {
+    } catch (_error: unknown) {
       logger.error('Error handling memory request', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -419,7 +401,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({ 
         message: 'Error handling memory request',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else {
