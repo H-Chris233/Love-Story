@@ -19,12 +19,8 @@ const shouldEnableEruda = () => {
     return true;
   }
   
-  // 如果是开发环境，则也启用 Eruda
-  if (import.meta.env.DEV) {
-    return true;
-  }
-  
-  return false;
+  // 在所有环境中都启用 Eruda 调试面板
+  return true;
 };
 
 // 动态导入并初始化 Eruda 调试工具
