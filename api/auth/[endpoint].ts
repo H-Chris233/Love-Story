@@ -159,8 +159,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     } catch (error: unknown) {
       logger.error('Registration failed', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         requestBody: { name: request.body?.name, email: request.body?.email, password: '***' },
         timestamp: new Date().toISOString(),
         path: request.url,
@@ -169,21 +169,21 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       // Handle Mongoose validation errors
-      if (error.name === 'ValidationError') {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError' && 'errors' in error) {
         const validationErrors = Object.values((error as { errors: Record<string, { message: string }> }).errors).map((err: { message: string }) => err.message);
         return vercelResponse.status(400).json({ 
           message: 'Validation failed', 
           errors: validationErrors,
-          details: error.message 
+          details: error instanceof Error ? error.message : String(error)
         });
-      } else if (error.code === 11000) {
+      } else if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
         return vercelResponse.status(400).json({
           message: 'A user with this email already exists'
         });
       } else {
         // Generic error response
         return vercelResponse.status(500).json({
-          message: error.message || 'Internal server error during registration'
+          message: error instanceof Error ? error.message : 'Internal server error during registration'
         });
       }
     }
@@ -261,8 +261,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     } catch (error: unknown) {
       logger.error('Error in login handler', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -270,7 +270,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(500).json({
-        message: error.message || 'Internal server error during login'
+        message: error instanceof Error ? error.message : 'Internal server error during login'
       });
     }
   } else if (endpoint === 'profile' && method === 'GET') {
@@ -361,8 +361,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     } catch (error: unknown) {
       logger.error('Error in profile handler', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -370,7 +370,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(500).json({
-        message: error.message || 'Internal server error while fetching profile'
+        message: error instanceof Error ? error.message : 'Internal server error while fetching profile'
       });
     }
   } else if (endpoint === 'users' && method === 'GET') {
@@ -455,8 +455,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       })));
     } catch (error: unknown) {
       logger.error('Error fetching users', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -464,7 +464,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(500).json({
-        message: error.message || 'Internal server error while fetching users'
+        message: error instanceof Error ? error.message : 'Internal server error while fetching users'
       });
     }
   } else if (endpoint === 'users' && method === 'DELETE') {
@@ -612,8 +612,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     } catch (error: unknown) {
       logger.error('Error deleting user', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         targetUserId: userId,
         timestamp: new Date().toISOString(),
         path: request.url,
@@ -622,7 +622,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(500).json({
-        message: error.message || 'Internal server error during user deletion'
+        message: error instanceof Error ? error.message : 'Internal server error during user deletion'
       });
     }
   } else if (endpoint === 'check-registration' && method === 'GET') {
@@ -659,8 +659,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     } catch (error: unknown) {
       logger.error('Error in check registration handler', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -668,7 +668,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(500).json({
-        message: error.message || 'Internal server error during registration check'
+        message: error instanceof Error ? error.message : 'Internal server error during registration check'
       });
     }
   } else {

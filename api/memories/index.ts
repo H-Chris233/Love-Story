@@ -145,8 +145,56 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     }
 
-    // Extract memory data from request body
-    const { title, description, date } = request.body;
+    // For file uploads, we need to parse multipart/form-data
+    const contentType = request.headers['content-type'];
+    let title: string, description: string, date: string;
+    let files: any[] = [];
+
+    if (contentType && contentType.includes('multipart/form-data')) {
+      // Parse multipart/form-data using formidable
+      const { formidable } = await import('formidable');
+      
+      try {
+        const form = formidable({ 
+          multiples: true,
+          keepExtensions: true
+        });
+        
+        // Parse the form data
+        const [fields, fileFields] = await new Promise<[Record<string, any>, Record<string, any>]>((resolve, reject) => {
+          form.parse(request as any, (err, fields, files) => {
+            if (err) reject(err);
+            else resolve([fields, files]);
+          });
+        });
+        
+        // Extract fields
+        title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
+        description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
+        date = Array.isArray(fields.date) ? fields.date[0] : fields.date;
+        
+        // Extract files
+        if (fileFields.images) {
+          files = Array.isArray(fileFields.images) ? fileFields.images : [fileFields.images];
+        }
+        
+      } catch (parseError: any) {
+        logger.error('Error parsing form data', {
+          error: parseError.message,
+          timestamp: new Date().toISOString(),
+          path: request.url,
+          method: request.method,
+          ip
+        });
+        
+        return vercelResponse.status(400).json({ 
+          message: 'Error parsing form data'
+        });
+      }
+    } else {
+      // For JSON requests, use normal destructuring
+      ({ title, description, date } = request.body);
+    }
 
     // Validate required fields
     if (!title || !description || !date) {
@@ -160,6 +208,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         method: request.method,
         timestamp: new Date().toISOString(),
         userId: decoded.userId?.toString(),
+        contentType: request.headers['content-type'],
         ip
       });
       
@@ -187,7 +236,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       const { db } = await connectToDatabase();
       const memoriesCollection = db.collection('memories');
 
-      // Create new memory object
+      // Create new memory object (without images first)
       const newMemory: Memory = {
         title,
         description,
@@ -198,13 +247,93 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         updatedAt: new Date()
       };
 
-      // Insert new memory into database
+      // Insert new memory into database first
       const result = await memoriesCollection.insertOne(newMemory);
+      const memoryId = result.insertedId;
+
+      // Handle file uploads if any
+      const uploadedImages = [];
+      if (files.length > 0) {
+        logger.memory('Processing file uploads for memory', {
+          memoryId: memoryId.toString(),
+          fileCount: files.length,
+          fileNames: files.map((f: any) => f.originalFilename || f.name),
+          timestamp: new Date().toISOString()
+        });
+
+        // Upload each file to GridFS
+        const { GridFSBucket } = await import('mongodb');
+        const gfs = new GridFSBucket(db, { bucketName: 'images' });
+
+        for (const file of files) {
+          try {
+            // Create upload stream
+            const uploadStream = gfs.openUploadStream(file.originalFilename || `memory_${memoryId}_${Date.now()}`, {
+              contentType: file.mimetype,
+              metadata: {
+                userId: decoded.userId,
+                memoryId: memoryId,
+                uploadedAt: new Date(),
+                originalName: file.originalFilename
+              }
+            });
+
+            // Read the file and pipe it to GridFS
+            const fileStream = await file.toFileStream();
+            fileStream.pipe(uploadStream);
+
+            // Wait for upload completion
+            await new Promise<void>((resolve, reject) => {
+              uploadStream.on('finish', () => resolve());
+              uploadStream.on('error', reject);
+              fileStream.on('error', reject);
+            });
+
+            // Add image info to uploaded images array
+            uploadedImages.push({
+              url: `/api/images/${uploadStream.id}`,
+              publicId: uploadStream.id.toString()
+            });
+
+            logger.memory('Image uploaded to GridFS successfully', {
+              memoryId: memoryId.toString(),
+              imageId: uploadStream.id.toString(),
+              filename: file.originalFilename,
+              timestamp: new Date().toISOString()
+            });
+
+          } catch (uploadError: any) {
+            logger.error('Error uploading image to GridFS', {
+              error: uploadError.message,
+              memoryId: memoryId.toString(),
+              filename: file.originalFilename,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+
+        // Update memory with uploaded images
+        if (uploadedImages.length > 0) {
+          await memoriesCollection.updateOne(
+            { _id: memoryId },
+            { 
+              $set: { 
+                images: uploadedImages,
+                updatedAt: new Date()
+              }
+            }
+          );
+        }
+      }
+
+      // Get the updated memory with images
+      const updatedMemory = await memoriesCollection.findOne({ _id: memoryId });
 
       logger.memory('Memory created successfully', {
-        memoryId: result.insertedId.toString(),
+        memoryId: memoryId.toString(),
         userId: decoded.userId?.toString(),
         title: newMemory.title,
+        imageCount: uploadedImages.length,
         timestamp: new Date().toISOString()
       });
 
@@ -213,14 +342,14 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory created successfully',
         memory: {
-          id: result.insertedId,
+          id: memoryId,
           title: newMemory.title,
           description: newMemory.description,
           date: newMemory.date,
-          images: newMemory.images,
+          images: uploadedImages.length > 0 ? uploadedImages : [],
           user: decoded.userId,
           createdAt: newMemory.createdAt,
-          updatedAt: newMemory.updatedAt
+          updatedAt: new Date()
         }
       });
     } catch (error: any) {
