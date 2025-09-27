@@ -1,6 +1,7 @@
 // lib/email.ts
 // Email utilities for serverless functions
-import * as emailjs from 'emailjs';
+import emailjs from '@emailjs/nodejs';
+import logger from './logger.js';
 
 // Email service configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || '';
@@ -38,7 +39,11 @@ export async function sendAnniversaryReminderToAllUsers(
 ): Promise<EmailSendingResult> {
   // Validate environment variables
   if (!EMAILJS_SERVICE_ID || !EMAILJS_PUBLIC_KEY) {
-    console.error('❌ [EMAIL] Missing required EmailJS environment variables');
+    logger.error('Missing required EmailJS environment variables', {
+      hasServiceId: !!EMAILJS_SERVICE_ID,
+      hasPublicKey: !!EMAILJS_PUBLIC_KEY,
+      hasPrivateKey: !!EMAILJS_PRIVATE_KEY
+    });
     throw new Error('Missing required EmailJS environment variables');
   }
 
@@ -72,24 +77,40 @@ export async function sendAnniversaryReminderToAllUsers(
     })
   };
 
-  console.log('📤 [EMAIL] Preparing to send anniversary reminders:', {
+  logger.email('Starting batch email sending for anniversary', {
     anniversaryTitle,
-    anniversaryDate: anniversaryDateFormatted,
-    isToday,
-    templateId,
     totalUsers: users.length,
-    templateParams
+    emailType: isToday ? 'CELEBRATION' : 'REMINDER',
+    templateId,
+    anniversaryDate: anniversaryDateFormatted,
+    userEmails: users.map(u => u.email)
   });
 
-  // Initialize EmailJS with public key
-  const emailService = emailjs.init(EMAILJS_PUBLIC_KEY);
+  logger.debug('Email template parameters prepared', {
+    templateParams,
+    anniversaryTitle
+  });
 
   let successful = 0;
   let failed = 0;
   const errors: Array<{ email: string; error: string }> = [];
 
+  const startTime = Date.now();
+
   // Send emails to each user
-  for (const user of users) {
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+    if (!user) {
+      console.log(`⚠️  [BATCH_EMAIL] User at index ${i} is undefined, skipping...`);
+      continue;
+    }
+
+    logger.email(`Processing user ${i + 1}/${users.length}`, {
+      userName: user.name,
+      userEmail: user.email,
+      anniversaryTitle
+    });
+
     try {
       // Add user-specific parameters
       const userTemplateParams = {
@@ -98,30 +119,91 @@ export async function sendAnniversaryReminderToAllUsers(
         email: user.email
       };
 
-      console.log(`📤 [EMAIL] Sending to: ${user.name} <${user.email}>`);
+      logger.debug('Sending anniversary email', {
+        recipientName: user.name,
+        recipientEmail: user.email,
+        anniversaryTitle,
+        emailType: isToday ? 'CELEBRATION' : 'REMINDER',
+        templateId,
+        serviceId: EMAILJS_SERVICE_ID,
+        hasPublicKey: !!EMAILJS_PUBLIC_KEY,
+        hasPrivateKey: !!EMAILJS_PRIVATE_KEY
+      });
 
-      // Send the email using private key authentication
-      const response = await emailService.send(
+      // Send the email using @emailjs/nodejs API
+      const response = await emailjs.send(
         EMAILJS_SERVICE_ID,
         templateId,
         userTemplateParams,
-        EMAILJS_PRIVATE_KEY // Using private key for authentication
+        {
+          publicKey: EMAILJS_PUBLIC_KEY,
+          privateKey: EMAILJS_PRIVATE_KEY,
+        }
       );
 
-      console.log(`✅ [EMAIL] Successfully sent to: ${user.name} <${user.email}>`, response);
+      logger.email('Email sent successfully', {
+        recipientEmail: user.email,
+        recipientName: user.name,
+        anniversaryTitle,
+        emailType: isToday ? 'CELEBRATION' : 'REMINDER',
+        progress: `${successful + 1} of ${users.length}`,
+        responseStatus: response?.status || 'unknown'
+      });
+      
+      logger.debug('EmailJS response details', {
+        recipientEmail: user.email,
+        response
+      });
 
       successful++;
-    } catch (error: any) {
-      console.error(`❌ [EMAIL] Failed to send to: ${user.name} <${user.email}>`, error);
+
+      // Add delay to avoid rate limiting in serverless environment
+      if (i < users.length - 1) {
+        logger.debug('Rate limiting delay', {
+          waitTimeMs: 1000,
+          remainingUsers: users.length - i - 1
+        });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (error: unknown) {
+      logger.error('Failed to send anniversary email', {
+        recipientEmail: user.email,
+        recipientName: user.name,
+        anniversaryTitle,
+        emailType: isToday ? 'CELEBRATION' : 'REMINDER',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined,
+        failureCount: failed + 1,
+        totalUsers: users.length
+      });
+      
       failed++;
       errors.push({
         email: user.email,
         error: error.message || 'Unknown error'
       });
     }
+  }
 
-    // Add a small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const endTime = Date.now();
+  const duration = (endTime - startTime) / 1000;
+  
+  logger.email('Batch email sending completed', {
+    anniversaryTitle,
+    successful,
+    failed,
+    totalUsers: users.length,
+    durationSeconds: duration,
+    averageTimePerEmail: (duration / users.length).toFixed(2),
+    successRate: `${((successful / users.length) * 100).toFixed(1)}%`
+  });
+  
+  if (errors.length > 0) {
+    logger.warn('Some emails failed to send', {
+      anniversaryTitle,
+      failedCount: failed,
+      errors: errors.map(e => ({ email: e.email, error: e.error }))
+    });
   }
 
   console.log(`📤 [EMAIL] Completed sending anniversary reminders: ${successful} successful, ${failed} failed`);
