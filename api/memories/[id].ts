@@ -165,22 +165,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     let title: string, description: string, date: string;
 
     if (contentType && contentType.includes('multipart/form-data')) {
-      // Parse multipart/form-data using formidable
-      const { formidable } = await import('formidable');
-      
+      // Parse multipart/form-data using Vercel-compatible approach
       try {
-        const form = formidable({ 
-          multiples: true,
-          keepExtensions: true
-        });
+        const { parseMultipartData } = await import('@vercel/node');
         
-        // Parse the form data
-        const [fields, fileFields] = await new Promise<[Record<string, string | string[] | undefined>, Record<string, any>]>((resolve, reject) => {
-          form.parse(request as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
-            if (err) reject(err);
-            else resolve([fields, files]);
-          });
-        });
+        // Parse form data using Vercel's built-in method
+        const { fields, files } = await parseMultipartData(request);
+        const fileFields = files;
         
         // Extract fields
         title = Array.isArray(fields.title) ? fields.title[0] : (fields.title || '');

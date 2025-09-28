@@ -3,7 +3,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import { GridFSBucket, ObjectId } from 'mongodb';
-import formidable from 'formidable';
 import { Readable } from 'stream';
 import jwt from 'jsonwebtoken';
 import logger from '../../lib/logger.js';
@@ -223,31 +222,9 @@ async function handleUploadImage(request: VercelRequest, vercelResponse: VercelR
     const { db } = await connectToDatabase();
     const gfs = new GridFSBucket(db, { bucketName: 'images' });
 
-    // Parse form data
-    const form = formidable({
-      multiples: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB limit
-    });
-    
-    // Parse form data directly from the request
-    const [fields, files] = await new Promise<[FormDataFields, FormDataFiles]>((resolve, reject) => {
-      form.parse(request, (err, fields, files) => {
-        if (err) {
-          logger.error('Error parsing form data:', {
-            error: err.message,
-            stack: err.stack,
-            timestamp: new Date().toISOString(),
-            path: request.url,
-            method: request.method,
-            ip
-          });
-          
-          reject(err);
-        } else {
-          resolve([fields, files]);
-        }
-      });
-    });
+    // Parse form data using Vercel's built-in method
+    const { parseMultipartData } = await import('@vercel/node');
+    const { fields, files } = await parseMultipartData(request);
 
     // Extract fields
     const memoryId = Array.isArray(fields.memoryId) ? fields.memoryId[0] : fields.memoryId;
