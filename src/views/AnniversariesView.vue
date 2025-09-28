@@ -14,10 +14,22 @@ const user = ref<{ name: string; email: string } | null>(null)
 // 分页相关
 const currentPage = ref(1)
 const anniversariesPerPage = 10 // 每页显示10个纪念日
-const totalPages = computed(() => Math.ceil(anniversaries.value.length / anniversariesPerPage))
+const totalPages = computed(() => {
+  // 防御性编程：确保 anniversaries.value 是数组
+  if (!Array.isArray(anniversaries.value)) {
+    return 0
+  }
+  return Math.ceil(anniversaries.value.length / anniversariesPerPage)
+})
 
 // 获取当前页的纪念日数据
 const paginatedAnniversaries = computed(() => {
+  // 防御性编程：确保 anniversaries.value 是数组
+  if (!Array.isArray(anniversaries.value)) {
+    console.warn('⚠️ [ANNIVERSARIES-VIEW] anniversaries.value is not an array:', anniversaries.value)
+    return []
+  }
+  
   const startIndex = (currentPage.value - 1) * anniversariesPerPage
   const endIndex = startIndex + anniversariesPerPage
   return anniversaries.value.slice(startIndex, endIndex)
