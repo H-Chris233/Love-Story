@@ -55,10 +55,20 @@ const getFullImageUrl = (image: { url: string; publicId: string }) => {
     return image.url
   }
   
-  // 构建完整的API URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
-  const serverUrl = baseUrl.replace('/api', '')
-  return `${serverUrl}${image.url}`
+  // 根据架构模式选择正确的API URL
+  const useServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true'
+  const baseUrl = useServerless 
+    ? import.meta.env.VITE_SERVERLESS_API_URL || 'http://localhost:3000/api'
+    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+  
+  // 如果图片URL已经是绝对路径，直接返回
+  if (image.url.startsWith('/api/')) {
+    const serverUrl = baseUrl.replace('/api', '')
+    return `${serverUrl}${image.url}`
+  }
+  
+  // 默认处理：构建完整的URL
+  return `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`
 }
 
 // 获取单个图片容器的类名
