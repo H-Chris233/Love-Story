@@ -433,6 +433,12 @@ export const memoryAPI = {
   },
 };
 
+// 纪念日后端响应类型
+interface AnniversariesResponse {
+  success: boolean;
+  anniversaries: Anniversary[];
+}
+
 // 纪念日相关API
 export const anniversaryAPI = {
   getAll: (): Promise<AxiosResponse<Anniversary[]>> => {
@@ -445,11 +451,18 @@ export const anniversaryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<Anniversary[]>('/anniversaries')
+    return apiClient.get<AnniversariesResponse>('/anniversaries')
       .then(response => {
-        console.log(`✅ [API] Fetched ${response.data.length} anniversaries`);
-        apiCache.set(cacheKey, response.data, 5 * 60 * 1000); // 缓存5分钟
-        return response;
+        // 提取 anniversaries 数组
+        const anniversaries = response.data.anniversaries || [];
+        console.log(`✅ [API] Fetched ${anniversaries.length} anniversaries`);
+        apiCache.set(cacheKey, anniversaries, 5 * 60 * 1000); // 缓存5分钟
+        
+        // 返回符合预期格式的响应
+        return {
+          ...response,
+          data: anniversaries
+        } as AxiosResponse<Anniversary[]>;
       })
       .catch(error => {
         console.error('❌ [API] Get all anniversaries failed:', {
