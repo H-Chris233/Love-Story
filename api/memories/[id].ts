@@ -160,24 +160,65 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     const usersCollection = db.collection('users');
     const user = await usersCollection.findOne({ _id: decoded.userId });
 
-    // Check if request body exists
-    if (!request.body) {
-      logger.warn('Request body is required for memory update', {
-        memoryId,
-        path: request.url,
-        method: request.method,
-        timestamp: new Date().toISOString(),
-        userId: decoded.userId?.toString(),
-        ip
-      });
-      
-      return vercelResponse.status(400).json({ 
-        message: 'Request body is required for memory update'
-      });
-    }
+    // For file uploads, we need to parse multipart/form-data
+    const contentType = request.headers['content-type'];
+    let title: string, description: string, date: string;
 
-    // Extract memory data from request body
-    const { title, description, date } = request.body;
+    if (contentType && contentType.includes('multipart/form-data')) {
+      // Parse multipart/form-data using formidable
+      const { formidable } = await import('formidable');
+      
+      try {
+        const form = formidable({ 
+          multiples: true,
+          keepExtensions: true
+        });
+        
+        // Parse the form data
+        const [fields, fileFields] = await new Promise<[Record<string, string | string[] | undefined>, Record<string, any>]>((resolve, reject) => {
+          form.parse(request as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
+            if (err) reject(err);
+            else resolve([fields, files]);
+          });
+        });
+        
+        // Extract fields
+        title = Array.isArray(fields.title) ? fields.title[0] : (fields.title || '');
+        description = Array.isArray(fields.description) ? fields.description[0] : (fields.description || '');
+        date = Array.isArray(fields.date) ? fields.date[0] : (fields.date || '');
+        
+      } catch (parseError: unknown) {
+        logger.error('Error parsing form data', {
+          error: parseError instanceof Error ? parseError.message : 'Unknown error',
+          timestamp: new Date().toISOString(),
+          path: request.url,
+          method: request.method,
+          ip
+        });
+        
+        return vercelResponse.status(400).json({ 
+          message: 'Error parsing form data'
+        });
+      }
+    } else {
+      // For JSON requests, use normal destructuring
+      if (!request.body) {
+        logger.warn('Request body is required for memory update', {
+          memoryId,
+          path: request.url,
+          method: request.method,
+          timestamp: new Date().toISOString(),
+          userId: decoded.userId?.toString(),
+          ip
+        });
+        
+        return vercelResponse.status(400).json({ 
+          message: 'Request body is required for memory update'
+        });
+      }
+      
+      ({ title, description, date } = request.body);
+    }
 
     // Validate required fields
     if (!title && !description && !date) {

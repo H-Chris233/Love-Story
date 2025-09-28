@@ -281,7 +281,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
             });
 
             // Read the file and pipe it to GridFS
-            const fileStream = await (file as any).toFileStream();
+            const fileStream = Readable.from(file as unknown as Iterable<unknown>);
             fileStream.pipe(uploadStream);
 
             // Wait for upload completion
