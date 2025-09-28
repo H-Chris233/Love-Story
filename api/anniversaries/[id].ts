@@ -30,25 +30,24 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
   const authHeader = request.headers.authorization;
   let decoded: JwtPayload | null = null;
   
-  if (request.method !== 'GET') { // Authentication required for non-GET requests
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return vercelResponse.status(401).json({
-        message: 'Authorization token required'
-      });
-    }
+  // Authentication required for all requests
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return vercelResponse.status(401).json({
+      message: 'Authorization token required'
+    });
+  }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    try {
-        decoded = jwt.verify(
-          token, 
-          process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-        ) as JwtPayload;
-      } catch (_error) {
-      return vercelResponse.status(401).json({
-        message: 'Invalid or expired token'
-      });
-    }
+  try {
+      decoded = jwt.verify(
+        token, 
+        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
+      ) as JwtPayload;
+    } catch (_error) {
+    return vercelResponse.status(401).json({
+      message: 'Invalid or expired token'
+    });
   }
 
   try {

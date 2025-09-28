@@ -4,6 +4,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import jwt from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
+import logger from '../../lib/logger.js';
+import { getClientIP } from '../utils.js';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -37,17 +39,40 @@ interface ImageFile {
 }
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
+  const ip = getClientIP(request);
+  
   // Only allow GET requests
   if (request.method !== 'GET') {
+    logger.warn('Method not allowed for images endpoint', {
+      path: request.url,
+      method: request.method,
+      timestamp: new Date().toISOString(),
+      ip
+    });
+    
     return vercelResponse.status(405).json({ 
       message: 'Method not allowed' 
     });
   }
 
   try {
+    logger.image('Fetching all images', {
+      path: request.url,
+      method: request.method,
+      timestamp: new Date().toISOString(),
+      ip
+    });
+
     // Extract token from Authorization header
     const authHeader = request.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('Authorization token required for images access', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
       return vercelResponse.status(401).json({
         message: 'Authorization token required'
       });
@@ -63,6 +88,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
       ) as JwtPayload;
     } catch (_error: unknown) {
+      logger.warn('Invalid or expired token for images access', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
       return vercelResponse.status(401).json({
         message: 'Invalid or expired token'
       });
@@ -93,20 +125,24 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
     }
 
+    logger.image(`Successfully fetched ${allImages.length} images`, {
+      count: allImages.length,
+      timestamp: new Date().toISOString()
+    });
+
     return vercelResponse.status(200).json({
       success: true,
       images: allImages,
       count: allImages.length
     });
   } catch (error: unknown) {
-    console.error('❌ [IMAGES] Error in images index handler:', {
+    logger.error('Error in images index handler', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      userId: (request.headers.authorization || '').substring(0, 20) + '...',
-      ip: request.headers['x-forwarded-for'] || request.connection.remoteAddress
+      ip
     });
     
     return vercelResponse.status(500).json({

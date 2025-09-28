@@ -7,6 +7,7 @@ import { Db, ObjectId } from 'mongodb';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
 import type { AppError, UploadedFile, UploadFields } from '../../src/types/api.js';
+import { Readable } from 'stream';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -162,9 +163,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           keepExtensions: true
         });
         
+        // Create a readable stream from the request for form parsing
+        const reqStream = Readable.from(request as unknown as Iterable<unknown>);
+        
         // Parse the form data
         const [fields, fileFields] = await new Promise<[Record<string, string | string[] | undefined>, Record<string, any>]>((resolve, reject) => {
-          form.parse(request as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
+          form.parse(reqStream as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
             if (err) reject(err);
             else resolve([fields, files]);
           });

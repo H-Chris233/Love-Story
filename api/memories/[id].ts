@@ -100,21 +100,21 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         }
       });
     } catch (error: unknown) {
-    logger.error('Error fetching memory', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
-      memoryId,
-      ip
-    });
-    
-    return vercelResponse.status(500).json({ 
-      message: 'Error fetching memory',
-      error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
-    });
-  }
+      logger.error('Error fetching memory', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        timestamp: new Date().toISOString(),
+        path: request.url,
+        method: request.method,
+        memoryId,
+        ip
+      });
+      
+      return vercelResponse.status(500).json({ 
+        message: 'Error fetching memory',
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
+      });
+    }
   } else if (request.method === 'PUT') {
     // Extract token from Authorization header
     const authHeader = request.headers.authorization;

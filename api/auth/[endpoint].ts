@@ -326,7 +326,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       // Find user by ID from token
       const user = await usersCollection.findOne(
-        { _id: toObjectId(decoded.userId) },
+        { _id: toObjectId(decoded.userId.toString()) },
         { projection: { password: 0 } } // Exclude password
       );
       
@@ -425,7 +425,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       const usersCollection = db.collection('users');
 
       // Check if current user is admin
-      const currentUser = await usersCollection.findOne({ _id: toObjectId(decoded.userId) });
+      const currentUser = await usersCollection.findOne({ _id: toObjectId(decoded.userId.toString()) });
       if (!currentUser?.isAdmin) {
         logger.warn('Unauthorized access attempt - user is not admin', {
           userId: decoded.userId?.toString(),
@@ -468,163 +468,18 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
     }
   } else if (endpoint === 'users' && method === 'DELETE') {
-    // Delete user endpoint (requires userId in query params): /api/auth/users/:userId
-    const { userId } = request.query;
-    
-    // Validate user ID
-    if (!userId || Array.isArray(userId) || !ObjectId.isValid(userId)) {
-      logger.warn('Invalid user ID provided for deletion', {
-        userId: Array.isArray(userId) ? userId.join(',') : String(userId || 'undefined'),
-        path: request.url,
-        method: request.method,
-        timestamp: new Date().toISOString(),
-        ip
-      });
-      
-      return vercelResponse.status(400).json({ 
-        message: 'Valid user ID required' 
-      });
-    }
-    
-    const targetUserId = new ObjectId(userId);
-
-    logger.controller('Starting user deletion', {
-      targetUserId: userId,
+    // Delete user endpoint: /api/auth/users/:userId
+    // This endpoint should not be used - use /api/auth/users/[userId] instead
+    logger.warn('Deprecated delete user endpoint called', {
       path: request.url,
       method: request.method,
       timestamp: new Date().toISOString(),
       ip
     });
-
-    try {
-      // Extract token from Authorization header
-      const authHeader = request.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        logger.warn('Authorization token required for user deletion', {
-          targetUserId: userId,
-          path: request.url,
-          method: request.method,
-          timestamp: new Date().toISOString(),
-          ip
-        });
-        
-        return vercelResponse.status(401).json({
-          message: 'Authorization token required'
-        });
-      }
-
-      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-      // Verify JWT token
-      let decoded: JwtPayload;
-      try {
-        decoded = jwt.verify(
-          token, 
-          process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
-        ) as JwtPayload;
-      } catch (_error: unknown) {
-        logger.warn('Invalid or expired token for user deletion', {
-          targetUserId: userId,
-          path: request.url,
-          method: request.method,
-          timestamp: new Date().toISOString(),
-          ip
-        });
-        
-        return vercelResponse.status(401).json({
-          message: 'Invalid or expired token'
-        });
-      }
-
-      // Connect to database
-      const { db } = await connectToDatabase();
-      const usersCollection = db.collection('users');
-
-      // Check if current user is admin
-      const currentUser = await usersCollection.findOne({ _id: toObjectId(decoded.userId) });
-      if (!currentUser?.isAdmin) {
-        logger.warn('Unauthorized delete attempt - user is not admin', {
-          userId: decoded.userId?.toString(),
-          targetUserId: userId,
-          timestamp: new Date().toISOString()
-        });
-        
-        return vercelResponse.status(403).json({
-          message: 'Access denied - admin privileges required'
-        });
-      }
-
-      // Prevent admin from deleting themselves
-      if (decoded.userId.toString() === userId) {
-        logger.warn('Admin attempting to delete themselves', {
-          userId: decoded.userId?.toString(),
-          timestamp: new Date().toISOString()
-        });
-        
-        return vercelResponse.status(400).json({
-          message: 'Cannot delete your own account'
-        });
-      }
-
-      // Find the user to delete
-      const user = await usersCollection.findOne({ _id: targetUserId }, { projection: { name: 1, email: 1 } });
-      
-      if (!user) {
-        logger.warn('User not found for deletion', {
-          userId: targetUserId.toString(),
-          timestamp: new Date().toISOString()
-        });
-        
-        return vercelResponse.status(404).json({
-          message: 'User not found'
-        });
-      }
-
-      // Delete the user from the database
-      const result = await usersCollection.deleteOne({ _id: targetUserId });
-
-      if (result.deletedCount === 0) {
-        logger.warn('No user was deleted from database', {
-          userId: targetUserId.toString(),
-          timestamp: new Date().toISOString()
-        });
-        
-        return vercelResponse.status(404).json({
-          message: 'User not found'
-        });
-      }
-
-      logger.controller('User deleted successfully', {
-        deletedUserId: userId,
-        deletedUserEmail: user.email,
-        adminId: decoded.userId?.toString(),
-        timestamp: new Date().toISOString()
-      });
-
-      // Return success response
-      return vercelResponse.status(200).json({
-        message: 'User deleted successfully',
-        deletedUser: {
-          id: userId,
-          name: user.name,
-          email: user.email
-        }
-      });
-    } catch (error: unknown) {
-      logger.error('Error deleting user', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        targetUserId: userId,
-        timestamp: new Date().toISOString(),
-        path: request.url,
-        method: request.method,
-        ip
-      });
-      
-      return vercelResponse.status(500).json({
-        message: error instanceof Error ? error.message : 'Internal server error during user deletion'
-      });
-    }
+    
+    return vercelResponse.status(405).json({ 
+      message: 'Use /api/auth/users/[userId] endpoint for user deletion' 
+    });
   } else if (endpoint === 'check-registration' && method === 'GET') {
     // Check registration allowed endpoint: /api/auth/check-registration
     logger.controller('Checking if registration is allowed', {

@@ -4,9 +4,17 @@ import { connectToDatabase } from '../../lib/db.js';
 import { GridFSBucket, ObjectId } from 'mongodb';
 import formidable from 'formidable';
 import { Readable } from 'stream';
+import jwt from 'jsonwebtoken';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
 import type { UploadFields } from '../../src/types/api.js';
+
+// Define JWT payload type
+interface JwtPayload {
+  userId: ObjectId;
+  iat: number;
+  exp: number;
+}
 
 // Define interfaces for form data
 interface FormDataFields {
@@ -39,6 +47,43 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       timestamp: new Date().toISOString(),
       ip
     });
+
+    // Check authentication
+    const authHeader = request.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('Authorization token required for image upload', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
+      return vercelResponse.status(401).json({
+        message: 'Authorization token required'
+      });
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify JWT token
+    let decoded: JwtPayload;
+    try {
+      decoded = jwt.verify(
+        token, 
+        process.env.JWT_SECRET || 'fallback_jwt_secret_for_development'
+      ) as JwtPayload;
+    } catch (error) {
+      logger.warn('Invalid or expired token for image upload', {
+        path: request.url,
+        method: request.method,
+        timestamp: new Date().toISOString(),
+        ip
+      });
+      
+      return vercelResponse.status(401).json({
+        message: 'Invalid or expired token'
+      });
+    }
 
     // Connect to database
     const { db } = await connectToDatabase();
@@ -73,24 +118,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
 
     // Extract fields
-    const userId = Array.isArray(fields.userId) ? fields.userId[0] : fields.userId;
     const memoryId = Array.isArray(fields.memoryId) ? fields.memoryId[0] : fields.memoryId;
     
-    // Validate required fields
-    if (!userId || !ObjectId.isValid(userId)) {
-      logger.warn('Missing or invalid userId in image upload request', {
-        userId,
-        memoryId,
-        path: request.url,
-        method: request.method,
-        timestamp: new Date().toISOString(),
-        ip
-      });
-      
-      return vercelResponse.status(400).json({ 
-        message: 'userId is required and must be a valid ObjectId' 
-      });
-    }
+    // Use userId from JWT token for authentication
+    const userId = decoded.userId.toString();
     
     if (!memoryId || !ObjectId.isValid(memoryId)) {
       logger.warn('Missing or invalid memoryId in image upload request', {
@@ -186,8 +217,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     fileStream.pipe(uploadStream);
 
     // Handle upload completion
-    const uploadResult = await new Promise<{ _id: ObjectId; filename: string; metadata: Record<string, unknown> }>((resolve, reject) => {
-      uploadStream.on('finish', resolve);
+    const uploadResult = await new Promise<{ _id: ObjectId; filename: string }>((resolve, reject) => {
+      uploadStream.on('finish', () => resolve({ _id: uploadStream.id, filename: uploadStream.filename }));
       uploadStream.on('error', (error) => {
         logger.error('Error uploading image to GridFS', {
           error: error.message,
@@ -235,8 +266,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       success: true,
       message: 'Image uploaded successfully',
       imageId: uploadResult._id,
-      filename: uploadResult.filename,
-      metadata: uploadResult.metadata
+      filename: uploadResult.filename
     });
   } catch (error: unknown) {
     logger.error('Error in image upload handler', {
