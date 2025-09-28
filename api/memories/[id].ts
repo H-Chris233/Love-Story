@@ -158,7 +158,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // Find the user to check if they are an admin
     const { db } = await connectToDatabase();
     const usersCollection = db.collection('users');
-    const user = await usersCollection.findOne({ _id: decoded.userId });
+    const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId.toString()) });
 
     // For file uploads, we need to parse multipart/form-data
     const contentType = request.headers['content-type'];
@@ -384,7 +384,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // Find the user to check if they are an admin
     const { db } = await connectToDatabase();
     const usersCollection = db.collection('users');
-    const user = await usersCollection.findOne({ _id: decoded.userId });
+    const user = await usersCollection.findOne({ _id: new ObjectId(decoded.userId.toString()) });
 
     try {
       logger.memory('Starting memory deletion', {
