@@ -329,9 +329,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         memoryId,
         userId: decoded.userId?.toString(),
         payload: {
-          title: request.body.title,
-          description: request.body.description,
-          date: request.body.date
+          title: request.body?.title || title || 'undefined',
+          description: request.body?.description || description || 'undefined',
+          date: request.body?.date || date || 'undefined'
         },
         ip
       });
