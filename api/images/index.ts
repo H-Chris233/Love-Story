@@ -271,10 +271,10 @@ async function handleUploadImage(request: VercelRequest, vercelResponse: VercelR
     }
 
     // Verify that the memory exists and belongs to the user
-    const memoriesCollection = db.collection('memories');
-    const memoryObjectId = new ObjectId(memoryId);
-    const memory = await memoriesCollection.findOne({ 
-      _id: memoryObjectId,
+    const memoriesCollectionRef = db.collection('memories');
+    const uploadMemoryObjectId = new ObjectId(memoryId);
+    const memory = await memoriesCollectionRef.findOne({ 
+      _id: uploadMemoryObjectId,
       user: decoded.userId // Verify ownership
     });
 
@@ -408,9 +408,6 @@ async function handleUploadImage(request: VercelRequest, vercelResponse: VercelR
     });
 
     // Update the memory to include the new image
-    const memoriesCollection = db.collection('memories');
-    const memoryObjectId = new ObjectId(memoryId);
-    
     // Create image info for the memory
     const newImageInfo = {
       url: `/api/images/${uploadResult._id}`,
@@ -418,10 +415,10 @@ async function handleUploadImage(request: VercelRequest, vercelResponse: VercelR
     };
     
     // Add the image to the memory's images array
-    await memoriesCollection.updateOne(
-      { _id: memoryObjectId },
+    await memoriesCollectionRef.updateOne(
+      { _id: uploadMemoryObjectId },
       { 
-        $push: { images: newImageInfo },
+        $push: { images: newImageInfo } as any,
         $set: { updatedAt: new Date() }
       }
     );
