@@ -281,10 +281,23 @@ export const memoryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<MemoriesResponse>('/memories')
+    return apiClient.get<MemoriesResponse | Memory[]>('/memories')
       .then(response => {
-        // 提取 memories 数组
-        const memories = response.data.memories || [];
+        // 检查响应格式是哪种架构的格式
+        // 传统服务器架构：直接返回数组
+        // Serverless架构：返回 { success: true, memories: [] }
+        let memories: Memory[];
+        if (Array.isArray(response.data)) {
+          // 传统服务器架构 - 直接是数组
+          memories = response.data;
+        } else if ((response.data as MemoriesResponse).memories !== undefined) {
+          // Serverless架构 - 有memories字段
+          memories = (response.data as MemoriesResponse).memories || [];
+        } else {
+          // 如果都不是，返回空数组
+          memories = [];
+        }
+        
         console.log(`✅ [API] Fetched ${memories.length} memories`);
         apiCache.set(cacheKey, memories, 5 * 60 * 1000); // 缓存5分钟
         
@@ -313,11 +326,17 @@ export const memoryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<Memory>(`/memories/${id}`)
+    // 使用 any type first to handle both possible response formats
+    return apiClient.get<any>(`/memories/${id}`)
       .then(response => {
+        // Extract memory object - both architectures should return the same format for single memory
+        const memory = response.data;
         console.log(`✅ [API] Fetched memory with ID: ${id}`);
-        apiCache.set(cacheKey, response.data, 10 * 60 * 1000); // 缓存10分钟
-        return response;
+        apiCache.set(cacheKey, memory, 10 * 60 * 1000); // 缓存10分钟
+        return {
+          ...response,
+          data: memory
+        } as AxiosResponse<Memory>;
       })
       .catch(error => {
         console.error('❌ [API] Get memory by ID failed:', {
@@ -451,10 +470,23 @@ export const anniversaryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<AnniversariesResponse>('/anniversaries')
+    return apiClient.get<AnniversariesResponse | Anniversary[]>('/anniversaries')
       .then(response => {
-        // 提取 anniversaries 数组
-        const anniversaries = response.data.anniversaries || [];
+        // 检查响应格式是哪种架构的格式
+        // 传统服务器架构：直接返回数组
+        // Serverless架构：返回 { success: true, anniversaries: [] }
+        let anniversaries: Anniversary[];
+        if (Array.isArray(response.data)) {
+          // 传统服务器架构 - 直接是数组
+          anniversaries = response.data;
+        } else if ((response.data as AnniversariesResponse).anniversaries !== undefined) {
+          // Serverless架构 - 有anniversaries字段
+          anniversaries = (response.data as AnniversariesResponse).anniversaries || [];
+        } else {
+          // 如果都不是，返回空数组
+          anniversaries = [];
+        }
+        
         console.log(`✅ [API] Fetched ${anniversaries.length} anniversaries`);
         apiCache.set(cacheKey, anniversaries, 5 * 60 * 1000); // 缓存5分钟
         
@@ -483,11 +515,17 @@ export const anniversaryAPI = {
     }
     
     // 如果没有缓存，发起请求并缓存结果
-    return apiClient.get<Anniversary>(`/anniversaries/${id}`)
+    // 使用 any type first to handle both possible response formats
+    return apiClient.get<any>(`/anniversaries/${id}`)
       .then(response => {
+        // Extract anniversary object - both architectures should return the same format for single anniversary
+        const anniversary = response.data;
         console.log(`✅ [API] Fetched anniversary with ID: ${id}`);
-        apiCache.set(cacheKey, response.data, 10 * 60 * 1000); // 缓存10分钟
-        return response;
+        apiCache.set(cacheKey, anniversary, 10 * 60 * 1000); // 缓存10分钟
+        return {
+          ...response,
+          data: anniversary
+        } as AxiosResponse<Anniversary>;
       })
       .catch(error => {
         console.error('❌ [API] Get anniversary by ID failed:', {
