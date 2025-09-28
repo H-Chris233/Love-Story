@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import config from './index';
+import logger from '../utils/logger';
 
 // MongoDB connection
 const connectDB = async (): Promise<void> => {
@@ -11,32 +12,31 @@ const connectDB = async (): Promise<void> => {
     // Updated configuration to remove deprecated options
     const conn = await mongoose.connect(config.mongoURI);
 
-    console.log(`✅ [DATABASE] MongoDB Connected Successfully:`);
-    console.log(`✅ [DATABASE] - Host: ${conn.connection.host}`);
-    console.log(`✅ [DATABASE] - Database: ${conn.connection.name}`);
-    console.log(`✅ [DATABASE] - Connection state: ${conn.connection.readyState === 1 ? 'Connected' : 'Not connected'}`);
-    console.log(`✅ [DATABASE] - MongoDB version: ${conn.connection.db?.admin().serverInfo ? 'Available' : 'Unknown'}`);
+    logger.database(`MongoDB Connected Successfully:`);
+    logger.database(`- Host: ${conn.connection.host}`);
+    logger.database(`- Database: ${conn.connection.name}`);
+    logger.database(`- Connection state: ${conn.connection.readyState === 1 ? 'Connected' : 'Not connected'}`);
+    logger.database(`- MongoDB version: ${conn.connection.db?.admin().serverInfo ? 'Available' : 'Unknown'}`);
     
     // Log connection events
     mongoose.connection.on('connected', () => {
-      console.log(`🔗 [DATABASE] Mongoose connected to MongoDB`);
+      logger.database('Mongoose connected to MongoDB');
     });
     
     mongoose.connection.on('error', (err) => {
-      console.error(`❌ [DATABASE] Mongoose connection error:`, err);
+      logger.error(`Mongoose connection error:`, err);
     });
     
     mongoose.connection.on('disconnected', () => {
-      console.log(`⚠️  [DATABASE] Mongoose disconnected from MongoDB`);
+      logger.database('Mongoose disconnected from MongoDB');
     });
     
   } catch (error: unknown) {
-    console.error(`❌ [DATABASE] MongoDB connection failed:`);
-    console.error(`❌ [DATABASE] Error: ${error.message}`);
-    if (error.stack) {
-      console.error(`❌ [DATABASE] Stack: ${error.stack}`);
+    logger.error(`MongoDB connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    if (error instanceof Error && error.stack) {
+      logger.error(`Stack: ${error.stack}`);
     }
-    console.error(`💥 [DATABASE] Exiting process due to database connection failure`);
+    logger.error(`Exiting process due to database connection failure`);
     process.exit(1);
   }
 };

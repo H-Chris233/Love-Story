@@ -1,4 +1,5 @@
 import NodeCache from 'node-cache';
+import logger from './logger';
 
 // 创建一个全局缓存实例
 const cache = new NodeCache({ 
@@ -41,7 +42,7 @@ const setCache = <T>(key: string, data: T, ttl?: number): boolean => {
       return cache.set(key, data);
     }
   } catch (error: unknown) {
-    console.error('缓存设置失败:', error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`[CACHE] Set failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 };
@@ -50,11 +51,11 @@ const setCache = <T>(key: string, data: T, ttl?: number): boolean => {
  * 获取缓存数据
  * @param key - 缓存键
  */
-const getCache = <T>(key: string): T | undefined => {
+const getCache = <T>(key: string): T | null | undefined => {
   try {
     return cache.get(key);
   } catch (error: unknown) {
-    console.error('缓存获取失败:', error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`[CACHE] Get failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return null;
   }
 };
@@ -69,7 +70,7 @@ const delCache = (key: string): boolean => {
     // NodeCache.del() 返回删除的键数量，我们需要返回boolean
     return typeof result === 'number' ? result > 0 : result;
   } catch (error: unknown) {
-    console.error('缓存删除失败:', error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`[CACHE] Delete failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 };
@@ -83,7 +84,7 @@ const clearCacheByPrefix = (prefix: string): number => {
     const keys = cache.keys().filter(key => key.startsWith(prefix));
     return cache.del(keys) as number; // 返回删除的键数量
   } catch (error: unknown) {
-    console.error('按前缀清除缓存失败:', error instanceof Error ? error.message : 'Unknown error');
+    logger.error(`[CACHE] Clear by prefix failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return 0;
   }
 };
