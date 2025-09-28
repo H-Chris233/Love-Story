@@ -304,6 +304,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         timestamp: new Date().toISOString()
       });
 
+      // Get updated user information
+      const updatedUser = await usersCollection.findOne(
+        { _id: new ObjectId(memory.user.toString()) },
+        { projection: { name: 1, email: 1 } }
+      );
+
       // Return success response
       return vercelResponse.status(200).json({
         success: true,
@@ -314,7 +320,11 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           description: description || memory.description,
           date: date ? new Date(date) : memory.date,
           images: memory.images || [],
-          user: memory.user,
+          user: updatedUser ? {
+            id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email
+          } : null,
           createdAt: memory.createdAt,
           updatedAt: updateData.updatedAt
         }

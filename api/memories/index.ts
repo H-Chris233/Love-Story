@@ -335,6 +335,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       // Get the updated memory with images
       const updatedMemory = await memoriesCollection.findOne({ _id: memoryId });
 
+      // Get user information for the response
+      const usersCollection = db.collection('users');
+      const user = await usersCollection.findOne(
+        { _id: new ObjectId(decoded.userId.toString()) },
+        { projection: { name: 1, email: 1 } }
+      );
+
       logger.memory('Memory created successfully', {
         memoryId: memoryId.toString(),
         userId: decoded.userId?.toString(),
@@ -353,7 +360,11 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           description: newMemory.description,
           date: newMemory.date,
           images: uploadedImages.length > 0 ? uploadedImages : [],
-          user: decoded.userId,
+          user: user ? {
+            id: user._id,
+            name: user.name,
+            email: user.email
+          } : null,
           createdAt: newMemory.createdAt,
           updatedAt: new Date()
         }

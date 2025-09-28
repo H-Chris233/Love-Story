@@ -61,6 +61,12 @@ const getFullImageUrl = (image: { url: string; publicId: string }) => {
     ? import.meta.env.VITE_SERVERLESS_API_URL || 'http://localhost:3000/api'
     : import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
   
+  // 如果图片URL是/api/images/格式，需要特殊处理
+  if (image.url.startsWith('/api/images/')) {
+    // 直接使用基础URL构建图片URL
+    return `${baseUrl}/images/${image.publicId}`
+  }
+  
   // 如果图片URL已经是绝对路径，直接返回
   if (image.url.startsWith('/api/')) {
     const serverUrl = baseUrl.replace('/api', '')
