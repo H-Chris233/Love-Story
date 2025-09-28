@@ -9,7 +9,7 @@ import { getClientIP } from '../utils.js';
 
 // Define JWT payload type
 interface JwtPayload {
-  userId: ObjectId;
+  userId: string | ObjectId;
   iat: number;
   exp: number;
 }
@@ -72,7 +72,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       // Get user data (name and email)
       const user = await usersCollection.findOne(
-        { _id: memory.user },
+        { _id: new ObjectId(memory.user.toString()) },
         { projection: { name: 1, email: 1 } }
       );
 
@@ -266,7 +266,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
 
       // Check if the authenticated user owns this memory or is an admin
-      const isOwner = memory.user.equals(decoded.userId);
+      const isOwner = memory.user.toString() === decoded.userId.toString();
       const isAdmin = user && user.isAdmin;
       if (!isOwner && !isAdmin) {
         logger.warn('Unauthorized update attempt - user does not own memory and is not admin', {
@@ -396,8 +396,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         ip
       });
 
-      // Connect to database
-      const { db } = await connectToDatabase();
+      // Use existing database connection
       const memoriesCollection = db.collection('memories');
 
       // Find memory by ID to check ownership
@@ -416,7 +415,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       }
 
       // Check if the authenticated user owns this memory or is an admin
-      const isOwner = memory.user.equals(decoded.userId);
+      const isOwner = memory.user.toString() === decoded.userId.toString();
       const isAdmin = user && user.isAdmin;
       if (!isOwner && !isAdmin) {
         logger.warn('Unauthorized deletion attempt - user does not own memory and is not admin', {
