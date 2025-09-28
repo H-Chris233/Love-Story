@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import type { Memory } from '../types/api'
+import type { Memory, ApiError } from '../types/api'
 import { memoryAPI } from '../services/api'
 
 // 定义组件Props
@@ -314,13 +314,13 @@ const handleSubmit = async () => {
     console.error('❌ [MEMORY-FORM] Error saving memory:', err)
     console.error('❌ [MEMORY-FORM] Error details:', {
       message: err instanceof Error ? err.message : 'Unknown error',
-      response: err instanceof Object && 'response' in err ? (err as any).response?.data : undefined,
-      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
+      response: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.data : undefined,
+      status: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.status : undefined,
       timestamp: new Date().toISOString()
     })
     
-    if (err instanceof Object && 'response' in err && (err as any).response?.data?.message) {
-      error.value = (err as any).response.data.message
+    if (err && typeof err === 'object' && 'response' in err && (err as ApiError).response?.data?.message) {
+      error.value = (err as ApiError).response!.data!.message!
     } else {
       error.value = 'Error saving memory, please try again'
     }

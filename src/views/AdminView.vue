@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '../services/api'
 import { useUserStore } from '../stores/user'
-import type { User } from '../types/api'
+import type { User, ApiError } from '../types/api'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -64,16 +64,23 @@ const createUser = async () => {
     name.value = ''
     email.value = ''
     password.value = ''
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('创建用户错误:', err)
-    if (err.response?.status === 400) {
-      const errorData = err.response?.data
-      if (errorData?.message === 'User already exists') {
-        error.value = '用户已存在'
-      } else if (errorData?.message === 'Validation failed') {
-        error.value = errorData.errors?.[0] || errorData.details || '数据验证失败'
+    
+    // 安全地检查错误对象
+    if (err && typeof err === 'object' && 'response' in err) {
+      const apiError = err as ApiError
+      if (apiError.response?.status === 400) {
+        const errorData = apiError.response?.data
+        if (errorData?.message === 'User already exists') {
+          error.value = '用户已存在'
+        } else if (errorData?.message === 'Validation failed') {
+          error.value = errorData.errors?.[0] || errorData.details || '数据验证失败'
+        } else {
+          error.value = errorData?.message || '用户已存在或数据无效'
+        }
       } else {
-        error.value = errorData?.message || '用户已存在或数据无效'
+        error.value = '创建用户失败，请重试'
       }
     } else {
       error.value = '创建用户失败，请重试'
@@ -92,7 +99,7 @@ const fetchUsers = async () => {
     const response = await authAPI.getAllUsers()
     users.value = response.data
     console.log('✅ [ADMIN] Fetched users:', users.value.length)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ [ADMIN] Error fetching users:', err)
     userError.value = '获取用户列表失败'
   } finally {
@@ -118,12 +125,17 @@ const deleteUser = async (userId: string, userName: string) => {
       success.value = ''
     }, 3000)
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('❌ [ADMIN] Error deleting user:', err)
-    if (err.response?.status === 403) {
-      error.value = '权限不足'
-    } else if (err.response?.status === 400) {
-      error.value = err.response?.data?.message || '无法删除用户'
+    if (err && typeof err === 'object' && 'response' in err) {
+      const apiError = err as ApiError
+      if (apiError.response?.status === 403) {
+        error.value = '权限不足'
+      } else if (apiError.response?.status === 400) {
+        error.value = apiError.response?.data?.message || '无法删除用户'
+      } else {
+        error.value = '删除用户失败，请重试'
+      }
     } else {
       error.value = '删除用户失败，请重试'
     }

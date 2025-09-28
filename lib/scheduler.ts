@@ -143,13 +143,13 @@ export async function triggerManualReminderCheck(): Promise<ManualReminderCheckR
         totalUsers: users.length
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [SCHEDULER] Error in manual reminder check:`, error);
-    console.error(`❌ [SCHEDULER] Error message: ${error.message}`);
+    console.error(`❌ [SCHEDULER] Error message: ${error instanceof Error ? error.message : 'Unknown error'}`);
     
     return {
       success: false,
-      message: `Error in manual anniversary reminder check: ${error.message}`
+      message: `Error in manual anniversary reminder check: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
 }

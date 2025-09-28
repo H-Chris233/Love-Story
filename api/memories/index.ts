@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { Db, ObjectId } from 'mongodb';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
+import type { AppError, UploadedFile, UploadFields } from '../../src/types/api.js';
 
 // Define JWT payload type
 interface JwtPayload {
@@ -60,25 +61,26 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       // For each memory, get user data (name and email)
       const memoriesWithUser = await Promise.all(
-        memories.map(async (memory: any) => {
+        memories.map(async (memory) => {
+          const memoryDoc = memory as any;
           const user = await usersCollection.findOne(
-            { _id: memory.user },
+            { _id: memoryDoc.user },
             { projection: { name: 1, email: 1 } }
           );
           
           return {
-            _id: memory._id,
-            title: memory.title,
-            description: memory.description,
-            date: memory.date,
-            images: memory.images || [],
+            _id: memoryDoc._id,
+            title: memoryDoc.title,
+            description: memoryDoc.description,
+            date: memoryDoc.date,
+            images: memoryDoc.images || [],
             user: user ? {
               _id: user._id,
-              name: user.name,
-              email: user.email
+              name: (user as any).name,
+              email: (user as any).email
             } : null,
-            createdAt: memory.createdAt,
-            updatedAt: memory.updatedAt
+            createdAt: memoryDoc.createdAt,
+            updatedAt: memoryDoc.updatedAt
           };
         })
       );
@@ -92,10 +94,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         memories: memoriesWithUser
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error fetching memories', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -104,7 +106,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({ 
         message: 'Error fetching memories',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else if (request.method === 'POST') {
@@ -148,7 +150,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // For file uploads, we need to parse multipart/form-data
     const contentType = request.headers['content-type'];
     let title: string, description: string, date: string;
-    let files: any[] = [];
+    let files: UploadedFile[] = [];
 
     if (contentType && contentType.includes('multipart/form-data')) {
       // Parse multipart/form-data using formidable
@@ -161,26 +163,26 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         });
         
         // Parse the form data
-        const [fields, fileFields] = await new Promise<[Record<string, any>, Record<string, any>]>((resolve, reject) => {
-          form.parse(request as any, (err, fields, files) => {
+        const [fields, fileFields] = await new Promise<[Record<string, string | string[] | undefined>, Record<string, any>]>((resolve, reject) => {
+          form.parse(request as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
             if (err) reject(err);
             else resolve([fields, files]);
           });
         });
         
         // Extract fields
-        title = Array.isArray(fields.title) ? fields.title[0] : fields.title;
-        description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
-        date = Array.isArray(fields.date) ? fields.date[0] : fields.date;
+        title = Array.isArray(fields.title) ? fields.title[0] : (fields.title || '');
+        description = Array.isArray(fields.description) ? fields.description[0] : (fields.description || '');
+        date = Array.isArray(fields.date) ? fields.date[0] : (fields.date || '');
         
         // Extract files
         if (fileFields.images) {
           files = Array.isArray(fileFields.images) ? fileFields.images : [fileFields.images];
         }
         
-      } catch (parseError: any) {
+      } catch (parseError: unknown) {
         logger.error('Error parsing form data', {
-          error: parseError.message,
+          error: parseError instanceof Error ? parseError.message : 'Unknown error',
           timestamp: new Date().toISOString(),
           path: request.url,
           method: request.method,
@@ -257,7 +259,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         logger.memory('Processing file uploads for memory', {
           memoryId: memoryId.toString(),
           fileCount: files.length,
-          fileNames: files.map((f: any) => f.originalFilename || f.name),
+          fileNames: files.map((f: UploadedFile) => f.originalFilename || f.name),
           timestamp: new Date().toISOString()
         });
 
@@ -268,18 +270,18 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         for (const file of files) {
           try {
             // Create upload stream
-            const uploadStream = gfs.openUploadStream(file.originalFilename || `memory_${memoryId}_${Date.now()}`, {
-              contentType: file.mimetype,
+            const uploadStream = gfs.openUploadStream((file as any).originalFilename || `memory_${memoryId}_${Date.now()}`, {
+              contentType: (file as any).mimetype,
               metadata: {
                 userId: decoded.userId,
                 memoryId: memoryId,
                 uploadedAt: new Date(),
-                originalName: file.originalFilename
+                originalName: (file as any).originalFilename
               }
             });
 
             // Read the file and pipe it to GridFS
-            const fileStream = await file.toFileStream();
+            const fileStream = await (file as any).toFileStream();
             fileStream.pipe(uploadStream);
 
             // Wait for upload completion
@@ -302,11 +304,11 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
               timestamp: new Date().toISOString()
             });
 
-          } catch (uploadError: any) {
+          } catch (uploadError: unknown) {
             logger.error('Error uploading image to GridFS', {
-              error: uploadError.message,
+              error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
               memoryId: memoryId.toString(),
-              filename: file.originalFilename,
+              filename: (file as any).originalFilename,
               timestamp: new Date().toISOString()
             });
           }
@@ -352,10 +354,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           updatedAt: new Date()
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error creating memory', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
@@ -370,7 +372,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       
       return vercelResponse.status(500).json({ 
         message: 'Error creating memory',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: process.env.NODE_ENV === 'development' && error instanceof Error ? error.message : undefined
       });
     }
   } else {

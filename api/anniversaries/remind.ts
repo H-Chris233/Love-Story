@@ -7,6 +7,7 @@ import { ObjectId } from 'mongodb';
 import { sendAnniversaryReminderToAllUsers } from '../../lib/email.js';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
+import type { User } from '../../src/types/api.js';
 
 // Verify environment variables for detailed logging
 const emailjsServiceId = process.env.EMAILJS_SERVICE_ID;
@@ -121,9 +122,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(404).json({ message: 'No users found in the system' });
     }
 
-    const userList = users.map((user: any) => ({
-      email: user.email,
-      name: user.name
+    const userList = users.map((user) => ({
+      email: (user as any).email,
+      name: (user as any).name
     }));
 
     // Check if this is a test request for all reminders
@@ -257,8 +258,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       console.log(`📤 [ANNIVERSARY] - Fetching all users from database...`);
       console.log(`📤 [ANNIVERSARY] - Found ${users.length} users in database`);
 
-      users.forEach((user: any, index) => {
-        console.log(`📤 [ANNIVERSARY] - User ${index + 1}: ${user.name} <${user.email}>`);
+      users.forEach((user, index) => {
+        console.log(`📤 [ANNIVERSARY] - User ${index + 1}: ${(user as any).name} <${(user as any).email}>`);
       });
 
       console.log(`📤 [ANNIVERSARY] - Starting email sending process for "${anniversary.title}"...`);

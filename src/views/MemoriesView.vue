@@ -5,7 +5,7 @@ import { useUserStore } from '../stores/user'
 import MemoryCard from '../components/MemoryCard.vue'
 import MemoryForm from '../components/MemoryForm.vue'
 import { memoryAPI } from '../services/api'
-import type { Memory } from '../types/api'
+import type { Memory, ApiError } from '../types/api'
 
 // 路由和用户状态
 const router = useRouter()
@@ -70,8 +70,8 @@ const fetchMemories = async () => {
     console.error('❌ [MEMORIES-VIEW] Error fetching memories:', err)
     console.error('❌ [MEMORIES-VIEW] Error details:', {
       message: err instanceof Error ? err.message : 'Unknown error',
-      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
-      data: err instanceof Object && 'response' in err ? (err as any).response?.data : undefined,
+      status: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.status : undefined,
+      data: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.data : undefined,
       timestamp: new Date().toISOString()
     })
     

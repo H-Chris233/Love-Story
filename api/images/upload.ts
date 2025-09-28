@@ -6,10 +6,11 @@ import formidable from 'formidable';
 import { Readable } from 'stream';
 import logger from '../../lib/logger.js';
 import { getClientIP } from '../utils.js';
+import type { UploadFields } from '../../src/types/api.js';
 
 // Define interfaces for form data
 interface FormDataFields {
-  [key: string]: string | string[];
+  [key: string]: string | string[] | undefined;
 }
 
 interface FormDataFiles {
@@ -50,10 +51,10 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
     
     // Create a readable stream from the request
-    const reqStream = Readable.from(request as any);
+    const reqStream = Readable.from(request as unknown as Iterable<unknown>);
 
-    const [fields, files] = await new Promise<any[]>((resolve, reject) => {
-      form.parse(reqStream as any, (err, fields, files) => {
+    const [fields, files] = await new Promise<[FormDataFields, FormDataFiles]>((resolve, reject) => {
+      form.parse(reqStream as unknown as Parameters<typeof form.parse>[0], (err, fields, files) => {
         if (err) {
           logger.error('Error parsing form data:', {
             error: err.message,
@@ -181,7 +182,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
 
     // Read the file and pipe it to GridFS
-    const fileStream = imageFile as any;
+    const fileStream = Readable.from(imageFile as unknown as Iterable<unknown>);
     fileStream.pipe(uploadStream);
 
     // Handle upload completion

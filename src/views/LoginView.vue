@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authAPI } from '../services/api'
 import { useUserStore } from '../stores/user'
-import type { AuthResponse } from '../types/api'
+import type { AuthResponse, ApiError } from '../types/api'
 
 // Router instance
 const router = useRouter()
@@ -58,7 +58,7 @@ const login = async () => {
     router.push('/')
   } catch (err: unknown) {
     console.error('登录错误:', err)
-    if (err instanceof Object && 'response' in err && (err as any).response?.status === 401) {
+    if (err && typeof err === 'object' && 'response' in err && (err as ApiError).response?.status === 401) {
       error.value = '邮箱或密码错误'
     } else {
       error.value = '登录失败，请重试'
@@ -101,12 +101,12 @@ const register = async () => {
     router.push('/')
   } catch (err: unknown) {
     console.error('注册错误:', err)
-    if (err instanceof Object && 'response' in err && (err as any).response?.status === 400) {
-      const errorData = (err as any).response?.data
+    if (err && typeof err === 'object' && 'response' in err && (err as ApiError).response?.status === 400) {
+      const errorData = (err as ApiError).response?.data
       if (errorData?.message === 'User already exists') {
         error.value = '用户已存在'
       } else if (errorData?.message === 'Validation failed') {
-        error.value = errorData.errors?.[0] || errorData.details || '数据验证失败'
+        error.value = errorData?.message || '数据验证失败'
       } else {
         error.value = errorData?.message || '用户已存在或数据无效'
       }

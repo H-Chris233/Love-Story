@@ -14,7 +14,7 @@ interface LogMetadata {
   path?: string;
   method?: string;
   ip?: string | string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 class ServerlessLogger {

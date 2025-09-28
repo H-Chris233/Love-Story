@@ -113,7 +113,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
           const uploadedImage = await uploadImage(file.buffer, file.originalname, file.mimetype);
           console.log(`✅ [IMAGE] Image uploaded successfully:`, uploadedImage);
           images.push(uploadedImage);
-        } catch (uploadError: any) {
+        } catch (uploadError: unknown) {
           console.error('❌ [IMAGE] Error uploading image:', {
             error: uploadError.message,
             fileName: file.originalname,

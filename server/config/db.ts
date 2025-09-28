@@ -30,7 +30,7 @@ const connectDB = async (): Promise<void> => {
       console.log(`⚠️  [DATABASE] Mongoose disconnected from MongoDB`);
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`❌ [DATABASE] MongoDB connection failed:`);
     console.error(`❌ [DATABASE] Error: ${error.message}`);
     if (error.stack) {
