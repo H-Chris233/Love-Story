@@ -29,10 +29,11 @@ async function deleteImage(publicId: string): Promise<void> {
 }
 
 /**
- * Get an image from GridFS
+ * Get an image from GridFS and stream it to response
  * @param publicId - The public ID of the image to retrieve
+ * @param response - The Vercel response object to stream the image to
  */
-async function getImage(publicId: string) {
+async function getImage(publicId: string, response: VercelResponse) {
   try {
     const { db } = await connectToDatabase();
     
@@ -43,13 +44,39 @@ async function getImage(publicId: string) {
     const fileId = new ObjectId(publicId);
     
     // Find the file in GridFS
-    const file = await bucket.find({ _id: fileId }).limit(1).toArray();
+    const files = await bucket.find({ _id: fileId }).limit(1).toArray();
     
-    if (file.length === 0) {
+    if (files.length === 0) {
       throw new Error('File not found');
     }
     
-    return file[0];
+    const file = files[0];
+    
+    // Set appropriate headers
+    if (file.contentType) {
+      response.setHeader('Content-Type', file.contentType);
+    }
+    
+    // Set cache headers for better performance
+    response.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    response.setHeader('Last-Modified', file.uploadDate?.toUTCString() || new Date().toUTCString());
+    
+    // Create download stream and pipe to response
+    const downloadStream = bucket.openDownloadStream(fileId);
+    
+    return new Promise<void>((resolve, reject) => {
+      downloadStream.pipe(response);
+      
+      downloadStream.on('end', () => {
+        console.log(`✅ [IMAGE] Image streamed successfully: ${publicId}`);
+        resolve();
+      });
+      
+      downloadStream.on('error', (error) => {
+        console.error(`❌ [IMAGE] Error streaming image ${publicId}:`, error);
+        reject(error);
+      });
+    });
   } catch (error) {
     console.error(`Error retrieving image with ID ${publicId} from GridFS:`, error);
     throw new Error(`Failed to retrieve image: ${(error as Error).message}`);
@@ -71,25 +98,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
   if (request.method === 'GET') {
     // Retrieve an image
     try {
-      // Get the image from storage
-      const image = await getImage(imageId);
-      
-      // Set the appropriate content type
-      if (image.contentType) {
-        vercelResponse.setHeader('Content-Type', image.contentType);
-      }
-      
-      // In a real implementation, you'd stream the image data
-      // For now, return a placeholder response
-      return vercelResponse.status(200).json({
-        message: 'Image retrieved successfully',
-        image: {
-          id: imageId,
-          filename: image.filename,
-          contentType: image.contentType,
-          uploadDate: image.uploadDate
-        }
-      });
+      // Stream the image data directly to response
+      await getImage(imageId, vercelResponse);
+      // Response is handled by the stream pipeline, no need to return JSON
     } catch (error: unknown) {
       console.error('❌ [IMAGE] Error retrieving image:', {
         error: error instanceof Error ? error.message : 'Unknown error',
