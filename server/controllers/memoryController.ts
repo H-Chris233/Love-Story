@@ -115,7 +115,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
           images.push(uploadedImage);
         } catch (uploadError: unknown) {
           console.error('❌ [IMAGE] Error uploading image:', {
-            error: uploadError.message,
+            error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
             fileName: file.originalname,
             fileSize: file.size,
             fileType: file.mimetype,
@@ -129,7 +129,7 @@ const createMemory = async (req: Request, res: Response): Promise<void> => {
           // If an image fails to upload, we should return an error
           res.status(500).json({ 
             message: `Error uploading image: ${file.originalname}`,
-            error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
+            error: process.env.NODE_ENV === 'development' && uploadError instanceof Error ? uploadError.message : undefined
           });
           return;
         }
