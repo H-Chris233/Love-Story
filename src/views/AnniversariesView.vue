@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { anniversaryAPI, authAPI } from '../services/api'
 import type { Anniversary } from '../types/api'
+import AnniversaryForm from '../components/AnniversaryForm.vue'
 
 // 纪念日数据
 const anniversaries = ref<Anniversary[]>([])
@@ -38,9 +39,13 @@ const paginatedAnniversaries = computed(() => {
 // 获取纪念日数据
 const fetchAnniversaries = async () => {
   try {
+    console.log('🎯 [DEBUG] Starting fetchAnniversaries, loading:', loading.value)
     loading.value = true
+    console.log('🎯 [DEBUG] Calling anniversaryAPI.getAll()...')
     const response = await anniversaryAPI.getAll()
+    console.log('🎯 [DEBUG] API response received, data:', response.data)
     anniversaries.value = response.data
+    console.log('🎯 [DEBUG] anniversaries.value set to:', anniversaries.value)
     // 重置到第一页
     currentPage.value = 1
   } catch (err) {
@@ -48,6 +53,7 @@ const fetchAnniversaries = async () => {
     error.value = '获取纪念日数据失败'
   } finally {
     loading.value = false
+    console.log('🎯 [DEBUG] fetchAnniversaries completed, loading:', loading.value, 'error:', error.value)
   }
 }
 
@@ -87,8 +93,10 @@ const formatDate = (dateString: string): string => {
 
 // 处理添加纪念日
 const handleAddAnniversary = () => {
+  console.log('🎯 [DEBUG] handleAddAnniversary called, current showForm:', showForm.value)
   editingAnniversary.value = null
   showForm.value = true
+  console.log('🎯 [DEBUG] showForm set to:', showForm.value)
 }
 
 // 处理编辑纪念日
@@ -190,7 +198,13 @@ onMounted(() => {
       </div>
 
       <div v-else>
-      <div class="anniversary-grid">
+        <div v-if="paginatedAnniversaries.length === 0" class="empty-state">
+          <div class="empty-icon">📅</div>
+          <h3 class="empty-title">还没有纪念日</h3>
+          <p class="empty-description">点击下方按钮添加第一个纪念日</p>
+        </div>
+        
+        <div v-else class="anniversary-grid">
         <div 
           v-for="anniversary in paginatedAnniversaries" 
           :key="anniversary._id" 
@@ -236,9 +250,9 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
-      
-      <!-- 分页组件 -->
+        </div>
+        
+        <!-- 分页组件 -->
       <div v-if="totalPages > 1" class="romantic-flex romantic-justify-center romantic-mt-8 romantic-gap-2">
         <button 
           @click="goToPage(currentPage - 1)" 
