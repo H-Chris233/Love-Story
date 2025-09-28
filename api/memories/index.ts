@@ -151,16 +151,25 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // For file uploads, we need to parse multipart/form-data
     const contentType = request.headers['content-type'];
     let title: string, description: string, date: string;
-    let files: UploadedFile[] = [];
+    let uploadedFiles: UploadedFile[] = [];
 
     if (contentType && contentType.includes('multipart/form-data')) {
-      // Parse multipart/form-data using Vercel-compatible approach
+      // Parse multipart/form-data using formidable with Vercel-compatible approach
       try {
-        const { parseMultipartData } = await import('@vercel/node');
+        const { formidable } = await import('formidable');
         
-        // Parse form data using Vercel's built-in method
-        const { fields, files } = await parseMultipartData(request);
-        const fileFields = files;
+        const form = formidable({ 
+          multiples: true,
+          keepExtensions: true
+        });
+        
+        // Parse the form data
+        const [fields, fileFields] = await new Promise<[Record<string, string | string[] | undefined>, Record<string, any>]>((resolve, reject) => {
+          form.parse(request, (err, fields, files) => {
+            if (err) reject(err);
+            else resolve([fields, files]);
+          });
+        });
         
         // Extract fields
         title = Array.isArray(fields.title) ? fields.title[0] : (fields.title || '');
@@ -169,7 +178,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         
         // Extract files
         if (fileFields.images) {
-          files = Array.isArray(fileFields.images) ? fileFields.images : [fileFields.images];
+          uploadedFiles = Array.isArray(fileFields.images) ? fileFields.images : [fileFields.images];
         }
         
       } catch (parseError: unknown) {
@@ -247,11 +256,11 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       // Handle file uploads if any
       const uploadedImages = [];
-      if (files.length > 0) {
+      if (uploadedFiles.length > 0) {
         logger.memory('Processing file uploads for memory', {
           memoryId: memoryId.toString(),
-          fileCount: files.length,
-          fileNames: files.map((f: UploadedFile) => f.originalFilename || f.name),
+          fileCount: uploadedFiles.length,
+          fileNames: uploadedFiles.map((f: UploadedFile) => f.originalFilename || f.name),
           timestamp: new Date().toISOString()
         });
 
@@ -259,7 +268,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         const { GridFSBucket } = await import('mongodb');
         const gfs = new GridFSBucket(db, { bucketName: 'images' });
 
-        for (const file of files) {
+        for (const file of uploadedFiles) {
           try {
             // Create upload stream
             const uploadStream = gfs.openUploadStream((file as any).originalFilename || `memory_${memoryId}_${Date.now()}`, {

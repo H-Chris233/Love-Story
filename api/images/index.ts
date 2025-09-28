@@ -22,7 +22,7 @@ interface FormDataFields {
 }
 
 interface FormDataFiles {
-  image?: formidable.File | formidable.File[];
+  image?: any;
 }
 
 interface ImageInfo {
@@ -222,9 +222,33 @@ async function handleUploadImage(request: VercelRequest, vercelResponse: VercelR
     const { db } = await connectToDatabase();
     const gfs = new GridFSBucket(db, { bucketName: 'images' });
 
-    // Parse form data using Vercel's built-in method
-    const { parseMultipartData } = await import('@vercel/node');
-    const { fields, files } = await parseMultipartData(request);
+    // Parse form data using formidable with Vercel-compatible approach
+    const { formidable } = await import('formidable');
+    
+    const form = formidable({
+      multiples: true,
+      maxFileSize: 10 * 1024 * 1024, // 10MB limit
+    });
+    
+    // Parse form data using Promise wrapper
+    const [fields, files] = await new Promise<[Record<string, any>, Record<string, any>]>((resolve, reject) => {
+      form.parse(request, (err, fields, files) => {
+        if (err) {
+          logger.error('Error parsing form data:', {
+            error: err.message,
+            stack: err.stack,
+            timestamp: new Date().toISOString(),
+            path: request.url,
+            method: request.method,
+            ip
+          });
+          
+          reject(err);
+        } else {
+          resolve([fields, files]);
+        }
+      });
+    });
 
     // Extract fields
     const memoryId = Array.isArray(fields.memoryId) ? fields.memoryId[0] : fields.memoryId;
