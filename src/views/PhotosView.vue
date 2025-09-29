@@ -88,8 +88,25 @@ const getFullImageUrl = (imageUrl: string) => {
     return imageUrl
   }
   
+  // 构建基础API URL
+  const isServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true'
+  const baseUrl = isServerless
+    ? import.meta.env.VITE_SERVERLESS_API_URL || 'https://your-vercel-project.vercel.app/api'
+    : import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+  
+  // 如果图片URL是/api/images/格式，需要特殊处理
+  if (imageUrl.startsWith('/api/images/')) {
+    // 直接使用基础URL构建图片URL
+    return `${baseUrl.replace('/api', '')}/images/${imageUrl.split('/').pop()}`
+  }
+  
+  // 如果图片URL已经是/api/格式，需要去掉/api并添加到基础URL
+  if (imageUrl.startsWith('/api/')) {
+    const serverUrl = baseUrl.replace('/api', '')
+    return `${serverUrl}${imageUrl}`
+  }
+  
   // 在生产环境中，构建完整URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
   const serverUrl = baseUrl.replace('/api', '')
   return `${serverUrl}${imageUrl}`
 }
