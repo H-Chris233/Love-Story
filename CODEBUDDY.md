@@ -104,7 +104,8 @@ EMAILJS_TODAY_TEMPLATE_ID=your_emailjs_celebration_template_id
 EMAILJS_PUBLIC_KEY=your_emailjs_public_key
 EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 
-# Cron Job Authentication (Optional, for protecting automatic reminder endpoint)
+# Cron Job Authentication (Optional, for additional security of automatic reminder endpoint)
+# Note: Vercel cron jobs are automatically authenticated, this token is only needed for manual API calls
 CRON_AUTH_TOKEN=your_secure_cron_auth_token
 ```
 

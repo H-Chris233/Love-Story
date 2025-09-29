@@ -3,10 +3,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { connectToDatabase } from '../../lib/db.js';
 import { sendAnniversaryReminderToAllUsers } from '../../lib/email.js';
+import logger from '../../lib/logger.js';
 
 
 
 export default async function handler(request: VercelRequest, vercelResponse: VercelResponse) {
+  // Log environment and request info
+  logger.info('🔧 [CRON] Cron job triggered', {
+    method: request.method,
+    headers: Object.keys(request.headers),
+    userAgent: request.headers['user-agent'],
+    environment: process.env.NODE_ENV || 'unknown'
+  });
+
   // Only allow GET requests for this endpoint
   if (request.method !== 'GET') {
     return vercelResponse.status(405).json({ 
@@ -14,14 +23,26 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     });
   }
 
-  // Verify authentication - this endpoint should only be called by the scheduler or with proper auth
-  // For demo purposes, we'll skip authentication, but in production you'd want to add security
+  // Verify authentication - this endpoint should only be called by Vercel cron or with proper auth
   const authHeader = request.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${process.env.CRON_AUTH_TOKEN}`) {
+  const cronAuthToken = process.env.CRON_AUTH_TOKEN;
+  
+  // Check if this is a Vercel cron request (has specific headers) or has valid auth token
+  const isVercelCron = request.headers['user-agent']?.includes('vercel') || 
+                       request.headers['x-vercel-cron'] === '1' ||
+                       request.headers['vercel-forwarded-for'];
+  
+  const hasValidToken = cronAuthToken && authHeader === `Bearer ${cronAuthToken}`;
+  
+  if (!isVercelCron && !hasValidToken) {
+    console.log(`🔒 [CRON] Unauthorized access attempt from: ${request.headers['user-agent'] || 'unknown'}`);
+    console.log(`🔒 [CRON] Headers:`, Object.keys(request.headers));
     return vercelResponse.status(401).json({
-      message: 'Unauthorized: Invalid or missing cron authentication token'
+      message: 'Unauthorized: This endpoint is only accessible by Vercel cron or with valid authentication token'
     });
   }
+  
+  console.log(`🔐 [CRON] Authenticated request - Vercel cron: ${isVercelCron}, Token auth: ${hasValidToken}`);
 
   console.log(`🔔 [CRON] Starting automatic anniversary reminder check...`);
 
