@@ -352,13 +352,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory created successfully',
         memory: {
-          id: memoryId,
+          _id: memoryId,
           title: newMemory.title,
           description: newMemory.description,
           date: newMemory.date,
           images: uploadedImages.length > 0 ? uploadedImages : [],
           user: user ? {
-            id: user._id,
+            _id: user._id,
             name: user.name,
             email: user.email
           } : null,

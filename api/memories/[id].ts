@@ -85,13 +85,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(200).json({
         success: true,
         memory: {
-          id: memory._id,
+          _id: memory._id,
           title: memory.title,
           description: memory.description,
           date: memory.date,
           images: memory.images || [],
           user: user ? {
-            id: user._id,
+            _id: user._id,
             name: user.name,
             email: user.email
           } : null,
@@ -315,13 +315,13 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory updated successfully',
         memory: {
-          id: new ObjectId(memoryId),
+          _id: new ObjectId(memoryId),
           title: title || memory.title,
           description: description || memory.description,
           date: date ? new Date(date) : memory.date,
           images: memory.images || [],
           user: updatedUser ? {
-            id: updatedUser._id,
+            _id: updatedUser._id,
             name: updatedUser.name,
             email: updatedUser.email
           } : null,
