@@ -599,27 +599,58 @@ export const anniversaryAPI = {
     
   sendReminder: (id: string): Promise<AxiosResponse<{ message: string; details: unknown }>> => {
     console.log('🎉 [API] Send anniversary reminder request:', id);
-    return apiClient.post<{ message: string; details: unknown }>('/anniversaries/remind', { anniversaryId: id })
-      .catch(error => {
-        console.error('❌ [API] Send anniversary reminder failed:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          id,
-          timestamp: new Date().toISOString()
+    const useServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true';
+    
+    if (useServerless) {
+      // 无服务器架构：使用 /anniversaries/remind 并在body中传递anniversaryId
+      return apiClient.post<{ message: string; details: unknown }>('/anniversaries/remind', { anniversaryId: id })
+        .catch(error => {
+          console.error('❌ [API] Send anniversary reminder failed (serverless):', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            id,
+            timestamp: new Date().toISOString()
+          });
+          throw error;
         });
-        throw error;
-      });
+    } else {
+      // 传统架构：使用 /anniversaries/:id/remind
+      return apiClient.post<{ message: string; details: unknown }>(`/anniversaries/${id}/remind`)
+        .catch(error => {
+          console.error('❌ [API] Send anniversary reminder failed (traditional):', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            id,
+            timestamp: new Date().toISOString()
+          });
+          throw error;
+        });
+    }
   },
     
   testSendAllReminders: (): Promise<AxiosResponse<{ message: string; details?: unknown }>> => {
     console.log('🎉 [API] Test send all anniversary reminders request');
-    return apiClient.post<{ message: string; details?: unknown }>('/anniversaries/remind', { testAllReminders: true })
-      .catch(error => {
-        console.error('❌ [API] Test send all anniversary reminders failed:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
+    const useServerless = import.meta.env.VITE_USE_SERVERLESS_FUNCTIONS === 'true';
+    
+    if (useServerless) {
+      // 无服务器架构：使用 /anniversaries/remind 并在body中传递testAllReminders标志
+      return apiClient.post<{ message: string; details?: unknown }>('/anniversaries/remind', { testAllReminders: true })
+        .catch(error => {
+          console.error('❌ [API] Test send all anniversary reminders failed (serverless):', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+          throw error;
         });
-        throw error;
-      });
+    } else {
+      // 传统架构：使用 /anniversaries/test-reminders
+      return apiClient.post<{ message: string; details?: unknown }>('/anniversaries/test-reminders')
+        .catch(error => {
+          console.error('❌ [API] Test send all anniversary reminders failed (traditional):', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+          throw error;
+        });
+    }
   },
 };
 
