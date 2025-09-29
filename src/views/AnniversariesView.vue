@@ -69,18 +69,36 @@ const fetchUser = async () => {
 
 // 计算距离纪念日的天数
 const daysUntil = (dateString: string): number => {
+  // 获取今天的日期，标准化为当地时间的午夜
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const anniversaryDate = new Date(dateString)
-  anniversaryDate.setFullYear(today.getFullYear())
+  
+  // 解析纪念日日期
+  const inputDate = new Date(dateString)
+  
+  // 创建今年的纪念日日期，使用输入日期的月份和日期
+  const thisYearAnniversary = new Date(today.getFullYear(), inputDate.getMonth(), inputDate.getDate(), 0, 0, 0, 0)
+  
+  // 计算与今天的差值
+  let diffTime = thisYearAnniversary.getTime() - today.getTime()
+  let daysLeft = Math.round(diffTime / (1000 * 60 * 60 * 24))
   
   // 如果今年的纪念日已经过了，计算到明年的天数
-  if (anniversaryDate < today) {
-    anniversaryDate.setFullYear(today.getFullYear() + 1)
+  if (daysLeft < 0) {
+    const nextYearAnniversary = new Date(today.getFullYear() + 1, inputDate.getMonth(), inputDate.getDate(), 0, 0, 0, 0)
+    diffTime = nextYearAnniversary.getTime() - today.getTime()
+    daysLeft = Math.round(diffTime / (1000 * 60 * 60 * 24))
   }
   
-  const diffTime = anniversaryDate.getTime() - today.getTime()
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  // 开发环境下的调试信息
+  if (import.meta.env.DEV) {
+    console.log(`📅 [DATE-DEBUG] 输入日期: ${dateString}`)
+    console.log(`📅 [DATE-DEBUG] 今天: ${today.toISOString().split('T')[0]}`)
+    console.log(`📅 [DATE-DEBUG] 今年纪念日: ${thisYearAnniversary.toISOString().split('T')[0]}`)
+    console.log(`📅 [DATE-DEBUG] 剩余天数: ${daysLeft}`)
+  }
+  
+  return daysLeft
 }
 
 // 格式化日期为中文
@@ -158,12 +176,72 @@ const handleCancelForm = () => {
   editingAnniversary.value = null
 }
 
+// 获取纪念日图标
+const getAnniversaryIcon = (dateString: string): string => {
+  const daysLeft = daysUntil(dateString)
+  if (daysLeft === 0) return '🎉'
+  if (daysLeft <= 3) return '⭐'
+  if (daysLeft <= 7) return '💖'
+  if (daysLeft <= 30) return '💕'
+  return '📅'
+}
+
+// 获取卡片装饰条样式
+const getCardDecorationClass = (dateString: string): string => {
+  const daysLeft = daysUntil(dateString)
+  if (daysLeft === 0) return 'decoration-today'
+  if (daysLeft <= 7) return 'decoration-soon'
+  if (daysLeft <= 30) return 'decoration-upcoming'
+  return 'decoration-future'
+}
+
+// 获取倒计时样式
+const getCountdownClass = (dateString: string): string => {
+  const daysLeft = daysUntil(dateString)
+  if (daysLeft === 0) return 'badge-today'
+  if (daysLeft <= 7) return 'badge-soon'
+  if (daysLeft <= 30) return 'badge-upcoming'
+  return 'badge-future'
+}
+
+// 获取倒计时文本
+const getCountdownText = (dateString: string): string => {
+  const daysLeft = daysUntil(dateString)
+  
+  if (daysLeft === 0) return '🎊 就是今天！'
+  if (daysLeft === 1) return '⏰ 明天到来'
+  if (daysLeft <= 7) return `⭐ 还有 ${daysLeft} 天`
+  if (daysLeft <= 30) return `⏳ 还有 ${daysLeft} 天`
+  return `📆 还有 ${daysLeft} 天`
+}
+
 // 处理分页
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
 }
+
+// 检查是否为开发/测试环境
+const isDevelopment = computed(() => {
+  return import.meta.env.DEV || 
+         import.meta.env.MODE === 'development' || 
+         import.meta.env.MODE === 'test' ||
+         import.meta.env.VITE_ENABLE_TEST_FEATURES === 'true'
+})
+
+// 检查用户是否为管理员（可选的额外权限检查）
+const isAdmin = computed(() => {
+  // 可以根据实际需求修改管理员判断逻辑
+  const adminEmails = ['admin@example.com', 'developer@example.com']
+  return user.value?.email && adminEmails.includes(user.value.email)
+})
+
+// 是否显示测试按钮
+const showTestButton = computed(() => {
+  // 优先检查环境变量，然后检查开发模式，最后检查管理员权限
+  return isDevelopment.value || isAdmin.value
+})
 
 // 页面加载时获取数据
 onMounted(() => {
@@ -204,52 +282,72 @@ onMounted(() => {
           <p class="empty-description">点击下方按钮添加第一个纪念日</p>
         </div>
         
-        <div v-else class="anniversary-grid">
-        <div 
-          v-for="anniversary in paginatedAnniversaries" 
-          :key="anniversary._id" 
-          class="romantic-card anniversary-card"
-        >
-          <div class="romantic-card-header">
-            <h3 class="romantic-card-title">{{ anniversary.title }}</h3>
-            <div class="anniversary-actions">
-              <button 
-                @click="handleEditAnniversary(anniversary)" 
-                class="romantic-button romantic-button-sm romantic-button-outline"
-              >
-                编辑
-              </button>
-              <button 
-                @click="handleDeleteAnniversary(anniversary._id)" 
-                class="romantic-button romantic-button-sm romantic-button-outline romantic-button-danger"
-              >
-                删除
-              </button>
-            </div>
-          </div>
-          
-          <div class="romantic-card-body">
-            <p><strong>日期:</strong> {{ formatDate(anniversary.date) }}</p>
-            <p><strong>提醒天数:</strong> {{ anniversary.reminderDays }} 天</p>
-            <p><strong>距离:</strong> 
-              <span :class="{
-                'days-until-soon': daysUntil(anniversary.date) <= 7,
-                'days-until-far': daysUntil(anniversary.date) > 7
-              }">
-                {{ daysUntil(anniversary.date) }} 天
-              </span>
-            </p>
+        <div v-else class="anniversaries-grid">
+          <div 
+            v-for="(anniversary, index) in paginatedAnniversaries" 
+            :key="anniversary._id" 
+            :class="['anniversary-card', `anniversary-card-delay-${index % 10}`]"
+          >
+            <!-- 卡片顶部装饰条 -->
+            <div class="card-decoration" :class="getCardDecorationClass(anniversary.date)"></div>
             
-            <div class="romantic-card-actions romantic-mt-4">
-              <button 
-                @click="handleSendReminder(anniversary._id)"
-                class="romantic-button romantic-button-sm"
-              >
-                📧 测试发送提醒
-              </button>
+            <!-- 卡片主体内容 -->
+            <div class="card-content">
+              <!-- 标题和操作按钮 -->
+              <div class="card-header">
+                <div class="anniversary-icon">{{ getAnniversaryIcon(anniversary.date) }}</div>
+                <h3 class="card-title">{{ anniversary.title }}</h3>
+                <div class="card-actions">
+                  <button 
+                    @click="handleEditAnniversary(anniversary)" 
+                    class="action-btn edit-btn"
+                    title="编辑纪念日"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    @click="handleDeleteAnniversary(anniversary._id)" 
+                    class="action-btn delete-btn"
+                    title="删除纪念日"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <!-- 日期信息 -->
+              <div class="card-info">
+                <div class="date-info">
+                  <div class="date-label">纪念日期</div>
+                  <div class="date-value">{{ formatDate(anniversary.date) }}</div>
+                </div>
+                
+                <div class="reminder-info">
+                  <div class="reminder-label">提前提醒</div>
+                  <div class="reminder-value">{{ anniversary.reminderDays }} 天</div>
+                </div>
+              </div>
+
+              <!-- 倒计时显示 -->
+              <div class="countdown-info">
+                <div class="countdown-badge" :class="getCountdownClass(anniversary.date)">
+                  {{ getCountdownText(anniversary.date) }}
+                </div>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div class="card-bottom" v-if="showTestButton">
+                <button 
+                  @click="handleSendReminder(anniversary._id)"
+                  class="send-reminder-btn"
+                  :disabled="loading"
+                >
+                  <span class="btn-icon">📧</span>
+                  <span class="btn-text">测试发送提醒</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         </div>
         
         <!-- 分页组件 -->
@@ -276,12 +374,24 @@ onMounted(() => {
       </div>
 
       <div class="romantic-text-center romantic-mt-10">
-        <button 
-          @click="handleAddAnniversary"
-          class="romantic-button romantic-button-lg"
-        >
-          添加新的纪念日
-        </button>
+        <div class="action-buttons">
+          <button 
+            @click="handleAddAnniversary"
+            class="romantic-button romantic-button-lg"
+          >
+            添加新的纪念日
+          </button>
+          
+          <!-- 测试环境下的全局测试按钮 -->
+          <button 
+            v-if="showTestButton"
+            @click="handleTestSendReminders"
+            class="romantic-button romantic-button-secondary romantic-button-lg"
+            :disabled="loading"
+          >
+            🧪 测试发送所有提醒
+          </button>
+        </div>
       </div>
     </div>
 
@@ -350,25 +460,29 @@ onMounted(() => {
 }
 
 .anniversaries-content {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .anniversaries-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--romantic-spacing-4);
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--romantic-spacing-6);
   margin-bottom: var(--romantic-spacing-8);
 }
 
 .anniversary-card {
   position: relative;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border-radius: var(--romantic-radius);
-  border: 1px solid rgba(71, 85, 105, 0.3);
+  background: var(--romantic-white);
+  border-radius: var(--romantic-radius-lg);
+  box-shadow: var(--romantic-shadow);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 107, 157, 0.1);
   overflow: hidden;
-  transition: var(--romantic-transition);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   animation: romanticFadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 /* Animation delay classes for staggered effect */
@@ -384,129 +498,235 @@ onMounted(() => {
 .anniversary-card-delay-9 { animation-delay: 0.9s; }
 
 .anniversary-card:hover {
-  border-color: rgba(255, 107, 157, 0.5);
-  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.1);
+  transform: translateY(-8px);
+  box-shadow: var(--romantic-shadow-hover);
 }
 
-.card-actions {
+/* 卡片装饰条 */
+.card-decoration {
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--romantic-primary), var(--romantic-secondary));
   position: absolute;
-  bottom: var(--romantic-spacing-2);
-  right: var(--romantic-spacing-2);
-  display: flex;
-  gap: var(--romantic-spacing-1);
-  z-index: 2;
+  top: 0;
+  left: 0;
 }
 
-.action-btn {
-  padding: var(--romantic-spacing-1) var(--romantic-spacing-2);
-  border: none;
-  border-radius: var(--romantic-radius-sm);
-  font-size: var(--romantic-font-size-xs);
-  font-weight: var(--romantic-font-weight-medium);
-  cursor: pointer;
-  transition: var(--romantic-transition);
-  opacity: 0.8;
+.decoration-today {
+  background: linear-gradient(90deg, #10b981, #059669);
+  animation: romanticPulse 2s ease-in-out infinite;
 }
 
-.edit-btn {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+.decoration-soon {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
 }
 
-.edit-btn:hover {
-  background: rgba(59, 130, 246, 0.3);
-  opacity: 1;
+.decoration-upcoming {
+  background: linear-gradient(90deg, var(--romantic-primary), var(--romantic-secondary));
 }
 
-.delete-btn {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+.decoration-future {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
 }
 
-.delete-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
-  opacity: 1;
-}
-
-
-
+/* 卡片内容 */
 .card-content {
-  padding: var(--romantic-spacing-4);
-  text-align: center;
+  padding: var(--romantic-spacing-6);
+}
+
+/* 卡片头部 */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--romantic-spacing-3);
+  margin-bottom: var(--romantic-spacing-4);
+}
+
+.anniversary-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .card-title {
   font-size: var(--romantic-font-size-lg);
   font-weight: var(--romantic-font-weight-bold);
-  color: #f1f5f9;
-  margin: 0 0 var(--romantic-spacing-4) 0;
+  color: var(--romantic-dark);
+  margin: 0;
   line-height: var(--romantic-line-height-tight);
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+  flex: 1;
+  min-width: 0; /* 允许文字截断 */
 }
 
-.card-info {
+.card-actions {
   display: flex;
-  flex-direction: column;
-  gap: var(--romantic-spacing-3);
+  gap: var(--romantic-spacing-1);
+  flex-shrink: 0;
 }
 
-.date-info {
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--romantic-radius);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--romantic-light);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--romantic-gray);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--romantic-spacing-2) var(--romantic-spacing-3);
-  background: rgba(51, 65, 85, 0.4);
-  border-radius: var(--romantic-radius-sm);
-  border-left: 3px solid var(--romantic-primary);
+  justify-content: center;
+  color: var(--romantic-dark-medium);
 }
 
-.date-label {
+.edit-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  transform: scale(1.1);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  transform: scale(1.1);
+}
+
+
+
+/* 卡片信息区域 */
+.card-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--romantic-spacing-4);
+  margin-bottom: var(--romantic-spacing-5);
+}
+
+.date-info, .reminder-info {
+  background: var(--romantic-light);
+  border-radius: var(--romantic-radius);
+  padding: var(--romantic-spacing-3);
+  border-left: 4px solid var(--romantic-primary);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--romantic-gray);
+}
+
+.date-label, .reminder-label {
   font-size: var(--romantic-font-size-xs);
   font-weight: var(--romantic-font-weight-medium);
-  color: #94a3b8;
+  color: var(--romantic-dark-medium);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: var(--romantic-spacing-1);
 }
 
-.date-value {
+.date-value, .reminder-value {
   font-size: var(--romantic-font-size-sm);
   font-weight: var(--romantic-font-weight-semibold);
-  color: #e2e8f0;
+  color: var(--romantic-dark);
+  line-height: var(--romantic-line-height-tight);
 }
 
+/* 倒计时区域 */
 .countdown-info {
   display: flex;
   justify-content: center;
+  margin-bottom: var(--romantic-spacing-5);
 }
 
 .countdown-badge {
-  padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
-  border-radius: var(--romantic-radius);
+  padding: var(--romantic-spacing-3) var(--romantic-spacing-5);
+  border-radius: var(--romantic-radius-lg);
   font-size: var(--romantic-font-size-sm);
   font-weight: var(--romantic-font-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-align: center;
+  box-shadow: var(--romantic-shadow);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .badge-today {
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   animation: romanticPulse 2s ease-in-out infinite;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.badge-soon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.badge-upcoming {
+  background: linear-gradient(135deg, var(--romantic-primary), var(--romantic-secondary));
+  color: white;
+  box-shadow: 0 4px 16px rgba(255, 107, 157, 0.3);
+}
+
+.badge-future {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
 }
 
 .badge-past {
   background: linear-gradient(135deg, #64748b, #475569);
-  color: #cbd5e1;
+  color: #e2e8f0;
   box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2);
 }
 
-.badge-future {
+/* 卡片底部操作区域 */
+.card-bottom {
+  display: flex;
+  justify-content: center;
+}
+
+.send-reminder-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--romantic-spacing-2);
+  padding: var(--romantic-spacing-3) var(--romantic-spacing-5);
   background: linear-gradient(135deg, var(--romantic-primary), var(--romantic-secondary));
   color: white;
-  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+  border: none;
+  border-radius: var(--romantic-radius-lg);
+  font-size: var(--romantic-font-size-sm);
+  font-weight: var(--romantic-font-weight-medium);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(255, 107, 157, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.send-reminder-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 107, 157, 0.3);
+}
+
+.send-reminder-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-icon {
+  font-size: 1.1rem;
+}
+
+.btn-text {
+  font-weight: var(--romantic-font-weight-medium);
+}
+
+/* 操作按钮组 */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--romantic-spacing-4);
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-state {
@@ -578,20 +798,26 @@ onMounted(() => {
     gap: var(--romantic-spacing-4);
   }
   
-  .anniversary-card-header {
+  .card-info {
+    grid-template-columns: 1fr;
+    gap: var(--romantic-spacing-3);
+  }
+  
+  .card-header {
     flex-wrap: wrap;
     gap: var(--romantic-spacing-2);
   }
   
-  .anniversary-title {
-    font-size: var(--romantic-font-size-lg);
+  .card-title {
+    font-size: var(--romantic-font-size-base);
   }
   
-  .anniversary-actions {
-    order: 3;
-    width: 100%;
-    justify-content: flex-end;
-    margin-top: var(--romantic-spacing-2);
+  .anniversary-icon {
+    font-size: 1.5rem;
+  }
+  
+  .card-title {
+    font-size: var(--romantic-font-size-lg);
   }
 }
 
@@ -600,18 +826,42 @@ onMounted(() => {
     padding: var(--romantic-spacing-3);
   }
   
-  .anniversary-card-body {
+  .anniversaries-grid {
+    grid-template-columns: 1fr;
     gap: var(--romantic-spacing-3);
   }
   
-  .anniversary-date {
-    flex-direction: column;
-    text-align: center;
-    gap: var(--romantic-spacing-1);
+  .card-content {
+    padding: var(--romantic-spacing-4);
   }
   
-  .countdown-text {
-    font-size: var(--romantic-font-size-lg);
+  .anniversary-icon {
+    font-size: 1.2rem;
+  }
+  
+  .card-title {
+    font-size: var(--romantic-font-size-sm);
+  }
+  
+  .action-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .countdown-badge {
+    padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+    font-size: var(--romantic-font-size-xs);
+  }
+  
+  .send-reminder-btn {
+    padding: var(--romantic-spacing-2) var(--romantic-spacing-4);
+    font-size: var(--romantic-font-size-xs);
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: var(--romantic-spacing-3);
   }
   
   .empty-state {
@@ -624,6 +874,28 @@ onMounted(() => {
 }
 
 /* 动画增强 */
+@keyframes romanticFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes romanticPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+  }
+}
+
 @keyframes romanticGlow {
   0%, 100% {
     box-shadow: 0 0 5px rgba(255, 107, 157, 0.3);
@@ -633,7 +905,15 @@ onMounted(() => {
   }
 }
 
-.countdown-today {
-  animation: romanticGlow 2s ease-in-out infinite;
-}
+/* 卡片进入动画延迟 */
+.anniversary-card-delay-0 { animation-delay: 0s; }
+.anniversary-card-delay-1 { animation-delay: 0.1s; }
+.anniversary-card-delay-2 { animation-delay: 0.2s; }
+.anniversary-card-delay-3 { animation-delay: 0.3s; }
+.anniversary-card-delay-4 { animation-delay: 0.4s; }
+.anniversary-card-delay-5 { animation-delay: 0.5s; }
+.anniversary-card-delay-6 { animation-delay: 0.6s; }
+.anniversary-card-delay-7 { animation-delay: 0.7s; }
+.anniversary-card-delay-8 { animation-delay: 0.8s; }
+.anniversary-card-delay-9 { animation-delay: 0.9s; }
 </style>
