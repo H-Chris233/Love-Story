@@ -282,7 +282,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
             });
 
             // Read the file and pipe it to GridFS
-            const fileStream = Readable.from(file as unknown as Iterable<unknown>);
+            // Using fs.createReadStream to properly handle file data from formidable
+            const fs = await import('fs');
+            const fileStream = fs.createReadStream((file as any).filepath);
             fileStream.pipe(uploadStream);
 
             // Wait for upload completion
@@ -301,7 +303,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
             logger.memory('Image uploaded to GridFS successfully', {
               memoryId: memoryId.toString(),
               imageId: uploadStream.id.toString(),
-              filename: file.originalFilename,
+              filename: (file as any).originalFilename,
               timestamp: new Date().toISOString()
             });
 

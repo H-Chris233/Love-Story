@@ -361,7 +361,6 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       // Upload new images if provided
       const { GridFSBucket } = await import('mongodb');
       const gfs = new GridFSBucket(db, { bucketName: 'images' });
-      const Readable = (await import('stream')).Readable;
 
       if (uploadedFiles.length > 0) {
         logger.memory('Processing new image uploads for memory update', {
@@ -385,7 +384,9 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
             });
 
             // Read the file and pipe it to GridFS
-            const fileStream = Readable.from(file as unknown as Iterable<unknown>);
+            // Using fs.createReadStream to properly handle file data from formidable
+            const fs = await import('fs');
+            const fileStream = fs.createReadStream((file as any).filepath);
             fileStream.pipe(uploadStream);
 
             // Wait for upload completion
