@@ -90,7 +90,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(200).json({
         success: true,
         anniversaries: anniversaries.map(anniversary => ({
-          id: anniversary._id,
+          _id: anniversary._id,
           title: anniversary.title,
           date: anniversary.date,
           reminderDays: anniversary.reminderDays,
@@ -228,7 +228,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Anniversary created successfully',
         anniversary: {
-          id: result.insertedId,
+          _id: result.insertedId,
           title: newAnniversary.title,
           date: newAnniversary.date,
           reminderDays: newAnniversary.reminderDays,

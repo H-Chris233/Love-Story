@@ -69,7 +69,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       return vercelResponse.status(200).json({
         success: true,
         anniversary: {
-          id: anniversary._id,
+          _id: anniversary._id,
           title: anniversary.title,
           date: anniversary.date,
           reminderDays: anniversary.reminderDays,
@@ -127,7 +127,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Anniversary updated successfully',
         anniversary: {
-          id: anniversaryId,
+          _id: anniversaryId,
           title,
           date: new Date(date),
           reminderDays: parseInt(reminderDays),
