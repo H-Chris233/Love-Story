@@ -654,5 +654,153 @@ export const anniversaryAPI = {
   },
 };
 
+// 定义图片响应类型
+interface ImagesResponse {
+  success: boolean;
+  images: Array<{
+    id: string;
+    url: string;
+    memoryId: string;
+    memoryTitle: string;
+    uploadDate: string;
+  }>;
+  count: number;
+}
+
+// 图片相关API
+export const imageAPI = {
+  getAll: (): Promise<AxiosResponse<Array<{
+    id: string;
+    url: string;
+    memoryId: string;
+    memoryTitle: string;
+    uploadDate: string;
+  }>>> => {
+    console.log('🖼️ [API] Get all images request');
+    // 检查缓存
+    const cacheKey = 'images:all';
+    const cachedData = apiCache.get(cacheKey);
+    if (cachedData) {
+      return Promise.resolve({ data: cachedData, status: 200, statusText: 'OK', headers: {}, config: { url: '/images' } } as AxiosResponse<Array<{
+        id: string;
+        url: string;
+        memoryId: string;
+        memoryTitle: string;
+        uploadDate: string;
+      }>>);
+    }
+    
+    // 如果没有缓存，发起请求并缓存结果
+    return apiClient.get<ImagesResponse | Array<{
+      id: string;
+      url: string;
+      memoryId: string;
+      memoryTitle: string;
+      uploadDate: string;
+    }>>('/images')
+      .then(response => {
+        // 检查响应格式是哪种架构的格式
+        // 传统服务器架构：直接返回数组
+        // Serverless架构：返回 { success: true, images: [] }
+        let images: Array<{
+          id: string;
+          url: string;
+          memoryId: string;
+          memoryTitle: string;
+          uploadDate: string;
+        }>;
+        if (Array.isArray(response.data)) {
+          // 传统服务器架构 - 直接是数组
+          images = response.data;
+        } else if ((response.data as ImagesResponse).images !== undefined) {
+          // Serverless架构 - 有images字段
+          images = (response.data as ImagesResponse).images || [];
+        } else {
+          // 如果都不是，返回空数组
+          images = [];
+        }
+        
+        console.log(`✅ [API] Fetched ${images.length} images`);
+        apiCache.set(cacheKey, images, 5 * 60 * 1000); // 缓存5分钟
+        
+        // 返回符合预期格式的响应
+        return {
+          ...response,
+          data: images
+        } as AxiosResponse<Array<{
+          id: string;
+          url: string;
+          memoryId: string;
+          memoryTitle: string;
+          uploadDate: string;
+        }>>;
+      })
+      .catch(error => {
+        console.error('❌ [API] Get all images failed:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      });
+  },
+    
+  upload: (formData: FormData): Promise<AxiosResponse<{
+    success: boolean;
+    message: string;
+    imageId: string;
+    filename: string;
+    imageUrl: string;
+  }>> => {
+    console.log('🖼️ [API] Upload image request:', { 
+      formDataSize: Array.from(formData.entries()).length 
+    });
+    // 上传后清除相关缓存
+    return apiClient.post<{
+      success: boolean;
+      message: string;
+      imageId: string;
+      filename: string;
+      imageUrl: string;
+    }>('/images', formData)
+      .then(response => {
+        console.log(`✅ [API] Uploaded image successfully, ID: ${response.data.imageId}`);
+        apiCache.delete('images:all'); // 清除图片列表缓存
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ [API] Upload image failed:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      });
+  },
+    
+  delete: (id: string): Promise<AxiosResponse<{
+    message: string;
+    imageId: string;
+  }>> => {
+    console.log('🖼️ [API] Delete image request:', id);
+    // 删除后清除相关缓存
+    return apiClient.delete<{
+      message: string;
+      imageId: string;
+    }>(`/images/${id}`)
+      .then(response => {
+        console.log(`✅ [API] Deleted image with ID: ${id}`);
+        apiCache.delete('images:all'); // 清除图片列表缓存
+        return response;
+      })
+      .catch(error => {
+        console.error('❌ [API] Delete image failed:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          id,
+          timestamp: new Date().toISOString()
+        });
+        throw error;
+      });
+  },
+};
+
 // 导出API缓存实例以供手动管理
 export { apiCache };

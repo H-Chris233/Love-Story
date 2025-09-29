@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { memoryAPI } from '../services/api'
+import { imageAPI, memoryAPI } from '../services/api'
 import type { Memory } from '../types/api'
 
 // 定义照片数据类型
@@ -16,7 +16,7 @@ const photos = ref<Photo[]>([])
 const loading = ref(true)
 const error = ref('')
 
-// 从回忆数据中提取照片
+// 从回忆数据中提取照片（fallback方法）
 const extractPhotosFromMemories = (memories: Memory[]): Photo[] => {
   const extractedPhotos: Photo[] = []
   
@@ -40,10 +40,31 @@ const extractPhotosFromMemories = (memories: Memory[]): Photo[] => {
 const fetchPhotos = async () => {
   try {
     loading.value = true
-    const response = await memoryAPI.getAll()
-    photos.value = extractPhotosFromMemories(response.data)
+    
+    // 首先尝试使用专用的imageAPI
+    try {
+      const response = await imageAPI.getAll()
+      
+      // 转换API响应为Photo格式
+      photos.value = response.data.map(image => ({
+        id: image.id,
+        url: image.url,
+        title: image.memoryTitle,
+        date: image.uploadDate
+      }))
+      
+      console.log('✅ [PHOTOS] Successfully fetched photos using imageAPI')
+    } catch (imageAPIError) {
+      console.warn('⚠️ [PHOTOS] imageAPI failed, falling back to memoryAPI:', imageAPIError)
+      
+      // 如果imageAPI失败，回退到从memories中提取图片
+      const response = await memoryAPI.getAll()
+      photos.value = extractPhotosFromMemories(response.data)
+      
+      console.log('✅ [PHOTOS] Successfully fetched photos using memoryAPI fallback')
+    }
   } catch (err) {
-    console.error('获取照片数据失败:', err)
+    console.error('❌ [PHOTOS] 获取照片数据失败:', err)
     error.value = '获取照片数据失败'
   } finally {
     loading.value = false

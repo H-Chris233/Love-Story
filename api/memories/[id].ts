@@ -163,6 +163,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
     // For file uploads, we need to parse multipart/form-data
     const contentType = request.headers['content-type'];
     let title: string, description: string, date: string;
+    let uploadedFiles: any[] = [];
+    let imagesToDelete: string[] = [];
 
     if (contentType && contentType.includes('multipart/form-data')) {
       // Parse multipart/form-data using formidable with Vercel-compatible approach
@@ -186,6 +188,37 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         title = Array.isArray(fields.title) ? fields.title[0] : (fields.title || '');
         description = Array.isArray(fields.description) ? fields.description[0] : (fields.description || '');
         date = Array.isArray(fields.date) ? fields.date[0] : (fields.date || '');
+        
+        // Extract imagesToDelete if provided
+        if (fields.imagesToDelete) {
+          const imagesToDeleteStr = Array.isArray(fields.imagesToDelete) ? fields.imagesToDelete[0] : fields.imagesToDelete;
+          if (imagesToDeleteStr) {
+            try {
+              imagesToDelete = JSON.parse(imagesToDeleteStr);
+              logger.memory('Images marked for deletion', {
+                memoryId,
+                imagesToDelete,
+                timestamp: new Date().toISOString()
+              });
+            } catch (parseError: unknown) {
+              logger.error('Error parsing imagesToDelete', {
+                error: parseError instanceof Error ? parseError.message : 'Unknown error',
+                imagesToDeleteRaw: imagesToDeleteStr,
+                timestamp: new Date().toISOString()
+              });
+              
+              return vercelResponse.status(400).json({ 
+                message: 'Invalid imagesToDelete format',
+                error: process.env.NODE_ENV === 'development' && parseError instanceof Error ? parseError.message : undefined
+              });
+            }
+          }
+        }
+        
+        // Extract files
+        if (fileFields.images) {
+          uploadedFiles = Array.isArray(fileFields.images) ? fileFields.images : [fileFields.images];
+        }
         
       } catch (parseError: unknown) {
         logger.error('Error parsing form data', {
@@ -217,12 +250,12 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         });
       }
       
-      ({ title, description, date } = request.body);
+      ({ title, description, date, imagesToDelete = [] } = request.body);
     }
 
-    // Validate required fields
-    if (!title && !description && !date) {
-      logger.warn('At least one field is required for memory update', {
+    // Validate request data
+    if (!title && !description && !date && uploadedFiles.length === 0 && imagesToDelete.length === 0) {
+      logger.warn('No data provided for memory update', {
         memoryId,
         path: request.url,
         method: request.method,
@@ -232,7 +265,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       });
       
       return vercelResponse.status(400).json({ 
-        message: 'At least one field (title, description, or date) is required for update'
+        message: 'No data provided for update',
+        memoryId
       });
     }
 
@@ -261,7 +295,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         });
         
         return vercelResponse.status(404).json({ 
-          message: 'Memory not found' 
+          message: 'Memory not found',
+          memoryId: memoryId 
         });
       }
 
@@ -277,9 +312,117 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           timestamp: new Date().toISOString()
         });
         
-        return vercelResponse.status(403).json({ 
-          message: 'Unauthorized: You do not have permission to update this memory' 
+        return vercelResponse.status(401).json({ 
+          message: 'Not authorized - only the creator or admin can edit this memory',
+          authorized: false,
+          userId: decoded.userId?.toString(),
+          memoryId: memoryId
         });
+      }
+
+      // Get existing images and filter out the ones marked for deletion
+      let updatedImages = memory.images ? [...memory.images] : [];
+      if (imagesToDelete.length > 0) {
+        // Delete specified images from MongoDB GridFS
+        const { GridFSBucket } = await import('mongodb');
+        const gfs = new GridFSBucket(db, { bucketName: 'images' });
+
+        for (const publicId of imagesToDelete) {
+          logger.memory('Deleting image from GridFS', {
+            memoryId,
+            imageId: publicId,
+            timestamp: new Date().toISOString()
+          });
+
+          try {
+            // Convert publicId to ObjectId for GridFS deletion
+            await gfs.delete(new ObjectId(publicId));
+            
+            // Remove from updatedImages array
+            updatedImages = updatedImages.filter(img => img.publicId !== publicId);
+            
+            logger.memory('Image deleted successfully from GridFS', {
+              memoryId,
+              imageId: publicId,
+              timestamp: new Date().toISOString()
+            });
+          } catch (deleteError: unknown) {
+            logger.error('Error deleting image from GridFS', {
+              error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+              publicId: publicId,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Continue processing other images even if one fails
+          }
+        }
+      }
+
+      // Upload new images if provided
+      const { GridFSBucket } = await import('mongodb');
+      const gfs = new GridFSBucket(db, { bucketName: 'images' });
+      const Readable = (await import('stream')).Readable;
+
+      if (uploadedFiles.length > 0) {
+        logger.memory('Processing new image uploads for memory update', {
+          memoryId,
+          fileCount: uploadedFiles.length,
+          fileNames: uploadedFiles.map((f: any) => f.originalFilename || f.name),
+          timestamp: new Date().toISOString()
+        });
+
+        for (const file of uploadedFiles) {
+          try {
+            // Create upload stream
+            const uploadStream = gfs.openUploadStream((file as any).originalFilename || `memory_${memoryId}_${Date.now()}`, {
+              contentType: (file as any).mimetype,
+              metadata: {
+                userId: decoded.userId,
+                memoryId: memoryId,
+                uploadedAt: new Date(),
+                originalName: (file as any).originalFilename
+              }
+            });
+
+            // Read the file and pipe it to GridFS
+            const fileStream = Readable.from(file as unknown as Iterable<unknown>);
+            fileStream.pipe(uploadStream);
+
+            // Wait for upload completion
+            await new Promise<void>((resolve, reject) => {
+              uploadStream.on('finish', () => resolve());
+              uploadStream.on('error', reject);
+              fileStream.on('error', reject);
+            });
+
+            // Add image info to updated images array
+            updatedImages.push({
+              url: `/api/images/${uploadStream.id}`,
+              publicId: uploadStream.id.toString()
+            });
+
+            logger.memory('New image uploaded to GridFS successfully', {
+              memoryId,
+              imageId: uploadStream.id.toString(),
+              filename: (file as any).originalFilename,
+              timestamp: new Date().toISOString()
+            });
+
+          } catch (uploadError: unknown) {
+            logger.error('Error uploading new image to GridFS', {
+              error: uploadError instanceof Error ? uploadError.message : 'Unknown error',
+              memoryId: memoryId,
+              filename: (file as any).originalFilename,
+              timestamp: new Date().toISOString()
+            });
+            
+            // If an image fails to upload, return an error
+            return vercelResponse.status(500).json({ 
+              message: `Error uploading new image: ${(file as any).originalFilename}`,
+              error: process.env.NODE_ENV === 'development' && uploadError instanceof Error ? uploadError.message : undefined
+            });
+          }
+        }
       }
 
       // Prepare update data
@@ -289,7 +432,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       if (title) updateData.title = title;
       if (description) updateData.description = description;
       if (date) updateData.date = new Date(date);
-      // updatedAt is already set in the initial object
+      if (updatedImages.length > 0) updateData.images = updatedImages; // Update images array if it changed
 
       // Update memory in database
       const result = await memoriesCollection.updateOne(
@@ -297,12 +440,30 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         { $set: updateData }
       );
 
+      if (result.matchedCount === 0) {
+        logger.error('Failed to update memory (update returned no match):', {
+          memoryId: memoryId,
+          timestamp: new Date().toISOString(),
+          path: request.url,
+          method: request.method,
+          userId: decoded.userId?.toString(),
+          ip
+        });
+        return vercelResponse.status(500).json({ 
+          message: 'Failed to update memory in database',
+          memoryId: memoryId
+        });
+      }
+
       logger.memory('Memory updated successfully', {
         memoryId,
         userId: decoded.userId?.toString(),
         title: updateData.title || memory.title,
         timestamp: new Date().toISOString()
       });
+
+      // Get updated memory document
+      const updatedMemory = await memoriesCollection.findOne({ _id: new ObjectId(memoryId) });
 
       // Get updated user information
       const updatedUser = await usersCollection.findOne(
@@ -315,18 +476,18 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         success: true,
         message: 'Memory updated successfully',
         memory: {
-          _id: new ObjectId(memoryId),
-          title: title || memory.title,
-          description: description || memory.description,
-          date: date ? new Date(date) : memory.date,
-          images: memory.images || [],
+          _id: updatedMemory!._id,
+          title: updatedMemory!.title,
+          description: updatedMemory!.description,
+          date: updatedMemory!.date,
+          images: updatedMemory!.images || [],
           user: updatedUser ? {
             _id: updatedUser._id,
             name: updatedUser.name,
             email: updatedUser.email
           } : null,
-          createdAt: memory.createdAt,
-          updatedAt: updateData.updatedAt
+          createdAt: updatedMemory!.createdAt,
+          updatedAt: updatedMemory!.updatedAt
         }
       });
     } catch (error: unknown) {
@@ -409,7 +570,7 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
       // Use existing database connection
       const memoriesCollection = db.collection('memories');
 
-      // Find memory by ID to check ownership
+      // Find memory by ID to check ownership and get images info
       const memory = await memoriesCollection.findOne({ _id: new ObjectId(memoryId) });
 
       if (!memory) {
@@ -420,7 +581,8 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
         });
         
         return vercelResponse.status(404).json({ 
-          message: 'Memory not found' 
+          message: 'Memory not found',
+          memoryId: memoryId 
         });
       }
 
@@ -436,13 +598,70 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
           timestamp: new Date().toISOString()
         });
         
-        return vercelResponse.status(403).json({ 
-          message: 'Unauthorized: You do not have permission to delete this memory' 
+        return vercelResponse.status(401).json({ 
+          message: 'Not authorized - only the creator or admin can delete this memory',
+          authorized: false,
+          userId: decoded.userId?.toString(),
+          memoryId: memoryId
         });
+      }
+
+      // Delete images from MongoDB GridFS if any exist
+      if (memory.images && memory.images.length > 0) {
+        logger.memory(`Deleting ${memory.images.length} images from GridFS...`, {
+          memoryId,
+          imageCount: memory.images.length,
+          timestamp: new Date().toISOString()
+        });
+
+        const { GridFSBucket } = await import('mongodb');
+        const gfs = new GridFSBucket(db, { bucketName: 'images' });
+
+        for (const image of memory.images) {
+          logger.memory('Deleting image from GridFS', {
+            memoryId,
+            imageId: image.publicId,
+            timestamp: new Date().toISOString()
+          });
+
+          try {
+            // Convert publicId to ObjectId for GridFS deletion
+            await gfs.delete(new ObjectId(image.publicId));
+            
+            logger.memory('GridFS image deleted successfully', {
+              memoryId,
+              imageId: image.publicId,
+              timestamp: new Date().toISOString()
+            });
+          } catch (deleteError: unknown) {
+            logger.error('Error deleting image from GridFS', {
+              error: deleteError instanceof Error ? deleteError.message : 'Unknown error',
+              publicId: image.publicId,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Continue even if image deletion fails
+          }
+        }
       }
 
       // Delete memory from database
       const result = await memoriesCollection.deleteOne({ _id: new ObjectId(memoryId) });
+
+      if (result.deletedCount === 0) {
+        logger.error('Failed to delete memory (delete returned no match):', {
+          memoryId: memoryId,
+          timestamp: new Date().toISOString(),
+          path: request.url,
+          method: request.method,
+          userId: decoded.userId?.toString(),
+          ip
+        });
+        return vercelResponse.status(500).json({ 
+          message: 'Failed to delete memory from database',
+          memoryId: memoryId
+        });
+      }
 
       logger.memory('Memory deleted successfully', {
         memoryId,

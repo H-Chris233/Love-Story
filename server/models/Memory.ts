@@ -14,6 +14,7 @@ export interface IMemory extends Document {
   images: IImage[];
   user: IUser['_id'];
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const memorySchema: Schema = new mongoose.Schema({
@@ -43,6 +44,10 @@ const memorySchema: Schema = new mongoose.Schema({
     required: true,
   },
   createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
     type: Date,
     default: Date.now,
   },
