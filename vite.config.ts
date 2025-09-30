@@ -20,23 +20,28 @@ export default defineConfig(({ mode }) => {
         enabled: true
       },
       manifest: {
-        name: 'Love Story',
-        short_name: 'LoveStory',
-        description: '记录我们的爱情故事',
-        theme_color: '#ffffff',
-        icons: [
-          {
-            src: 'src/assets/logo.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: 'src/assets/logo.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml'
-          }
-        ]
-      }
+      name: 'Love Story for Us',
+      short_name: 'LoveStory',
+      description: '记录我们的爱情故事',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#ffffff',
+      theme_color: '#ffffff',
+      lang: 'en',
+      scope: '/',
+      icons: [
+        {
+          src: 'src/assets/logo.svg',
+          sizes: '192x192',
+          type: 'image/svg+xml',
+        },
+        {
+          src: 'src/assets/logo.svg',
+          sizes: '512x512',
+          type: 'image/svg+xml',
+        },
+      ],
+    },
     })
   ],
   resolve: {

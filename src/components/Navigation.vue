@@ -397,8 +397,7 @@ onUnmounted(() => {
           @click="closeMenu"
           class="romantic-logo-link"
         >
-          ❤️ Love Story
-        </RouterLink>
+          ❤️ Love Story for Us
       </div>
       
       <!-- 桌面端导航菜单 -->
