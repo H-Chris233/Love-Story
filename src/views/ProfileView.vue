@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
 
 // Computed property for user info
 const userInfo = computed(() => userStore.user)
+
+// 获取用户信息
+onMounted(() => {
+  if (!userStore.user) {
+    userStore.fetchUserProfile()
+  }
+})
 </script>
 
 <template>
