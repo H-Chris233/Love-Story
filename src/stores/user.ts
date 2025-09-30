@@ -13,7 +13,18 @@ export const useUserStore = defineStore('user', () => {
     try {
       if (token.value) {
         const response = await authAPI.getProfile()
-        user.value = response.data
+        
+        // 检查响应格式是哪种架构的格式
+        // 传统服务器架构：直接返回用户对象
+        // Serverless架构：返回 { success: true, user: {...} }
+        if (response.data && (response.data as any).user) {
+          // Serverless架构 - 从user属性中获取用户数据
+          user.value = (response.data as any).user
+        } else {
+          // 传统架构 - 直接使用响应数据
+          user.value = response.data
+        }
+        
         isLoggedIn.value = true
       }
     } catch (error) {
