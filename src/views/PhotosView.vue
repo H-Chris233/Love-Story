@@ -96,8 +96,27 @@ const getFullImageUrl = (imageUrl: string) => {
   
   // 如果图片URL是/api/images/格式，需要特殊处理
   if (imageUrl.startsWith('/api/images/')) {
-    // 直接使用基础URL构建图片URL
-    return `${baseUrl.replace('/api', '')}/images/${imageUrl.split('/').pop()}`
+    // 如果基础URL是相对路径（如 /api），我们仍需构造完整URL
+    if (baseUrl.startsWith('/')) {
+      // 在相对路径模式下，通常意味着在同域环境下运行
+      // 如果VITE_USE_SERVERLESS_FUNCTIONS为true，我们使用VITE_SERVERLESS_API_URL
+      if (isServerless) {
+        const serverlessUrl = import.meta.env.VITE_SERVERLESS_API_URL
+        if (serverlessUrl) {
+          // 取出域名部分
+          const urlObj = new URL(serverlessUrl)
+          return `${urlObj.origin}${imageUrl}`
+        } else {
+          // 默认情况下，对于serverless模式，假设在同域下
+          return imageUrl
+        }
+      } else {
+        // 传统架构且是相对路径，返回相对路径让代理处理
+        return imageUrl
+      }
+    }
+    // 否则构建完整URL
+    return `${baseUrl.replace('/api', '')}${imageUrl}`
   }
   
   // 如果图片URL已经是/api/格式，需要去掉/api并添加到基础URL
