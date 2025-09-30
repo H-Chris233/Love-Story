@@ -448,10 +448,11 @@ export default async function handler(request: VercelRequest, vercelResponse: Ve
 
       // Return users (excluding passwords)
       return vercelResponse.status(200).json(users.map(user => ({
-        id: user._id,
+        _id: user._id.toString(),  // Convert ObjectId to string
         name: user.name,
         email: user.email,
-        isAdmin: user.isAdmin
+        isAdmin: user.isAdmin,
+        createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString()  // Format as ISO string
       })));
     } catch (error: unknown) {
       logger.error('Error fetching users', {
