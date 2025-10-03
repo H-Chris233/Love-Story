@@ -398,6 +398,7 @@ onUnmounted(() => {
           class="romantic-logo-link"
         >
           ❤️ Love Story for Us
+        </RouterLink>
       </div>
       
       <!-- 桌面端导航菜单 -->

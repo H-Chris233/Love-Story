@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 
 // 设置开始日期和时间（可以根据实际情况修改）
 // 格式：YYYY-MM-DD HH:MM:SS
-const startDate = new Date('2024-1-13 22:28:46')
+const startDate = new Date('2024-01-13T22:28:46')
 
 // 响应式数据
 const daysTogether = ref(0)
@@ -14,6 +14,16 @@ const secondsTogether = ref(0)
 // 计算在一起的总天数
 const calculateDaysTogether = () => {
   const now = new Date()
+  // 检查日期是否有效
+  if (isNaN(startDate.getTime())) {
+    console.error('Invalid start date provided to LoveTimer component')
+    daysTogether.value = 0
+    hoursTogether.value = 0
+    minutesTogether.value = 0
+    secondsTogether.value = 0
+    return
+  }
+  
   const diffTime = Math.abs(now.getTime() - startDate.getTime())
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
   const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
