@@ -1,45 +1,48 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import Navigation from './components/Navigation.vue'
-import { useUserStore } from './stores/user'
-import { onMounted } from 'vue'
-import { SpeedInsights } from '@vercel/speed-insights/vue';
-import { Analytics } from '@vercel/analytics/vue';
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 
-// Initialize user store
-const userStore = useUserStore()
+import { useSessionStore } from '@/stores/session'
 
-// Check if user is logged in on app start
-onMounted(() => {
-  if (userStore.token) {
-    userStore.fetchUserProfile()
-  }
-})
-
-// Also check on route changes to ensure user info is always available
-import { useRouter } from 'vue-router'
+const session = useSessionStore()
 const router = useRouter()
-router.afterEach(() => {
-  if (userStore.token && !userStore.user) {
-    userStore.fetchUserProfile()
-  }
-})
+const links = [
+  { to: '/app', label: '总览', icon: '⌂' },
+  { to: '/app/memories', label: '回忆', icon: '✦' },
+  { to: '/app/gallery', label: '相册', icon: '▧' },
+  { to: '/app/anniversaries', label: '纪念日', icon: '○' },
+  { to: '/app/settings', label: '设置', icon: '⚙' }
+]
+const privateArea = computed(() => router.currentRoute.value.meta.requiresAuth === true)
+
+async function logout() {
+  await session.logout()
+  await router.push('/')
+}
 </script>
 
 <template>
-  <div class="app-container">
-    <Navigation />
-    <RouterView />
-    <SpeedInsights />
-    <Analytics />
+  <div :class="['app-shell', { 'app-shell--private': privateArea }]">
+    <header v-if="privateArea" class="site-header">
+      <RouterLink class="brand" to="/app" aria-label="返回总览">
+        <span class="brand__mark" aria-hidden="true">L</span>
+        <span>Love Story</span>
+      </RouterLink>
+      <nav class="desktop-nav" aria-label="主导航">
+        <RouterLink v-for="link in links" :key="link.to" :to="link.to">{{ link.label }}</RouterLink>
+      </nav>
+      <button class="text-button" type="button" @click="logout">退出</button>
+    </header>
+
+    <main :class="{ 'private-main': privateArea }">
+      <RouterView />
+    </main>
+
+    <nav v-if="privateArea" class="mobile-nav" aria-label="移动端主导航">
+      <RouterLink v-for="link in links" :key="link.to" :to="link.to">
+        <span aria-hidden="true">{{ link.icon }}</span>
+        <span>{{ link.label }}</span>
+      </RouterLink>
+    </nav>
   </div>
 </template>
-
-<style>
-.app-container {
-  min-height: 100vh;
-  background: var(--romantic-gradient);
-}
-
-/* 全局样式已移至增强版浪漫主题 */
-</style>

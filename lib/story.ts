@@ -1,0 +1,235 @@
+import { randomUUID } from 'node:crypto'
+
+import { parseCalendarDate } from './dates.js'
+import { DomainError, assertRequired, assertUuid } from './errors.js'
+import type { StoryStore } from './store/story-store.js'
+import type { Member, Space, Visibility } from './types.js'
+
+function assertDate(value: string, field: string): string {
+  try {
+    parseCalendarDate(value)
+  } catch {
+    throw new DomainError('VALIDATION_ERROR', '日期格式不正确', 400, {
+      [field]: '请使用 YYYY-MM-DD 日期格式'
+    })
+  }
+  return value
+}
+
+function assertVisibility(value: Visibility | undefined): Visibility | undefined {
+  if (value !== undefined && value !== 'private' && value !== 'public') {
+    throw new DomainError('VALIDATION_ERROR', '可见性设置无效', 400)
+  }
+  return value
+}
+
+function assertTimestamp(value: string, field: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    throw new DomainError('VALIDATION_ERROR', '日期时间格式不正确', 400, {
+      [field]: '请输入有效的日期和时间'
+    })
+  }
+  return date.toISOString()
+}
+
+function createSlug(date: string): string {
+  return `${date}-${randomUUID().slice(0, 8)}`
+}
+
+export function createStoryService(dependencies: { store: StoryStore; now?: () => Date }) {
+  const now = dependencies.now ?? (() => new Date())
+
+  async function assertMembership(member: Member, space: Space): Promise<void> {
+    if (!(await dependencies.store.isMember(space.id, member.id))) {
+      throw new DomainError('FORBIDDEN', '你无权访问这个空间', 403)
+    }
+  }
+
+  return {
+    async getPublicStory() {
+      const story = await dependencies.store.getStory(undefined, 'public')
+      if (!story) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
+      return story
+    },
+    async getPublicMemory(slug: string) {
+      const memory = await dependencies.store.getMemoryBySlug(slug, 'public')
+      if (!memory) throw new DomainError('MEMORY_NOT_FOUND', '没有找到这条回忆', 404)
+      return memory
+    },
+    async getPublicAnniversary(slug: string) {
+      const anniversary = await dependencies.store.getAnniversaryBySlug(slug, 'public')
+      if (!anniversary) {
+        throw new DomainError('ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日', 404)
+      }
+      return anniversary
+    },
+    async getPrivateStory(member: Member, space: Space) {
+      await assertMembership(member, space)
+      const story = await dependencies.store.getStory(space.id)
+      if (!story) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
+      return story
+    },
+    async createMemory(
+      member: Member,
+      space: Space,
+      input: {
+        title: string
+        body: string
+        occurredOn: string
+        visibility?: Visibility
+      }
+    ) {
+      await assertMembership(member, space)
+      const occurredOn = assertDate(input.occurredOn, 'occurredOn')
+      return dependencies.store.createMemory({
+        space,
+        author: member,
+        title: assertRequired(input.title, 'title'),
+        body: assertRequired(input.body, 'body'),
+        occurredOn,
+        visibility: assertVisibility(input.visibility) ?? 'private',
+        slug: createSlug(occurredOn),
+        now: now()
+      })
+    },
+    async updateMemory(
+      member: Member,
+      space: Space,
+      memoryId: string,
+      patch: Partial<{
+        title: string
+        body: string
+        occurredOn: string
+        visibility: Visibility
+      }>
+    ) {
+      await assertMembership(member, space)
+      assertUuid(memoryId, 'MEMORY_NOT_FOUND', '没有找到这条回忆')
+      const normalized = {
+        ...patch,
+        ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+        ...(patch.body === undefined ? {} : { body: assertRequired(patch.body, 'body') }),
+        ...(patch.occurredOn === undefined
+          ? {}
+          : { occurredOn: assertDate(patch.occurredOn, 'occurredOn') }),
+        ...(patch.visibility === undefined
+          ? {}
+          : { visibility: assertVisibility(patch.visibility) })
+      }
+      const memory = await dependencies.store.updateMemory(space.id, memoryId, normalized, now())
+      if (!memory) throw new DomainError('MEMORY_NOT_FOUND', '没有找到这条回忆', 404)
+      return memory
+    },
+    async deleteMemory(member: Member, space: Space, memoryId: string) {
+      await assertMembership(member, space)
+      assertUuid(memoryId, 'MEMORY_NOT_FOUND', '没有找到这条回忆')
+      if (!(await dependencies.store.deleteMemory(space.id, memoryId))) {
+        throw new DomainError('MEMORY_NOT_FOUND', '没有找到这条回忆', 404)
+      }
+    },
+    async createAnniversary(
+      member: Member,
+      space: Space,
+      input: {
+        title: string
+        originalDate: string
+        reminderDays?: number
+        visibility?: Visibility
+      }
+    ) {
+      await assertMembership(member, space)
+      const originalDate = assertDate(input.originalDate, 'originalDate')
+      const reminderDays = input.reminderDays ?? 7
+      if (!Number.isInteger(reminderDays) || reminderDays < 0 || reminderDays > 365) {
+        throw new DomainError('VALIDATION_ERROR', '提前提醒天数需要在 0 到 365 之间', 400, {
+          reminderDays: '请输入 0 到 365 之间的整数'
+        })
+      }
+      return dependencies.store.createAnniversary({
+        space,
+        author: member,
+        title: assertRequired(input.title, 'title'),
+        originalDate,
+        reminderDays,
+        visibility: assertVisibility(input.visibility) ?? 'private',
+        slug: createSlug(originalDate),
+        now: now()
+      })
+    },
+    async updateAnniversary(
+      member: Member,
+      space: Space,
+      anniversaryId: string,
+      patch: Partial<{
+        title: string
+        originalDate: string
+        reminderDays: number
+        visibility: Visibility
+      }>
+    ) {
+      await assertMembership(member, space)
+      assertUuid(anniversaryId, 'ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日')
+      if (
+        patch.reminderDays !== undefined &&
+        (!Number.isInteger(patch.reminderDays) ||
+          patch.reminderDays < 0 ||
+          patch.reminderDays > 365)
+      ) {
+        throw new DomainError('VALIDATION_ERROR', '提前提醒天数需要在 0 到 365 之间', 400)
+      }
+      const anniversary = await dependencies.store.updateAnniversary(
+        space.id,
+        anniversaryId,
+        {
+          ...patch,
+          ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+          ...(patch.originalDate === undefined
+            ? {}
+            : { originalDate: assertDate(patch.originalDate, 'originalDate') }),
+          ...(patch.visibility === undefined
+            ? {}
+            : { visibility: assertVisibility(patch.visibility) })
+        },
+        now()
+      )
+      if (!anniversary) {
+        throw new DomainError('ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日', 404)
+      }
+      return anniversary
+    },
+    async deleteAnniversary(member: Member, space: Space, anniversaryId: string) {
+      await assertMembership(member, space)
+      assertUuid(anniversaryId, 'ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日')
+      if (!(await dependencies.store.deleteAnniversary(space.id, anniversaryId))) {
+        throw new DomainError('ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日', 404)
+      }
+    },
+    async updateSpace(
+      member: Member,
+      space: Space,
+      patch: Partial<Pick<Space, 'title' | 'intro' | 'relationshipStartedAt'>>
+    ) {
+      await assertMembership(member, space)
+      const updated = await dependencies.store.updateSpace(
+        space.id,
+        {
+          ...patch,
+          ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+          ...(patch.intro === undefined ? {} : { intro: patch.intro.trim() }),
+          ...(patch.relationshipStartedAt === undefined
+            ? {}
+            : {
+                relationshipStartedAt: assertTimestamp(
+                  patch.relationshipStartedAt,
+                  'relationshipStartedAt'
+                )
+              })
+        },
+        now()
+      )
+      if (!updated) throw new DomainError('SPACE_NOT_FOUND', '空间不存在', 404)
+      return updated
+    }
+  }
+}

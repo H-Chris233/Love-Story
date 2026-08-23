@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/send-anniversary-reminders",
-      "schedule": "0 7 * * *"
+      "path": "/api/cron/reminders",
+      "schedule": "0 23 * * *"
     }
   ]
 }

@@ -1,313 +1,182 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '../stores/user'
-import MemoryCard from '../components/MemoryCard.vue'
-import MemoryForm from '../components/MemoryForm.vue'
-import { memoryAPI } from '../services/api'
-import type { Memory, ApiError } from '../types/api'
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
-// 路由和用户状态
-const router = useRouter()
-const userStore = useUserStore()
+import VisibilityField from '@/components/VisibilityField.vue'
+import { ApiError, api } from '@/services/api'
+import type { MemoryEntry } from '@/types/domain'
+import { formatShanghaiDate } from '@/utils/date'
 
-// 记忆数据
-const memories = ref<Memory[]>([])
-const loading = ref(true)
+const memories = ref<MemoryEntry[]>([])
+const busy = ref(false)
 const error = ref('')
-const showForm = ref(false)
-const editingMemory = ref<Memory | null>(null)
+const fields = ref<Record<string, string>>({})
+const selectedFiles = ref<File[]>([])
+const previews = ref<Array<{ name: string; url: string }>>([])
+const form = reactive({ title: '', body: '', occurredOn: '', isPublic: false })
 
-// 分页相关
-const currentPage = ref(1)
-const memoriesPerPage = 10 // 每页显示10个记忆
-const totalPages = computed(() => {
-  // 防御性编程：确保 memories.value 是数组
-  if (!Array.isArray(memories.value)) {
-    return 0
-  }
-  return Math.ceil(memories.value.length / memoriesPerPage)
-})
+async function load() {
+  memories.value = await api.memories()
+}
 
-// 获取当前页的记忆数据
-const paginatedMemories = computed(() => {
-  // 防御性编程：确保 memories.value 是数组
-  if (!Array.isArray(memories.value)) {
-    console.warn('⚠️ [MEMORIES-VIEW] memories.value is not an array:', memories.value)
-    return []
-  }
-  
-  const startIndex = (currentPage.value - 1) * memoriesPerPage
-  const endIndex = startIndex + memoriesPerPage
-  return memories.value.slice(startIndex, endIndex)
-})
+function chooseFiles(event: Event) {
+  for (const preview of previews.value) URL.revokeObjectURL(preview.url)
+  selectedFiles.value = Array.from((event.target as HTMLInputElement).files ?? []).slice(0, 10)
+  previews.value = selectedFiles.value.map((file) => ({
+    name: file.name,
+    url: URL.createObjectURL(file)
+  }))
+}
 
-// 获取记忆数据
-const fetchMemories = async () => {
-  console.log('📚 [MEMORIES-VIEW] Fetching memories...')
+async function submit() {
+  busy.value = true
+  error.value = ''
+  fields.value = {}
   try {
-    loading.value = true
-    const response = await memoryAPI.getAll()
-    
-    // 检查组件是否仍然挂载
-    if (!isMounted) {
-      console.log('📚 [MEMORIES-VIEW] Component unmounted, skipping state update')
-      return
-    }
-    
-    // 防御性编程：确保响应数据是数组
-    if (Array.isArray(response.data)) {
-      memories.value = response.data
-    } else {
-      console.warn('⚠️ [MEMORIES-VIEW] API response is not an array, setting empty array:', response.data)
-      memories.value = []
-    }
-    
-    // 重置到第一页
-    currentPage.value = 1
-    console.log(`✅ [MEMORIES-VIEW] Successfully fetched ${memories.value.length} memories`)
-  } catch (err: unknown) {
-    console.error('❌ [MEMORIES-VIEW] Error fetching memories:', err)
-    console.error('❌ [MEMORIES-VIEW] Error details:', {
-      message: err instanceof Error ? err.message : 'Unknown error',
-      status: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.status : undefined,
-      data: err && typeof err === 'object' && 'response' in err ? (err as ApiError).response?.data : undefined,
-      timestamp: new Date().toISOString()
+    const memory = await api.createMemory({
+      title: form.title,
+      body: form.body,
+      occurredOn: form.occurredOn,
+      visibility: form.isPublic ? 'public' : 'private'
     })
-    
-    // 检查组件是否仍然挂载
-    if (isMounted) {
-      error.value = '获取记忆数据失败'
-      // 确保在错误情况下 memories 也是数组
-      memories.value = []
-    }
+    for (const file of selectedFiles.value) await api.uploadMemoryImage(memory.id, file)
+    Object.assign(form, { title: '', body: '', occurredOn: '', isPublic: false })
+    selectedFiles.value = []
+    for (const preview of previews.value) URL.revokeObjectURL(preview.url)
+    previews.value = []
+    await load()
+  } catch (reason) {
+    if (reason instanceof ApiError) {
+      error.value = reason.message
+      fields.value = reason.fields ?? {}
+    } else error.value = '暂时无法保存回忆'
   } finally {
-    // 检查组件是否仍然挂载
-    if (isMounted) {
-      loading.value = false
-      console.log('✅ [MEMORIES-VIEW] Memory fetching process completed')
-    }
+    busy.value = false
   }
 }
 
-// 处理添加记忆
-const handleAddMemory = () => {
-  console.log('➕ [MEMORIES-VIEW] Adding new memory')
-  editingMemory.value = null
-  showForm.value = true
-}
-
-// 处理编辑记忆
-const handleEditMemory = (memory: Memory) => {
-  console.log(`✏️ [MEMORIES-VIEW] Editing memory with ID: ${memory._id}`)
-  editingMemory.value = memory
-  showForm.value = true
-}
-
-// 处理保存记忆（添加或编辑）
-const handleSaveMemory = (memory: Memory) => {
-  console.log(`✅ [MEMORIES-VIEW] Memory saved with ID: ${memory._id}`)
-  showForm.value = false
-  editingMemory.value = null
-  fetchMemories()
-}
-
-// 处理删除记忆
-const handleDeleteMemory = async (id: string | number) => {
-  console.log(`🗑️ [MEMORIES-VIEW] Deleting memory with ID: ${id}`)
-  try {
-    await memoryAPI.delete(id.toString())
-    // 防御性编程：确保 memories.value 是数组后再过滤
-    if (Array.isArray(memories.value)) {
-      memories.value = memories.value.filter(memory => memory._id !== id.toString())
-    }
-    // 如果当前页没有记忆了，且不是第一页，则跳转到上一页
-    if (paginatedMemories.value.length === 0 && currentPage.value > 1) {
-      currentPage.value--
-    }
-    console.log(`✅ [MEMORIES-VIEW] Memory with ID ${id} deleted successfully`)
-  } catch (err: unknown) {
-    console.error('❌ [MEMORIES-VIEW] Error deleting memory:', err)
-    console.error('❌ [MEMORIES-VIEW] Error details:', {
-      message: err instanceof Error ? err.message : 'Unknown error',
-      status: err instanceof Object && 'response' in err ? (err as any).response?.status : undefined,
-      memoryId: id,
-      timestamp: new Date().toISOString()
-    })
-    error.value = '删除记忆失败'
-  }
-}
-
-// 处理取消表单
-const handleCancelForm = () => {
-  console.log('❌ [MEMORIES-VIEW] Cancelled form')
-  showForm.value = false
-  editingMemory.value = null
-}
-
-// 处理分页
-const goToPage = (page: number) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-  }
-}
-
-// 检查用户登录状态并获取数据
-const checkAuthAndFetchMemories = () => {
-  console.log('🔐 [MEMORIES-VIEW] Checking user authentication...')
-  
-  if (!userStore.isLoggedIn) {
-    console.log('❌ [MEMORIES-VIEW] User not logged in, redirecting to login page')
-    router.push('/login')
+async function toggleVisibility(memory: MemoryEntry) {
+  if (
+    memory.visibility === 'private' &&
+    !window.confirm('公开后，访客可以看到这条回忆及其中照片。继续吗？')
+  )
     return
-  }
-  
-  console.log('✅ [MEMORIES-VIEW] User is authenticated, fetching memories...')
-  fetchMemories()
+  await api.updateMemory(memory.id, {
+    visibility: memory.visibility === 'public' ? 'private' : 'public'
+  })
+  await load()
 }
 
-// 页面加载时检查用户登录状态并获取数据
-let isMounted = true
+async function remove(memory: MemoryEntry) {
+  if (!window.confirm(`确定删除「${memory.title}」吗？`)) return
+  await api.deleteMemory(memory.id)
+  await load()
+}
 
-onMounted(() => {
-  console.log('📚 [MEMORIES-VIEW] Component mounted, checking authentication...')
-  checkAuthAndFetchMemories()
-})
-
-// 组件卸载时设置标志
-onUnmounted(() => {
-  console.log('📚 [MEMORIES-VIEW] Component unmounted')
-  isMounted = false
-})
+onMounted(load)
+onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(url)))
 </script>
 
 <template>
-  <div class="romantic-container romantic-py-8">
-    <header class="romantic-mb-8">
-      <h1 class="romantic-title romantic-title-md">我们的爱情回忆</h1>
-      <p class="romantic-subtitle">记录我们在一起的每一个美好时刻</p>
+  <div class="page">
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Memories</p>
+        <h1>回忆时间线</h1>
+        <p class="lede">新内容默认只对你们两个人可见。</p>
+      </div>
     </header>
 
-    <div v-if="loading" class="romantic-text-center romantic-py-10">
-      <div class="romantic-spinner"></div>
-      <p class="romantic-mt-2">加载中...</p>
-    </div>
-
-    <div v-else-if="error" class="romantic-text-center romantic-py-10">
-      <p class="romantic-text-danger">{{ error }}</p>
-      <button 
-        @click="fetchMemories" 
-        class="romantic-button romantic-mt-4"
-      >
-        重新加载
-      </button>
-    </div>
-
-    <div v-else>
-      <div class="romantic-relative">
-        <div 
-          v-for="memory in paginatedMemories" 
-          :key="memory._id" 
-          class="romantic-mb-8"
-        >
-          <MemoryCard 
-            :memory="memory" 
-            @edit="handleEditMemory"
-            @delete="handleDeleteMemory"
-          />
+    <form class="card card-pad stack" @submit.prevent="submit">
+      <h2>写下这一页</h2>
+      <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+      <div class="grid grid--2">
+        <div class="field">
+          <label for="memory-title">标题</label
+          ><input id="memory-title" v-model="form.title" required />
+          <p v-if="fields.title" class="field-error">{{ fields.title }}</p>
+        </div>
+        <div class="field">
+          <label for="memory-date">发生日期</label
+          ><input id="memory-date" v-model="form.occurredOn" type="date" required />
         </div>
       </div>
-
-      <!-- 分页组件 -->
-      <div v-if="totalPages > 1" class="romantic-flex romantic-justify-center romantic-mt-8 romantic-gap-2">
-        <button 
-          @click="goToPage(currentPage - 1)" 
-          :disabled="currentPage === 1"
-          class="romantic-button romantic-button-outline romantic-px-4"
+      <div class="field">
+        <label for="memory-body">故事</label
+        ><textarea id="memory-body" v-model="form.body" required />
+      </div>
+      <div class="field">
+        <label for="memory-images">照片（最多 10 张，每张不超过 5 MB）</label>
+        <input
+          id="memory-images"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
+          @change="chooseFiles"
+        />
+      </div>
+      <div v-if="previews.length" class="grid grid--3" aria-label="照片预览">
+        <figure
+          v-for="preview in previews"
+          :key="preview.url"
+          class="card"
+          style="overflow: hidden; margin: 0"
         >
-          上一页
-        </button>
-        
-        <span class="romantic-flex romantic-items-center romantic-px-4 romantic-text-gray-600">
-          {{ currentPage }} / {{ totalPages }}
-        </span>
-        
-        <button 
-          @click="goToPage(currentPage + 1)" 
-          :disabled="currentPage === totalPages"
-          class="romantic-button romantic-button-outline romantic-px-4"
-        >
-          下一页
+          <img
+            :src="preview.url"
+            :alt="`${preview.name} 预览`"
+            style="display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover"
+          />
+        </figure>
+      </div>
+      <VisibilityField v-model="form.isPublic" />
+      <div>
+        <button class="button" :disabled="busy" type="submit">
+          {{ busy ? '保存中…' : '保存回忆' }}
         </button>
       </div>
+    </form>
 
-      <div class="romantic-text-center romantic-mt-10">
-        <button 
-          @click="handleAddMemory"
-          class="romantic-button romantic-button-lg"
-        >
-          添加新的回忆
-        </button>
+    <section class="page">
+      <div class="page-heading">
+        <h2>所有回忆</h2>
+        <span class="muted">{{ memories.length }} 页</span>
       </div>
-    </div>
-
-    <!-- 记忆表单模态框 -->
-    <MemoryForm 
-      v-if="showForm"
-      :memory="editingMemory"
-      @save="handleSaveMemory"
-      @cancel="handleCancelForm"
-    />
+      <div v-if="memories.length" class="grid grid--2">
+        <article v-for="memory in memories" :key="memory.id" class="card memory-card">
+          <img
+            v-if="memory.assets[0]"
+            class="memory-card__photo"
+            :src="memory.assets[0].url"
+            :alt="memory.title"
+          />
+          <div class="memory-card__body stack">
+            <div class="memory-card__meta">
+              <span>{{ formatShanghaiDate(memory.occurredOn) }}</span
+              ><span :class="['badge', { 'badge--public': memory.visibility === 'public' }]">{{
+                memory.visibility === 'public' ? '已公开' : '仅两人可见'
+              }}</span>
+            </div>
+            <h3>{{ memory.title }}</h3>
+            <p style="white-space: pre-wrap">{{ memory.body }}</p>
+            <div class="cluster">
+              <button
+                class="button button--secondary"
+                type="button"
+                @click="toggleVisibility(memory)"
+              >
+                {{ memory.visibility === 'public' ? '改回私密' : '公开' }}
+              </button>
+              <button class="button button--danger" type="button" @click="remove(memory)">
+                删除
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div v-else class="card empty">
+        <h3>时间线还是空白</h3>
+        <p>从一件小事开始，也很好。</p>
+      </div>
+    </section>
   </div>
 </template>
-
-<style scoped>
-/* 小屏手机优化 */
-@media (max-width: 768px) {
-  .romantic-py-8 {
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-  }
-  
-  .romantic-mb-8 {
-    margin-bottom: 1rem;
-  }
-  
-  .romantic-title {
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .romantic-subtitle {
-    font-size: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .romantic-mb-8 {
-    margin-bottom: 1.5rem;
-  }
-  
-  .romantic-mt-10 {
-    margin-top: 2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .romantic-py-8 {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-  }
-  
-  .romantic-title {
-    font-size: 1.5rem;
-  }
-  
-  .romantic-subtitle {
-    font-size: 0.9rem;
-  }
-  
-  .romantic-mb-8 {
-    margin-bottom: 1rem;
-  }
-}
-</style>
