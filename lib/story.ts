@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { parseCalendarDate } from './dates.js'
-import { DomainError, assertRequired, assertUuid } from './errors.js'
+import { DomainError, assertRequired, assertUuid, assertPatch } from './errors.js'
 import type { StoryStore } from './store/story-store.js'
 import type { Member, Space, Visibility } from './types.js'
 
@@ -24,7 +24,7 @@ function assertVisibility(value: Visibility | undefined): Visibility | undefined
 }
 
 function assertTimestamp(value: string, field: string): string {
-  const date = new Date(value)
+  const date = new Date(assertRequired(value, field, 64))
   if (Number.isNaN(date.getTime())) {
     throw new DomainError('VALIDATION_ERROR', '日期时间格式不正确', 400, {
       [field]: '请输入有效的日期和时间'
@@ -85,7 +85,7 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
       return dependencies.store.createMemory({
         space,
         author: member,
-        title: assertRequired(input.title, 'title'),
+        title: assertRequired(input.title, 'title', 160),
         body: assertRequired(input.body, 'body'),
         occurredOn,
         visibility: assertVisibility(input.visibility) ?? 'private',
@@ -106,9 +106,9 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
     ) {
       await assertMembership(member, space)
       assertUuid(memoryId, 'MEMORY_NOT_FOUND', '没有找到这条回忆')
+      assertPatch(patch, ['title', 'body', 'occurredOn', 'visibility'])
       const normalized = {
-        ...patch,
-        ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+        ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title', 160) }),
         ...(patch.body === undefined ? {} : { body: assertRequired(patch.body, 'body') }),
         ...(patch.occurredOn === undefined
           ? {}
@@ -140,7 +140,7 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
     ) {
       await assertMembership(member, space)
       const originalDate = assertDate(input.originalDate, 'originalDate')
-      const reminderDays = input.reminderDays ?? 7
+      const reminderDays = input.reminderDays === undefined ? 7 : input.reminderDays
       if (!Number.isInteger(reminderDays) || reminderDays < 0 || reminderDays > 365) {
         throw new DomainError('VALIDATION_ERROR', '提前提醒天数需要在 0 到 365 之间', 400, {
           reminderDays: '请输入 0 到 365 之间的整数'
@@ -149,7 +149,7 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
       return dependencies.store.createAnniversary({
         space,
         author: member,
-        title: assertRequired(input.title, 'title'),
+        title: assertRequired(input.title, 'title', 160),
         originalDate,
         reminderDays,
         visibility: assertVisibility(input.visibility) ?? 'private',
@@ -170,6 +170,7 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
     ) {
       await assertMembership(member, space)
       assertUuid(anniversaryId, 'ANNIVERSARY_NOT_FOUND', '没有找到这个纪念日')
+      assertPatch(patch, ['title', 'originalDate', 'reminderDays', 'visibility'])
       if (
         patch.reminderDays !== undefined &&
         (!Number.isInteger(patch.reminderDays) ||
@@ -182,8 +183,10 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
         space.id,
         anniversaryId,
         {
-          ...patch,
-          ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+          ...(patch.reminderDays === undefined ? {} : { reminderDays: patch.reminderDays }),
+          ...(patch.title === undefined
+            ? {}
+            : { title: assertRequired(patch.title, 'title', 160) }),
           ...(patch.originalDate === undefined
             ? {}
             : { originalDate: assertDate(patch.originalDate, 'originalDate') }),
@@ -211,11 +214,18 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
       patch: Partial<Pick<Space, 'title' | 'intro' | 'relationshipStartedAt'>>
     ) {
       await assertMembership(member, space)
+      assertPatch(patch, ['title', 'intro', 'relationshipStartedAt'])
+      if (
+        patch.intro !== undefined &&
+        (typeof patch.intro !== 'string' || patch.intro.length > 10000)
+      )
+        throw new DomainError('VALIDATION_ERROR', '故事短句格式不正确', 400)
       const updated = await dependencies.store.updateSpace(
         space.id,
         {
-          ...patch,
-          ...(patch.title === undefined ? {} : { title: assertRequired(patch.title, 'title') }),
+          ...(patch.title === undefined
+            ? {}
+            : { title: assertRequired(patch.title, 'title', 160) }),
           ...(patch.intro === undefined ? {} : { intro: patch.intro.trim() }),
           ...(patch.relationshipStartedAt === undefined
             ? {}

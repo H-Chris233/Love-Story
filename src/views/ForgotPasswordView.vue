@@ -2,17 +2,21 @@
 import { ref } from 'vue'
 
 import AuthShell from '@/components/AuthShell.vue'
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 
 const email = ref('')
 const sent = ref(false)
 const busy = ref(false)
+const error = ref('')
 
 async function submit() {
   busy.value = true
+  error.value = ''
   try {
     await api.forgotPassword(email.value)
     sent.value = true
+  } catch (reason) {
+    error.value = reason instanceof ApiError ? reason.message : '暂时无法发送，请重试'
   } finally {
     busy.value = false
   }
@@ -28,6 +32,7 @@ async function submit() {
       <RouterLink class="button button--secondary" to="/login">返回登录</RouterLink>
     </div>
     <form v-else class="auth-form stack" @submit.prevent="submit">
+      <p v-if="error" role="alert" class="form-error">{{ error }}</p>
       <div>
         <p class="eyebrow">Password</p>
         <h2>找回密码</h2>

@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 
 import { useSessionStore } from '@/stores/session'
 
 const session = useSessionStore()
 const router = useRouter()
+const error = ref('')
+const busy = ref(false)
+async function retrySession() {
+  busy.value = true
+  try {
+    await session.ensureLoaded()
+    if (!session.error) await router.replace(window.location.pathname + window.location.search)
+  } finally {
+    busy.value = false
+  }
+}
 const links = [
   { to: '/app', label: '总览', icon: '⌂' },
   { to: '/app/memories', label: '回忆', icon: '✦' },
@@ -16,8 +27,13 @@ const links = [
 const privateArea = computed(() => router.currentRoute.value.meta.requiresAuth === true)
 
 async function logout() {
-  await session.logout()
-  await router.push('/')
+  error.value = ''
+  try {
+    await session.logout()
+    await router.push('/')
+  } catch {
+    error.value = '退出失败，请重试'
+  }
 }
 </script>
 
@@ -35,7 +51,12 @@ async function logout() {
     </header>
 
     <main :class="{ 'private-main': privateArea }">
-      <RouterView />
+      <p v-if="error" role="alert" class="form-error">{{ error }}</p>
+      <div v-if="session.error" role="alert" class="card card-pad">
+        <p>{{ session.error }}</p>
+        <button type="button" class="button" :disabled="busy" @click="retrySession">重试</button>
+      </div>
+      <RouterView v-else />
     </main>
 
     <nav v-if="privateArea" class="mobile-nav" aria-label="移动端主导航">

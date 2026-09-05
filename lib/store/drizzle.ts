@@ -1,8 +1,14 @@
-import { and, asc, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, ne, lt, sql } from 'drizzle-orm'
+import { randomUUID } from 'node:crypto'
+import type { MailMessage } from '../mailer.js'
+import { DELIVERY_LEASE_MS, DELIVERY_RETRY_MS } from './reminder-store.js'
 
-import { database } from '../../db/client.js'
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
+import type * as schema from '../../db/schema.js'
 import {
   anniversaries,
+  blobDeletions,
+  rateLimits,
   assets,
   invitations,
   memories,
@@ -29,13 +35,16 @@ import type { MediaStore, StoredAsset } from './media-store.js'
 import type { ReminderCandidate, ReminderDeliveryKey, ReminderStore } from './reminder-store.js'
 import type { StoryStore } from './story-store.js'
 
-type Database = typeof database
+type Database = PgDatabase<PgQueryResultHKT, typeof schema>
 type SpaceRow = typeof spaces.$inferSelect
 type UserRow = typeof users.$inferSelect
 type AssetRow = typeof assets.$inferSelect
 
 function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+  if (!error || typeof error !== 'object') return false
+  if ('code' in error && error.code === '23505') return true
+  const cause = 'cause' in error ? error.cause : null
+  return !!cause && typeof cause === 'object' && 'code' in cause && cause.code === '23505'
 }
 
 function toSpace(row: SpaceRow): Space {
@@ -60,7 +69,7 @@ function toMember(row: UserRow, position: number): Member {
 }
 
 export class DrizzleStore implements AuthStore, StoryStore, MediaStore, ReminderStore {
-  constructor(private readonly db: Database = database) {}
+  constructor(private readonly db: Database) {}
 
   async isSetup(): Promise<boolean> {
     const rows = await this.db.select({ id: spaces.id }).from(spaces).limit(1)
@@ -207,14 +216,13 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
   async createInvitation(input: InvitationRecord): Promise<void> {
     await this.db.transaction(async (transaction) => {
       await transaction
+        .select({ id: spaces.id })
+        .from(spaces)
+        .where(eq(spaces.id, input.spaceId))
+        .for('update')
+      await transaction
         .delete(invitations)
-        .where(
-          and(
-            eq(invitations.spaceId, input.spaceId),
-            eq(invitations.email, input.email),
-            isNull(invitations.acceptedAt)
-          )
-        )
+        .where(and(eq(invitations.spaceId, input.spaceId), isNull(invitations.acceptedAt)))
       await transaction.insert(invitations).values({
         spaceId: input.spaceId,
         invitedBy: input.invitedBy,
@@ -347,11 +355,22 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
   }
 
   async deleteMemory(spaceId: string, memoryId: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(memories)
-      .where(and(eq(memories.spaceId, spaceId), eq(memories.id, memoryId)))
-      .returning({ id: memories.id })
-    return deleted.length > 0
+    return this.db.transaction(async (transaction) => {
+      const [memory] = await transaction
+        .select({ id: memories.id })
+        .from(memories)
+        .where(and(eq(memories.spaceId, spaceId), eq(memories.id, memoryId)))
+        .for('update')
+      if (!memory) return false
+      const attached = await transaction
+        .select({ pathname: assets.pathname })
+        .from(assets)
+        .where(eq(assets.memoryId, memoryId))
+      if (attached.length)
+        await transaction.insert(blobDeletions).values(attached).onConflictDoNothing()
+      await transaction.delete(memories).where(eq(memories.id, memoryId))
+      return true
+    })
   }
 
   async getMemoryBySlug(slug: string, visibility: Visibility): Promise<MemoryEntry | null> {
@@ -513,27 +532,47 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
     sortOrder: number
     now: Date
   }): Promise<MemoryAsset> {
-    const [row] = await this.db
-      .insert(assets)
-      .values({
-        memoryId: input.memoryId,
-        pathname: input.pathname,
-        originalName: input.originalName,
-        mimeType: input.mimeType,
-        byteSize: input.byteSize,
-        sortOrder: input.sortOrder,
-        createdAt: input.now
-      })
-      .returning()
-    return {
-      id: row.id,
-      memoryId: row.memoryId,
-      originalName: row.originalName,
-      mimeType: row.mimeType,
-      byteSize: row.byteSize,
-      sortOrder: row.sortOrder,
-      url: `/api/media/${row.id}`
-    }
+    return this.db.transaction(async (transaction) => {
+      const [memory] = await transaction
+        .select({ id: memories.id })
+        .from(memories)
+        .where(eq(memories.id, input.memoryId))
+        .for('update')
+      if (!memory) throw new DomainError('MEMORY_NOT_FOUND', '没有找到这条回忆', 404)
+      const [pendingDeletion] = await transaction
+        .select({ pathname: blobDeletions.pathname })
+        .from(blobDeletions)
+        .where(eq(blobDeletions.pathname, input.pathname))
+      if (pendingDeletion)
+        throw new DomainError('INVALID_UPLOAD', '照片已进入删除流程，请重新上传', 409)
+      const attached = await transaction
+        .select({ sortOrder: assets.sortOrder })
+        .from(assets)
+        .where(eq(assets.memoryId, input.memoryId))
+      if (attached.length >= 10)
+        throw new DomainError('TOO_MANY_IMAGES', '每条回忆最多保存 10 张图片', 409)
+      const [row] = await transaction
+        .insert(assets)
+        .values({
+          memoryId: input.memoryId,
+          pathname: input.pathname,
+          originalName: input.originalName,
+          mimeType: input.mimeType,
+          byteSize: input.byteSize,
+          sortOrder: attached.reduce((max, asset) => Math.max(max, asset.sortOrder), -1) + 1,
+          createdAt: input.now
+        })
+        .returning()
+      return {
+        id: row.id,
+        memoryId: row.memoryId,
+        originalName: row.originalName,
+        mimeType: row.mimeType,
+        byteSize: row.byteSize,
+        sortOrder: row.sortOrder,
+        url: `/api/media/${row.id}`
+      }
+    })
   }
 
   async getAsset(assetId: string): Promise<StoredAsset | null> {
@@ -567,11 +606,57 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
   }
 
   async deleteAsset(assetId: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(assets)
-      .where(eq(assets.id, assetId))
-      .returning({ id: assets.id })
-    return deleted.length > 0
+    return this.db.transaction(async (transaction) => {
+      const [asset] = await transaction
+        .select({ memoryId: assets.memoryId })
+        .from(assets)
+        .where(eq(assets.id, assetId))
+      if (!asset) return false
+      await transaction
+        .select({ id: memories.id })
+        .from(memories)
+        .where(eq(memories.id, asset.memoryId))
+        .for('update')
+      const [deleted] = await transaction
+        .delete(assets)
+        .where(eq(assets.id, assetId))
+        .returning({ pathname: assets.pathname })
+      if (!deleted) return false
+      await transaction.insert(blobDeletions).values(deleted).onConflictDoNothing()
+      return true
+    })
+  }
+
+  async listBlobDeletions(): Promise<string[]> {
+    return (
+      await this.db
+        .select({ pathname: blobDeletions.pathname })
+        .from(blobDeletions)
+        .orderBy(asc(blobDeletions.createdAt))
+        .limit(100)
+    ).map((row) => row.pathname)
+  }
+  async finishBlobDeletion(pathname: string): Promise<void> {
+    await this.db.delete(blobDeletions).where(eq(blobDeletions.pathname, pathname))
+  }
+  async hitRateLimit(key: string, limit: number, windowMs: number, now: Date): Promise<number> {
+    const [row] = await this.db
+      .insert(rateLimits)
+      .values({ key, hits: 1, expiresAt: new Date(now.getTime() + windowMs) })
+      .onConflictDoUpdate({
+        target: rateLimits.key,
+        set: {
+          hits: sql`case when ${rateLimits.expiresAt} <= ${now} then 1 else least(${rateLimits.hits} + 1, ${limit + 1}) end`,
+          expiresAt: sql`case when ${rateLimits.expiresAt} <= ${now} then ${new Date(now.getTime() + windowMs)} else ${rateLimits.expiresAt} end`
+        }
+      })
+      .returning()
+    return row.hits > limit
+      ? Math.max(1, Math.ceil((row.expiresAt.getTime() - now.getTime()) / 1000))
+      : 0
+  }
+  async pruneRateLimits(now: Date): Promise<void> {
+    await this.db.delete(rateLimits).where(lt(rateLimits.expiresAt, now))
   }
 
   async listReminderCandidates(): Promise<ReminderCandidate[]> {
@@ -611,55 +696,72 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
     return [...grouped.values()]
   }
 
-  async claimDelivery(key: ReminderDeliveryKey, now: Date): Promise<boolean> {
-    try {
-      return await this.db.transaction(async (transaction) => {
-        const [existing] = await transaction
-          .select({ status: notificationDeliveries.status })
-          .from(notificationDeliveries)
-          .where(
-            and(
-              eq(notificationDeliveries.anniversaryId, key.anniversaryId),
-              eq(notificationDeliveries.userId, key.userId),
-              eq(notificationDeliveries.occurrenceDate, key.occurrenceDate),
-              eq(notificationDeliveries.kind, key.kind)
-            )
+  async enqueueDelivery(key: ReminderDeliveryKey, message: MailMessage, now: Date): Promise<void> {
+    await this.db
+      .insert(notificationDeliveries)
+      .values({ ...key, message, status: 'failed', createdAt: now, updatedAt: now })
+      .onConflictDoNothing()
+  }
+  async listPendingDeliveries() {
+    return this.db
+      .select()
+      .from(notificationDeliveries)
+      .where(ne(notificationDeliveries.status, 'sent'))
+      .orderBy(asc(notificationDeliveries.createdAt))
+  }
+  async claimDelivery(key: ReminderDeliveryKey, now: Date): Promise<string | null> {
+    return await this.db.transaction(async (transaction) => {
+      const [existing] = await transaction
+        .select()
+        .from(notificationDeliveries)
+        .where(
+          and(
+            eq(notificationDeliveries.anniversaryId, key.anniversaryId),
+            eq(notificationDeliveries.userId, key.userId),
+            eq(notificationDeliveries.occurrenceDate, key.occurrenceDate),
+            eq(notificationDeliveries.kind, key.kind)
           )
-          .for('update')
-          .limit(1)
-        if (existing) {
-          if (existing.status !== 'failed') return false
-          await transaction
-            .update(notificationDeliveries)
-            .set({ status: 'sending', lastError: null, updatedAt: now })
-            .where(
-              and(
-                eq(notificationDeliveries.anniversaryId, key.anniversaryId),
-                eq(notificationDeliveries.userId, key.userId),
-                eq(notificationDeliveries.occurrenceDate, key.occurrenceDate),
-                eq(notificationDeliveries.kind, key.kind)
-              )
-            )
-          return true
-        }
-        await transaction.insert(notificationDeliveries).values({
-          ...key,
+        )
+        .for('update')
+        .limit(1)
+      if (!existing || !existing.message || existing.status === 'sent') return null
+      if (
+        existing.firstAttemptAt &&
+        now.getTime() - existing.firstAttemptAt.getTime() >= DELIVERY_RETRY_MS
+      )
+        return null
+      if (
+        existing.status === 'sending' &&
+        now.getTime() - existing.updatedAt.getTime() < DELIVERY_LEASE_MS
+      )
+        return null
+      const leaseToken = randomUUID()
+      await transaction
+        .update(notificationDeliveries)
+        .set({
           status: 'sending',
-          createdAt: now,
-          updatedAt: now
+          lastError: null,
+          updatedAt: now,
+          leaseToken,
+          firstAttemptAt: existing.firstAttemptAt ?? now
         })
-        return true
-      })
-    } catch (error) {
-      if (isUniqueViolation(error)) return false
-      throw error
-    }
+        .where(
+          and(
+            eq(notificationDeliveries.anniversaryId, key.anniversaryId),
+            eq(notificationDeliveries.userId, key.userId),
+            eq(notificationDeliveries.occurrenceDate, key.occurrenceDate),
+            eq(notificationDeliveries.kind, key.kind)
+          )
+        )
+      return leaseToken
+    })
   }
 
   async finishDelivery(
     key: ReminderDeliveryKey,
     result: { error?: string },
-    now: Date
+    now: Date,
+    leaseToken: string
   ): Promise<void> {
     await this.db
       .update(notificationDeliveries)
@@ -673,7 +775,8 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
           eq(notificationDeliveries.anniversaryId, key.anniversaryId),
           eq(notificationDeliveries.userId, key.userId),
           eq(notificationDeliveries.occurrenceDate, key.occurrenceDate),
-          eq(notificationDeliveries.kind, key.kind)
+          eq(notificationDeliveries.kind, key.kind),
+          eq(notificationDeliveries.leaseToken, leaseToken)
         )
       )
   }

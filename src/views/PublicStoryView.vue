@@ -2,15 +2,16 @@
 import { onMounted, ref } from 'vue'
 
 import LoveTimer from '@/components/LoveTimer.vue'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import { ApiError, api } from '@/services/api'
 import type { StoryView } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
 const story = ref<StoryView | null>(null)
-const loading = ref(true)
 const initialized = ref(true)
 
-onMounted(async () => {
+const { load, loading, loadError } = useLoad(async () => {
   try {
     story.value = await api.publicStory()
   } catch (error) {
@@ -19,14 +20,15 @@ onMounted(async () => {
     } else {
       throw error
     }
-  } finally {
-    loading.value = false
   }
 })
+onMounted(load)
 </script>
 
 <template>
-  <div v-if="loading" class="public-hero"><p class="muted">正在翻开纪念簿…</p></div>
+  <div v-if="loading || loadError" class="public-hero">
+    <LoadState :loading="loading" :error="loadError" @retry="load" />
+  </div>
   <div v-else-if="!story" class="public-hero">
     <div class="public-hero__inner stack">
       <p class="eyebrow">Love Story</p>

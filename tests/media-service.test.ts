@@ -28,6 +28,32 @@ async function createStoryWithMemory() {
 }
 
 describe('MediaService', () => {
+  it('enforces byte and count limits and allows replacement after deleting a photo', async () => {
+    const { store, owner, memory } = await createStoryWithMemory()
+    const blob = createMemoryBlobStorage()
+    const media = createMediaService({ store, blob })
+    const bytes = new Uint8Array(5 * 1024 * 1024)
+    bytes.set([137, 80, 78, 71, 13, 10, 26, 10])
+    const file = { name: 'limit.png', declaredType: 'image/png', bytes }
+    const first = await media.upload(owner.user, owner.space, memory.id, file)
+    await expect(
+      media.upload(owner.user, owner.space, memory.id, {
+        ...file,
+        bytes: new Uint8Array(5 * 1024 * 1024 + 1)
+      })
+    ).rejects.toMatchObject({ status: 413 })
+    for (let i = 1; i < 10; i++)
+      await media.upload(owner.user, owner.space, memory.id, { ...file, bytes: bytes.slice(0, 8) })
+    await expect(media.upload(owner.user, owner.space, memory.id, file)).rejects.toMatchObject({
+      code: 'TOO_MANY_IMAGES'
+    })
+    await media.delete(owner.user, owner.space, first.id)
+    expect(blob.objects.size).toBe(9)
+    await media.upload(owner.user, owner.space, memory.id, file)
+    expect(await store.countAssets(memory.id)).toBe(10)
+    await media.deleteMemory(owner.user, owner.space, memory.id)
+    expect(blob.objects.size).toBe(0)
+  })
   it('accepts signed image bytes and keeps private media behind membership', async () => {
     const { store, owner, memory } = await createStoryWithMemory()
     const blob = createMemoryBlobStorage()
@@ -84,18 +110,18 @@ describe('MediaService', () => {
       contentType: 'image/png'
     })
 
-    const first = await media.completeClientUpload(owner.user, owner.space, memory.id, {
-      pathname,
-      name: '直传.png',
-      declaredType: 'image/png'
-    })
-    const repeated = await media.completeClientUpload(owner.user, owner.space, memory.id, {
-      pathname,
-      name: '直传.png',
-      declaredType: 'image/png'
-    })
+    const [first, repeated] = await Promise.all(
+      [1, 2].map(() =>
+        media.completeClientUpload(owner.user, owner.space, memory.id, {
+          pathname,
+          name: '直传.png',
+          declaredType: 'image/png'
+        })
+      )
+    )
 
     expect(repeated.id).toBe(first.id)
     expect(await store.countAssets(memory.id)).toBe(1)
+    expect(blob.objects.has(pathname)).toBe(true)
   })
 })

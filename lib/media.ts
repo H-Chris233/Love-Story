@@ -83,8 +83,24 @@ export function createMediaService(dependencies: {
     return contentType
   }
 
+  async function retryDeletions() {
+    let deleted = 0
+    let failed = 0
+    for (const pathname of await dependencies.store.listBlobDeletions()) {
+      try {
+        await dependencies.blob.delete(pathname)
+        await dependencies.store.finishBlobDeletion(pathname)
+        deleted++
+      } catch {
+        failed++
+      }
+    }
+    return { deleted, failed }
+  }
+
   return {
     authorizeUpload,
+    retryDeletions,
     async upload(
       member: Member,
       space: Space,
@@ -117,7 +133,8 @@ export function createMediaService(dependencies: {
       memoryId: string,
       file: { pathname: string; name: string; declaredType: string }
     ) {
-      if (!file.pathname.startsWith(`memories/${memoryId}/`)) {
+      await assertMemoryAccess(member, space, memoryId)
+      if (typeof file.pathname !== 'string' || !file.pathname.startsWith(`memories/${memoryId}/`)) {
         throw new DomainError('INVALID_UPLOAD', '上传路径无效', 400)
       }
       const existing = await dependencies.store.getAssetByPathname(file.pathname)
@@ -153,6 +170,18 @@ export function createMediaService(dependencies: {
           now: now()
         })
       } catch (error) {
+        const completed = await dependencies.store.getAssetByPathname(file.pathname)
+        if (completed) {
+          return {
+            id: completed.id,
+            memoryId: completed.memoryId,
+            originalName: completed.originalName,
+            mimeType: completed.mimeType,
+            byteSize: completed.byteSize,
+            sortOrder: completed.sortOrder,
+            url: completed.url
+          }
+        }
         await dependencies.blob.delete(file.pathname)
         throw error
       }
@@ -181,13 +210,13 @@ export function createMediaService(dependencies: {
       ) {
         throw new DomainError('ASSET_NOT_FOUND', '没有找到这张图片', 404)
       }
-      await dependencies.blob.delete(asset.pathname)
       await dependencies.store.deleteAsset(assetId)
+      await retryDeletions()
     },
-    async deleteMemoryBlobs(member: Member, space: Space, memoryId: string) {
+    async deleteMemory(member: Member, space: Space, memoryId: string) {
       await assertMemoryAccess(member, space, memoryId)
-      const attached = await dependencies.store.listAssetsForMemory(memoryId)
-      if (attached.length) await dependencies.blob.delete(attached.map(({ pathname }) => pathname))
+      await dependencies.store.deleteMemory(space.id, memoryId)
+      await retryDeletions()
     }
   }
 }

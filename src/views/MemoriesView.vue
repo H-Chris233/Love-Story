@@ -2,6 +2,8 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import VisibilityField from '@/components/VisibilityField.vue'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import { ApiError, api } from '@/services/api'
 import type { MemoryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
@@ -13,10 +15,56 @@ const fields = ref<Record<string, string>>({})
 const selectedFiles = ref<File[]>([])
 const previews = ref<Array<{ name: string; url: string }>>([])
 const form = reactive({ title: '', body: '', occurredOn: '', isPublic: false })
+const editing = ref<string | null>(null)
+const draft = reactive({ title: '', body: '', occurredOn: '' })
+const notice = ref('')
 
-async function load() {
-  memories.value = await api.memories()
+function edit(memory: MemoryEntry) {
+  editing.value = memory.id
+  Object.assign(draft, { title: memory.title, body: memory.body, occurredOn: memory.occurredOn })
 }
+async function act(action: () => Promise<unknown>) {
+  busy.value = true
+  error.value = ''
+  try {
+    await action()
+    await load()
+  } catch (reason) {
+    error.value = reason instanceof ApiError ? reason.message : '操作失败，请重试'
+  } finally {
+    busy.value = false
+  }
+}
+async function saveEdit(id: string) {
+  await act(async () => {
+    await api.updateMemory(id, { ...draft })
+    editing.value = null
+  })
+}
+async function uploadFiles(memoryId: string, files: File[]) {
+  let failed = 0
+  for (const file of files) {
+    try {
+      await api.uploadMemoryImage(memoryId, file)
+    } catch {
+      failed++
+    }
+  }
+  notice.value = failed ? '部分照片失败，可继续补传。回忆和成功上传的照片已保存。' : ''
+}
+async function addPhotos(memory: MemoryEntry, event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? []).slice(0, 10 - memory.assets.length)
+  await act(() => uploadFiles(memory.id, files))
+  input.value = ''
+}
+async function removePhoto(id: string) {
+  if (window.confirm('确定删除这张照片吗？')) await act(() => api.deleteAsset(id))
+}
+
+const { load, loading, loadError } = useLoad(async () => {
+  memories.value = await api.memories()
+})
 
 function chooseFiles(event: Event) {
   for (const preview of previews.value) URL.revokeObjectURL(preview.url)
@@ -38,7 +86,7 @@ async function submit() {
       occurredOn: form.occurredOn,
       visibility: form.isPublic ? 'public' : 'private'
     })
-    for (const file of selectedFiles.value) await api.uploadMemoryImage(memory.id, file)
+    await uploadFiles(memory.id, selectedFiles.value)
     Object.assign(form, { title: '', body: '', occurredOn: '', isPublic: false })
     selectedFiles.value = []
     for (const preview of previews.value) URL.revokeObjectURL(preview.url)
@@ -60,16 +108,16 @@ async function toggleVisibility(memory: MemoryEntry) {
     !window.confirm('公开后，访客可以看到这条回忆及其中照片。继续吗？')
   )
     return
-  await api.updateMemory(memory.id, {
-    visibility: memory.visibility === 'public' ? 'private' : 'public'
-  })
-  await load()
+  await act(() =>
+    api.updateMemory(memory.id, {
+      visibility: memory.visibility === 'public' ? 'private' : 'public'
+    })
+  )
 }
 
 async function remove(memory: MemoryEntry) {
   if (!window.confirm(`确定删除「${memory.title}」吗？`)) return
-  await api.deleteMemory(memory.id)
-  await load()
+  await act(() => api.deleteMemory(memory.id))
 }
 
 onMounted(load)
@@ -85,6 +133,7 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
         <p class="lede">新内容默认只对你们两个人可见。</p>
       </div>
     </header>
+    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
 
     <form class="card card-pad stack" @submit.prevent="submit">
       <h2>写下这一页</h2>
@@ -137,19 +186,48 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
     </form>
 
     <section class="page">
+      <LoadState :loading="loading" :error="loadError" @retry="load" />
       <div class="page-heading">
         <h2>所有回忆</h2>
         <span class="muted">{{ memories.length }} 页</span>
       </div>
       <div v-if="memories.length" class="grid grid--2">
         <article v-for="memory in memories" :key="memory.id" class="card memory-card">
-          <img
-            v-if="memory.assets[0]"
-            class="memory-card__photo"
-            :src="memory.assets[0].url"
-            :alt="memory.title"
-          />
+          <div class="grid grid--2">
+            <figure v-for="asset in memory.assets" :key="asset.id">
+              <img class="memory-card__photo" :src="asset.url" :alt="asset.originalName" />
+              <button
+                type="button"
+                class="button button--danger"
+                :disabled="busy"
+                :aria-label="`删除照片 ${asset.originalName}`"
+                @click="removePhoto(asset.id)"
+              >
+                删除照片
+              </button>
+            </figure>
+          </div>
           <div class="memory-card__body stack">
+            <form v-if="editing === memory.id" class="stack" @submit.prevent="saveEdit(memory.id)">
+              <label class="field"
+                >编辑标题<input v-model="draft.title" required maxlength="160"
+              /></label>
+              <label class="field"
+                >编辑日期<input v-model="draft.occurredOn" type="date" required
+              /></label>
+              <label class="field">编辑故事<textarea v-model="draft.body" required /></label>
+              <div class="cluster">
+                <button class="button" :disabled="busy" type="submit">保存修改</button
+                ><button
+                  class="button button--secondary"
+                  :disabled="busy"
+                  type="button"
+                  @click="editing = null"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
             <div class="memory-card__meta">
               <span>{{ formatShanghaiDate(memory.occurredOn) }}</span
               ><span :class="['badge', { 'badge--public': memory.visibility === 'public' }]">{{
@@ -161,19 +239,41 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
             <div class="cluster">
               <button
                 class="button button--secondary"
+                :disabled="busy"
                 type="button"
+                @click="edit(memory)"
+              >
+                编辑回忆
+              </button>
+              <button
+                class="button button--secondary"
+                type="button"
+                :disabled="busy"
                 @click="toggleVisibility(memory)"
               >
                 {{ memory.visibility === 'public' ? '改回私密' : '公开' }}
               </button>
-              <button class="button button--danger" type="button" @click="remove(memory)">
+              <button
+                class="button button--danger"
+                :disabled="busy"
+                type="button"
+                @click="remove(memory)"
+              >
                 删除
               </button>
             </div>
+            <label v-if="memory.assets.length < 10" class="field"
+              >补传照片（还可添加 {{ 10 - memory.assets.length }} 张）<input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                :disabled="busy"
+                @change="addPhotos(memory, $event)"
+            /></label>
           </div>
         </article>
       </div>
-      <div v-else class="card empty">
+      <div v-else-if="!loading && !loadError" class="card empty">
         <h3>时间线还是空白</h3>
         <p>从一件小事开始，也很好。</p>
       </div>

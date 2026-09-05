@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 
 import LoveTimer from '@/components/LoveTimer.vue'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import { api } from '@/services/api'
 import type { StoryView } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
@@ -10,10 +12,12 @@ const story = ref<StoryView | null>(null)
 const invitation = new URLSearchParams(window.location.search).get('invitation')
 const latest = computed(() => story.value?.memories.slice(0, 3) ?? [])
 
-onMounted(async () => (story.value = await api.story()))
+const { load, loading, loadError } = useLoad(async () => (story.value = await api.story()))
+onMounted(load)
 </script>
 
 <template>
+  <LoadState :loading="loading" :error="loadError" @retry="load" />
   <div v-if="story" class="page">
     <p v-if="invitation === 'failed'" class="notice" role="status">
       空间已成功创建，但邀请邮件发送失败。可以在设置里重新发送。
@@ -60,5 +64,4 @@ onMounted(async () => (story.value = await api.story()))
       </div>
     </section>
   </div>
-  <p v-else class="muted">正在整理纪念簿…</p>
 </template>

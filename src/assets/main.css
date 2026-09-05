@@ -407,6 +407,9 @@ p {
   font-family: var(--serif);
   text-align: center;
 }
+.anniversary-row > form {
+  grid-column: 1 / -1;
+}
 .divider {
   height: 1px;
   border: 0;

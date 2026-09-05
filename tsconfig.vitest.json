@@ -1,11 +1,11 @@
 {
   "extends": "./tsconfig.app.json",
-  "include": ["src/**/__tests__/*", "env.d.ts"],
+  "include": ["tests/**/*.ts", "e2e/**/*.ts", "integration/**/*.ts", "env.d.ts"],
   "exclude": [],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
 
-    "lib": [],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node", "jsdom"]
   }
 }

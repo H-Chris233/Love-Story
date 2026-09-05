@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AuthShell from '@/components/AuthShell.vue'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import { ApiError, api } from '@/services/api'
 import { useSessionStore } from '@/stores/session'
 import { isoToShanghaiLocal, shanghaiLocalToIso } from '@/utils/date'
@@ -21,9 +23,10 @@ const form = reactive({
   relationshipStartedAt: isoToShanghaiLocal(new Date().toISOString())
 })
 
-onMounted(async () => {
+const { load, loading, loadError } = useLoad(async () => {
   if ((await api.status()).initialized) await router.replace('/login')
 })
+onMounted(load)
 
 async function submit() {
   busy.value = true
@@ -50,7 +53,8 @@ async function submit() {
 
 <template>
   <AuthShell>
-    <form class="auth-form stack" @submit.prevent="submit">
+    <LoadState :loading="loading" :error="loadError" @retry="load" />
+    <form v-if="!loading && !loadError" class="auth-form stack" @submit.prevent="submit">
       <div>
         <p class="eyebrow">First chapter</p>
         <h2>创建双人纪念簿</h2>

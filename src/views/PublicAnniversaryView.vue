@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import type { AnniversaryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
@@ -10,19 +12,24 @@ const route = useRoute()
 const anniversary = ref<AnniversaryEntry | null>(null)
 const error = ref('')
 
-onMounted(async () => {
+const { load, loading, loadError } = useLoad(async () => {
+  error.value = ''
+  anniversary.value = null
   try {
     anniversary.value = await api.publicAnniversary(String(route.params.slug))
-  } catch {
+  } catch (reason) {
+    if (!(reason instanceof ApiError) || reason.status !== 404) throw reason
     error.value = '这个纪念日不存在，或已经改回私密。'
   }
 })
+watch(() => route.params.slug, load, { immediate: true })
 </script>
 
 <template>
   <main class="public-hero">
     <div class="public-hero__inner stack">
       <RouterLink to="/" class="muted">← 返回故事</RouterLink>
+      <LoadState :loading="loading" :error="loadError" @retry="load" />
       <template v-if="anniversary">
         <p class="eyebrow">
           Anniversary · {{ anniversary.originalDate.slice(5).replace('-', '.') }}
@@ -36,7 +43,6 @@ onMounted(async () => {
         ><h1>没有找到</h1>
         <p class="lede">{{ error }}</p></template
       >
-      <p v-else class="muted">正在翻页…</p>
     </div>
   </main>
 </template>

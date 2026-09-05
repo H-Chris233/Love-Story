@@ -7,9 +7,74 @@ import VisibilityField from '../src/components/VisibilityField.vue'
 import { ApiError, api } from '../src/services/api'
 import MemoriesView from '../src/views/MemoriesView.vue'
 import SetupView from '../src/views/SetupView.vue'
+import DashboardView from '../src/views/DashboardView.vue'
+import GalleryView from '../src/views/GalleryView.vue'
+import { useSessionStore } from '../src/stores/session'
 import { createAppRouter } from '../src/router/index'
 
 describe('Vue application contracts', () => {
+  it.each([DashboardView, GalleryView])(
+    'shows load failure and retries instead of displaying an empty state',
+    async (view) => {
+      vi.spyOn(api, 'story')
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValue({
+          space: { title: '恢复成功', intro: '', relationshipStartedAt: '2024-01-01T00:00:00Z' },
+          members: [],
+          memories: [],
+          anniversaries: []
+        } as never)
+      const wrapper = mount(view, { global: { stubs: { RouterLink: true } } })
+      await flushPromises()
+      expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法加载')
+      expect(wrapper.find('.empty').exists()).toBe(false)
+      await wrapper.get('button').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+      expect(wrapper.find('.empty').exists()).toBe(true)
+      wrapper.unmount()
+    }
+  )
+  it('does not cache a failed session request as an anonymous session', async () => {
+    vi.spyOn(api, 'session')
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ user: { id: 'member' }, space: {} } as never)
+    const store = useSessionStore()
+    await store.ensureLoaded()
+    expect(store.loaded).toBe(false)
+    expect(store.error).toBeTruthy()
+    await store.ensureLoaded()
+    expect(store.loaded).toBe(true)
+    expect(store.error).toBe('')
+    expect(store.isAuthenticated).toBe(true)
+  })
+  it('keeps a created memory when a photo fails and does not offer a duplicate submission', async () => {
+    vi.spyOn(api, 'memories').mockResolvedValue([])
+    const create = vi.spyOn(api, 'createMemory').mockResolvedValue({ id: 'created' } as never)
+    vi.spyOn(api, 'uploadMemoryImage').mockRejectedValue(new Error('upload failed'))
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:preview'),
+      revokeObjectURL: vi.fn()
+    })
+    const wrapper = mount(MemoriesView)
+    await flushPromises()
+    await wrapper.get('#memory-title').setValue('已经保存')
+    await wrapper.get('#memory-body').setValue('正文')
+    await wrapper.get('#memory-date').setValue('2025-01-01')
+    const input = wrapper.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['bad'], 'bad.png', { type: 'image/png' })]
+    })
+    await input.trigger('change')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(create).toHaveBeenCalledOnce()
+    expect(wrapper.text()).toContain('部分照片失败，可继续补传')
+    expect((wrapper.get('#memory-title').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.find('[aria-label="照片预览"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.restoreAllMocks()

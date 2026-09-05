@@ -1,14 +1,11 @@
-import type { VercelRequest } from '@vercel/node'
-
 import { createAuthService } from './auth.js'
 import { createVercelBlobStorage } from './blob-storage.js'
-import { DomainError } from './errors.js'
-import { getSessionToken } from './http.js'
 import { createMediaService } from './media.js'
 import { createReminderService } from './reminders.js'
 import { createResendMailer } from './resend-mailer.js'
 import { createStoryService } from './story.js'
 import { DrizzleStore } from './store/drizzle.js'
+import { database } from '../db/client.js'
 
 function requireAppOrigin(): string {
   const value = process.env.APP_ORIGIN
@@ -16,7 +13,7 @@ function requireAppOrigin(): string {
   return value.replace(/\/$/, '')
 }
 
-const store = new DrizzleStore()
+const store = new DrizzleStore(database)
 const mailer = createResendMailer()
 
 export const runtime = {
@@ -25,15 +22,4 @@ export const runtime = {
   story: createStoryService({ store }),
   media: createMediaService({ store, blob: createVercelBlobStorage() }),
   reminders: createReminderService({ store, mailer })
-}
-
-export async function getOptionalSession(request: VercelRequest) {
-  const token = getSessionToken(request)
-  return token ? runtime.auth.getSession(token) : null
-}
-
-export async function requireSession(request: VercelRequest) {
-  const session = await getOptionalSession(request)
-  if (!session) throw new DomainError('UNAUTHENTICATED', '请先登录', 401)
-  return session
 }

@@ -23,4 +23,7 @@ export interface MediaStore {
   getAssetByPathname(pathname: string): Promise<StoredAsset | null>
   listAssetsForMemory(memoryId: string): Promise<StoredAsset[]>
   deleteAsset(assetId: string): Promise<boolean>
+  deleteMemory(spaceId: string, memoryId: string): Promise<boolean>
+  listBlobDeletions(): Promise<string[]>
+  finishBlobDeletion(pathname: string): Promise<void>
 }

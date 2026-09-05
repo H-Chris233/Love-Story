@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -15,6 +16,15 @@ import {
 } from 'drizzle-orm/pg-core'
 
 export const visibilityEnum = pgEnum('visibility', ['private', 'public'])
+export const blobDeletions = pgTable('blob_deletions', {
+  pathname: text('pathname').primaryKey(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+})
+export const rateLimits = pgTable('rate_limits', {
+  key: varchar('key', { length: 64 }).primaryKey(),
+  hits: integer('hits').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull()
+})
 export const deliveryKindEnum = pgEnum('delivery_kind', ['advance', 'today'])
 export const deliveryStatusEnum = pgEnum('delivery_status', ['sending', 'sent', 'failed'])
 
@@ -202,6 +212,9 @@ export const notificationDeliveries = pgTable(
     kind: deliveryKindEnum('kind').notNull(),
     status: deliveryStatusEnum('status').notNull().default('sending'),
     providerMessageId: varchar('provider_message_id', { length: 160 }),
+    message: jsonb('message').$type<import('../lib/mailer.js').MailMessage>(),
+    leaseToken: uuid('lease_token'),
+    firstAttemptAt: timestamp('first_attempt_at', { withTimezone: true }),
     lastError: text('last_error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()

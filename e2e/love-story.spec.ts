@@ -1,237 +1,238 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type BrowserContext } from '@playwright/test'
+import { createTestApplication } from '../lib/testing/application.js'
+import { getDateInTimeZone } from '../lib/reminders.js'
 
-interface TestMemory {
-  id: string
-  title: string
-  body: string
-  occurredOn: string
-  visibility: 'private' | 'public'
-  slug: string
-}
-
-async function installApi(
-  page: Page,
-  options: { initialized?: boolean; authenticated?: boolean } = {}
-) {
-  let initialized = options.initialized ?? false
-  let authenticated = options.authenticated ?? false
-  let title = '我们的山海日记'
-  let startedAt = '2024-01-13T06:28:46.000Z'
-  const memories: TestMemory[] = []
-  const anniversaries: Array<{
-    id: string
-    spaceId: string
-    authorId: string
-    title: string
-    originalDate: string
-    reminderDays: number
-    visibility: 'private' | 'public'
-    slug: string
-    createdAt: string
-    updatedAt: string
-  }> = []
-  const user = {
-    id: 'user-1',
-    email: 'owner@example.com',
-    displayName: '小夏',
-    position: 1,
-    createdAt: '2026-08-23T00:00:00.000Z'
-  }
-  const space = () => ({
-    id: 'space-1',
-    title,
-    intro: '把散落在时间里的温柔，慢慢装订成册。',
-    relationshipStartedAt: startedAt,
-    createdAt: '2026-08-23T00:00:00.000Z',
-    updatedAt: '2026-08-23T00:00:00.000Z'
-  })
-  const memoryDto = (memory: TestMemory) => ({
-    ...memory,
-    spaceId: 'space-1',
-    authorId: user.id,
-    authorName: user.displayName,
-    assets: [],
-    createdAt: '2026-08-23T00:00:00.000Z',
-    updatedAt: '2026-08-23T00:00:00.000Z'
-  })
-  const story = (publicOnly = false) => ({
-    space: space(),
-    members: [{ id: user.id, displayName: user.displayName }],
-    memories: memories.filter((item) => !publicOnly || item.visibility === 'public').map(memoryDto),
-    anniversaries
-  })
-  const data = (route: Route, value: unknown, status = 200) =>
-    route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: value })
-    })
-  const failure = (route: Route, code: string, message: string, status: number) =>
-    route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify({ error: { code, message } })
-    })
-
-  await page.route('**/api/**', async (route) => {
-    const request = route.request()
-    const url = new URL(request.url())
-    const path = url.pathname
-    const method = request.method()
-    if (path === '/api/system/status') return data(route, { initialized })
-    if (path === '/api/auth/session') {
-      return authenticated
-        ? data(route, { user, space: space() })
-        : failure(route, 'UNAUTHENTICATED', '请先登录', 401)
-    }
-    if (path === '/api/auth/bootstrap' && method === 'POST') {
-      const body = request.postDataJSON()
-      initialized = true
-      authenticated = true
-      title = body.storyTitle
-      startedAt = body.relationshipStartedAt
-      return data(route, { user, space: space(), invitationDelivery: 'sent' })
-    }
-    if (path === '/api/auth/login' && method === 'POST') {
-      authenticated = true
-      return data(route, { user, space: space() })
-    }
-    if (path === '/api/auth/logout') {
-      authenticated = false
-      return route.fulfill({ status: 204 })
-    }
-    if (path === '/api/auth/invitations/accept') {
-      authenticated = true
-      return data(route, {
-        user: { ...user, id: 'user-2', position: 2, displayName: '阿川' },
-        space: space()
-      })
-    }
-    if (path === '/api/auth/invitations') return data(route, { invitationDelivery: 'sent' })
-    if (path === '/api/auth/forgot-password') return data(route, { accepted: true })
-    if (path === '/api/auth/reset-password') return route.fulfill({ status: 204 })
-    if (path === '/api/public/story') {
-      return initialized
-        ? data(route, story(true))
-        : failure(route, 'STORY_NOT_FOUND', '故事尚未开始', 404)
-    }
-    if (path === '/api/story') return data(route, story())
-    if (path === '/api/memories' && method === 'GET') return data(route, memories.map(memoryDto))
-    if (path === '/api/memories' && method === 'POST') {
-      const body = request.postDataJSON()
-      const memory = { id: `memory-${memories.length + 1}`, slug: 'first-memory', ...body }
-      memories.unshift(memory)
-      return data(route, memoryDto(memory))
-    }
-    if (path.startsWith('/api/memories/') && method === 'PATCH') {
-      const memory = memories.find((item) => path.endsWith(item.id))!
-      Object.assign(memory, request.postDataJSON())
-      return data(route, memoryDto(memory))
-    }
-    if (path.startsWith('/api/memories/') && method === 'DELETE') {
-      const index = memories.findIndex((item) => path.endsWith(item.id))
-      memories.splice(index, 1)
-      return route.fulfill({ status: 204 })
-    }
-    if (path === '/api/anniversaries' && method === 'GET') return data(route, anniversaries)
-    if (path === '/api/anniversaries' && method === 'POST') {
-      const body = request.postDataJSON()
-      const anniversary = {
-        id: `anniversary-${anniversaries.length + 1}`,
-        spaceId: 'space-1',
-        authorId: user.id,
-        slug: 'first-trip',
-        createdAt: '2026-08-23T00:00:00.000Z',
-        updatedAt: '2026-08-23T00:00:00.000Z',
-        ...body
-      }
-      anniversaries.push(anniversary)
-      return data(route, anniversary)
-    }
-    if (path.startsWith('/api/anniversaries/') && method === 'PATCH') {
-      const item = anniversaries.find((candidate) => path.endsWith(candidate.id))!
-      Object.assign(item, request.postDataJSON())
-      return data(route, item)
-    }
-    if (path.startsWith('/api/anniversaries/') && method === 'DELETE') {
-      const index = anniversaries.findIndex((candidate) => path.endsWith(candidate.id))
-      anniversaries.splice(index, 1)
-      return route.fulfill({ status: 204 })
-    }
-    return failure(route, 'NOT_FOUND', '未找到', 404)
-  })
-}
-
-test('desktop and mobile complete the private-to-public story flow', async ({ page, isMobile }) => {
-  const consoleErrors: string[] = []
-  const pageErrors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) {
-      consoleErrors.push(message.text())
-    }
-  })
-  page.on('pageerror', (error) => pageErrors.push(error.message))
-  await installApi(page)
-  await page.goto('/')
-  await page.getByRole('link', { name: '创建纪念簿' }).click()
-  await page.getByLabel('故事标题').fill('山海之间')
-  await page.getByLabel('你的公开昵称').fill('小夏')
-  await page.getByLabel('你的邮箱').fill('owner@example.com')
-  await page.getByLabel('密码').fill('a-secure-password')
-  await page.getByLabel('伴侣邮箱').fill('partner@example.com')
-  await page.getByRole('button', { name: '创建纪念簿' }).click()
-  await expect(page.getByRole('heading', { name: '山海之间' })).toBeVisible()
-
-  if (isMobile) {
-    await expect(page.getByRole('navigation', { name: '移动端主导航' })).toBeVisible()
-  } else {
-    await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible()
-  }
-
-  await page.goto('/app/memories')
-  await page.getByLabel('标题').fill('海边的第一张合照')
-  await page.getByLabel('发生日期').fill('2025-05-20')
-  await page.getByLabel('故事', { exact: true }).fill('风很大，我们笑得也很大声。')
-  await page.getByLabel('发布到访客故事页').check()
-  await expect(page.getByRole('status')).toContainText('任何拿到网站地址的人')
-  await page.getByRole('button', { name: '保存回忆' }).click()
-  await expect(page.getByRole('heading', { name: '海边的第一张合照' })).toBeVisible()
-
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: '改回私密' }).click()
-  await expect(page.getByText('仅两人可见')).toBeVisible()
-
-  await page.goto('/')
-  await expect(page.getByRole('heading', { name: '山海之间' })).toBeVisible()
-  await expect(page.getByText('还没有公开的回忆。')).toBeVisible()
-  expect(consoleErrors).toEqual([])
-  expect(pageErrors).toEqual([])
-})
-
-test('an invited partner manages shared content and completes password recovery', async ({
+const origin = 'http://127.0.0.1:5173'
+test('recovers failed initial session and setup checks without uncaught page errors', async ({
   page
 }) => {
-  await installApi(page, { initialized: true })
-  await page.goto('/invite/one-time-token')
-  await page.getByLabel('你的公开昵称').fill('阿川')
-  await page.getByLabel('设置密码').fill('another-secure-password')
-  await page.getByRole('button', { name: '接受邀请' }).click()
-  await expect(page.getByRole('heading', { name: '我们的山海日记' })).toBeVisible()
+  const app = createTestApplication(origin)
+  await bridge(page.context(), app)
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  let failSession = true
+  await page.route('**/api/auth/session', async (route) => {
+    if (failSession) {
+      failSession = false
+      await route.fulfill({
+        status: 503,
+        json: { error: { code: 'UNAVAILABLE', message: '服务暂不可用' } }
+      })
+    } else await route.fallback()
+  })
+  await page.goto('/login')
+  await expect(page.getByRole('alert')).toContainText('暂时无法连接服务')
+  await page.getByRole('button', { name: '重试' }).click()
+  await expect(page.getByRole('heading', { name: '回到我们的故事' })).toBeVisible()
+  let failStatus = true
+  await page.route('**/api/system/status', async (route) => {
+    if (failStatus) {
+      failStatus = false
+      await route.fulfill({
+        status: 503,
+        json: { error: { code: 'UNAVAILABLE', message: '初始化检查暂不可用' } }
+      })
+    } else await route.fallback()
+  })
+  await page.goto('/setup')
+  await expect(page.getByRole('alert')).toContainText('初始化检查暂不可用')
+  await expect(page.getByRole('button', { name: '创建纪念簿' })).toHaveCount(0)
+  await page.getByRole('button', { name: '重试' }).click()
+  await expect(page.getByRole('button', { name: '创建纪念簿' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN9sAAAAASUVORK5CYII=',
+  'base64'
+)
+async function bridge(context: BrowserContext, app: ReturnType<typeof createTestApplication>) {
+  await context.route(`${origin}/api/**`, async (route) => {
+    const req = route.request()
+    const response = await app.handler(
+      new Request(req.url(), {
+        method: req.method(),
+        headers: await req.allHeaders(),
+        body: req.postData() ?? undefined
+      })
+    )
+    await route.fulfill({
+      status: response.status,
+      headers: Object.fromEntries(response.headers),
+      body: Buffer.from(await response.arrayBuffer())
+    })
+  })
+  await context.route('https://vercel.com/api/blob/**', async (route) => {
+    const req = route.request()
+    const cors = {
+      'access-control-allow-origin': origin,
+      'access-control-allow-methods': 'PUT, OPTIONS',
+      'access-control-allow-headers': req.headers()['access-control-request-headers'] ?? '*'
+    }
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors })
+    const token = (await req.allHeaders()).authorization?.replace('Bearer ', '') ?? ''
+    const allowed = app.tokens.get(token)
+    const pathname = new URL(req.url()).searchParams.get('pathname')
+    if (!allowed || allowed.pathname !== pathname)
+      return route.fulfill({ status: 403, headers: cors })
+    app.blob.objects.set(pathname, {
+      bytes: new Uint8Array(req.postDataBuffer()!),
+      contentType: allowed.type
+    })
+    app.tokens.delete(token)
+    await route.fulfill({
+      headers: cors,
+      json: {
+        pathname,
+        url: `https://test.private.blob.vercel-storage.com/${pathname}`,
+        contentType: allowed.type
+      }
+    })
+  })
+}
 
-  await page.goto('/app/anniversaries')
-  await page.getByLabel('名称').fill('第一次旅行')
-  await page.getByLabel('最初日期').fill('2024-01-08')
-  await page.getByRole('button', { name: '保存纪念日' }).click()
-  await expect(page.getByRole('heading', { name: '第一次旅行' })).toBeVisible()
-
-  await page.getByRole('button', { name: '退出' }).click()
-  await page.goto('/forgot-password')
-  await page.getByLabel('邮箱').fill('partner@example.com')
-  await page.getByRole('button', { name: '发送重置邮件' }).click()
-  await expect(page.getByRole('heading', { name: '请检查邮箱' })).toBeVisible()
-
-  await page.goto('/reset-password/reset-token')
-  await page.getByLabel('新密码').fill('a-brand-new-password')
-  await page.getByRole('button', { name: '保存新密码' }).click()
-  await expect(page.getByRole('heading', { name: '密码已经更新' })).toBeVisible()
+test('both members edit shared memories and photos; anonymous access and reminders obey real handlers', async ({
+  page,
+  browser,
+  isMobile
+}) => {
+  const app = createTestApplication(origin)
+  await bridge(page.context(), app)
+  await page.goto('/setup')
+  await page.getByLabel('故事标题').fill('山海之间')
+  await page.getByLabel('你的公开昵称').fill('甲')
+  await page.getByLabel('你的邮箱').fill('a@example.com')
+  await page.getByLabel('密码', { exact: true }).fill('secure-password')
+  await page.getByLabel('伴侣邮箱').fill('b@example.com')
+  await page.getByRole('button', { name: '创建纪念簿' }).click()
+  await expect(page.getByRole('heading', { name: '山海之间' })).toBeVisible()
+  const partnerContext = await browser.newContext({ viewport: page.viewportSize(), isMobile })
+  const visitorContext = await browser.newContext({ viewport: page.viewportSize(), isMobile })
+  await bridge(partnerContext, app)
+  await bridge(visitorContext, app)
+  const partner = await partnerContext.newPage()
+  const visitor = await visitorContext.newPage()
+  try {
+    const invite = /invite\/([^"<]+)/.exec(app.mailer.messages[0].html)![1]
+    await partner.goto(`${origin}/invite/${invite}`)
+    await partner.getByLabel('你的公开昵称').fill('乙')
+    await partner.getByLabel('设置密码').fill('partner-password')
+    await partner.getByRole('button', { name: '接受邀请' }).click()
+    await expect(partner.getByRole('heading', { name: '山海之间' })).toBeVisible()
+    await page.goto('/app/memories')
+    await page.getByLabel('标题', { exact: true }).fill('海边')
+    await page.getByLabel('发生日期').fill('2025-05-20')
+    await page.getByLabel('故事', { exact: true }).fill('第一篇')
+    await page.getByRole('button', { name: '保存回忆' }).click()
+    await expect(page.getByRole('heading', { name: '海边', exact: true })).toBeVisible()
+    await partner.goto(`${origin}/app/memories`)
+    await partner.getByRole('button', { name: '编辑回忆' }).click()
+    await partner.getByLabel('编辑标题').fill('海边新篇')
+    await partner.getByLabel('编辑故事').fill('一起修改')
+    await partner.getByLabel('编辑日期').fill('2025-05-21')
+    await partner.getByRole('button', { name: '保存修改' }).click()
+    await expect(partner.getByRole('heading', { name: '海边新篇' })).toBeVisible()
+    await partner
+      .getByLabel(/补传照片/)
+      .setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: png })
+    await expect(partner.getByAltText('photo.png')).toBeVisible()
+    const memory = app.store.state.memories[0]
+    const asset = memory.assets[0]
+    const read = async (path: string) =>
+      visitor.evaluate(async (path) => {
+        const response = await fetch(path)
+        return response.status
+      }, path)
+    await visitor.goto(origin)
+    expect(await read(`/api/media/${asset.id}`)).toBe(404)
+    partner.once('dialog', (dialog) => dialog.accept())
+    await partner.getByRole('button', { name: '公开', exact: true }).click()
+    await expect(partner.getByText('已公开')).toBeVisible()
+    await visitor.goto(`${origin}/story/${memory.slug}`)
+    await expect(visitor.getByRole('heading', { name: '海边新篇' })).toBeVisible()
+    expect(await read(`/api/media/${asset.id}`)).toBe(200)
+    await partner.getByRole('button', { name: '改回私密' }).click()
+    await expect(partner.getByText('仅两人可见')).toBeVisible()
+    expect(await read(`/api/public/memories/${memory.slug}`)).toBe(404)
+    expect(await read(`/api/media/${asset.id}`)).toBe(404)
+    partner.once('dialog', (dialog) => dialog.accept())
+    await partner.getByRole('button', { name: '删除照片 photo.png', exact: true }).click()
+    await expect(partner.getByAltText('photo.png')).toHaveCount(0)
+    await page.goto('/app/anniversaries')
+    await page.getByLabel('名称', { exact: true }).fill('相遇')
+    await page.getByLabel('最初日期', { exact: true }).fill(getDateInTimeZone(new Date()))
+    await page.getByRole('button', { name: '保存纪念日' }).click()
+    await expect(page.getByRole('heading', { name: '相遇', exact: true })).toBeVisible()
+    await partner.goto(`${origin}/app/anniversaries`)
+    await partner.getByRole('button', { name: '编辑纪念日' }).click()
+    await partner.getByLabel('编辑名称').fill('相遇纪念')
+    await partner.getByLabel('编辑提前提醒天数').fill('3')
+    await partner.getByRole('button', { name: '保存修改' }).click()
+    await expect(partner.getByRole('heading', { name: '相遇纪念' })).toBeVisible()
+    partner.once('dialog', (dialog) => dialog.accept())
+    await partner.getByRole('button', { name: '公开', exact: true }).click()
+    await expect(partner.getByText('已公开')).toBeVisible()
+    const anniversary = app.store.state.anniversaries[0]
+    await visitor.goto(`${origin}/anniversary/${anniversary.slug}`)
+    await expect(visitor.getByRole('heading', { name: '相遇纪念' })).toBeVisible()
+    await partner.getByRole('button', { name: '改回私密' }).click()
+    await expect(partner.getByText('私密', { exact: true })).toBeVisible()
+    expect(await read(`/api/public/anniversaries/${anniversary.slug}`)).toBe(404)
+    for (let i = 0; i < 2; i++)
+      expect(
+        (
+          await app.handler(
+            new Request(`${origin}/api/cron/reminders`, {
+              headers: { authorization: 'Bearer test-cron' }
+            })
+          )
+        ).status
+      ).toBe(200)
+    expect(
+      app.mailer.messages.filter((message) => message.kind === 'anniversary-reminder')
+    ).toHaveLength(2)
+    partner.once('dialog', (dialog) => dialog.accept())
+    await partner.getByRole('button', { name: '删除', exact: true }).click()
+    await expect(partner.getByText('还没有纪念日')).toBeVisible()
+    await page.goto('/app/memories')
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: '删除', exact: true }).click()
+    await expect(page.getByText('时间线还是空白')).toBeVisible()
+    await partner.goto(`${origin}/app/memories`)
+    await partner.getByLabel('标题', { exact: true }).fill('乙的回忆')
+    await partner.getByLabel('故事', { exact: true }).fill('另一位成员写下的故事')
+    await partner.getByLabel('发生日期').fill('2025-05-22')
+    await partner.getByRole('button', { name: '保存回忆' }).click()
+    await expect(partner.getByRole('heading', { name: '乙的回忆' })).toBeVisible()
+    await page.reload()
+    await page.getByRole('button', { name: '编辑回忆' }).click()
+    await page.getByLabel('编辑标题').fill('甲修改的回忆')
+    await page.getByRole('button', { name: '保存修改' }).click()
+    await expect(page.getByRole('heading', { name: '甲修改的回忆' })).toBeVisible()
+    await partner.goto(`${origin}/app/anniversaries`)
+    await partner.getByLabel('名称', { exact: true }).fill('乙的纪念日')
+    await partner.getByLabel('最初日期', { exact: true }).fill('2025-01-01')
+    await partner.getByRole('button', { name: '保存纪念日' }).click()
+    await expect(partner.getByRole('heading', { name: '乙的纪念日' })).toBeVisible()
+    await page.goto('/app/anniversaries')
+    await page.getByRole('button', { name: '编辑纪念日' }).click()
+    await page.getByLabel('编辑名称').fill('甲修改的纪念日')
+    await page.getByRole('button', { name: '保存修改' }).click()
+    await expect(page.getByRole('heading', { name: '甲修改的纪念日' })).toBeVisible()
+    await visitor.goto(`${origin}/app/memories`)
+    await expect(visitor).toHaveURL(/login/)
+    await visitor.goto(`${origin}/forgot-password`)
+    await visitor.getByLabel('邮箱').fill('b@example.com')
+    await visitor.getByRole('button', { name: '发送重置邮件' }).click()
+    await expect(visitor.getByRole('heading', { name: '请检查邮箱' })).toBeVisible()
+    const reset = /reset-password\/([^"<]+)/.exec(app.mailer.messages.at(-1)!.html)![1]
+    await visitor.goto(`${origin}/reset-password/${reset}`)
+    await visitor.getByLabel('新密码').fill('changed-password')
+    await visitor.getByRole('button', { name: '保存新密码' }).click()
+    await expect(visitor.getByRole('heading', { name: '密码已经更新' })).toBeVisible()
+    await partner.goto(`${origin}/app`)
+    await expect(partner).toHaveURL(/login/)
+  } finally {
+    await partnerContext.close()
+    await visitorContext.close()
+  }
 })

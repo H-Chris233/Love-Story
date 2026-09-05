@@ -1,4 +1,4 @@
-import { DomainError, assertRequired } from './errors.js'
+import { DomainError, assertRequired, assertEmail } from './errors.js'
 import { escapeHtml } from './html.js'
 import type { Mailer } from './mailer.js'
 import { createToken, hashPassword, hashToken, verifyPassword } from './security.js'
@@ -79,17 +79,23 @@ export function createAuthService(dependencies: {
         throw new DomainError('ALREADY_SETUP', '这个空间已经完成初始化', 409)
       }
 
-      const storyTitle = assertRequired(input.storyTitle, 'storyTitle')
-      const displayName = assertRequired(input.displayName, 'displayName')
-      const email = assertRequired(input.email, 'email').toLowerCase()
-      const partnerEmail = assertRequired(input.partnerEmail, 'partnerEmail').toLowerCase()
-      const relationshipStartedAt = new Date(input.relationshipStartedAt)
+      const storyTitle = assertRequired(input.storyTitle, 'storyTitle', 160)
+      const displayName = assertRequired(input.displayName, 'displayName', 80)
+      const email = assertEmail(input.email, 'email')
+      const partnerEmail = assertEmail(input.partnerEmail, 'partnerEmail')
+      const relationshipStartedAt = new Date(
+        assertRequired(input.relationshipStartedAt, 'relationshipStartedAt', 64)
+      )
       if (Number.isNaN(relationshipStartedAt.getTime())) {
         throw new DomainError('VALIDATION_ERROR', '恋爱开始时间格式不正确', 400, {
           relationshipStartedAt: '请输入有效的日期和时间'
         })
       }
-      if (input.password.length < 10) {
+      if (
+        typeof input.password !== 'string' ||
+        input.password.length < 10 ||
+        input.password.length > 1024
+      ) {
         throw new DomainError('WEAK_PASSWORD', '密码至少需要 10 位', 400, {
           password: '密码至少需要 10 位'
         })
@@ -122,7 +128,7 @@ export function createAuthService(dependencies: {
       if (await dependencies.store.hasSecondMember(space.id)) {
         throw new DomainError('SPACE_FULL', '这个空间已经有两位成员', 409)
       }
-      const partnerEmail = assertRequired(emailInput, 'partnerEmail').toLowerCase()
+      const partnerEmail = assertEmail(emailInput, 'partnerEmail')
       if (partnerEmail === member.email) {
         throw new DomainError('INVALID_PARTNER', '伴侣邮箱不能与自己相同', 400)
       }
@@ -131,9 +137,14 @@ export function createAuthService(dependencies: {
     },
     async login(input: { email: string; password: string }) {
       const credentials = await dependencies.store.findCredentials(
-        assertRequired(input.email, 'email').toLowerCase()
+        assertEmail(input.email, 'email')
       )
-      if (!credentials || !(await verifyPassword(input.password, credentials.passwordHash))) {
+      if (
+        !credentials ||
+        typeof input.password !== 'string' ||
+        input.password.length > 1024 ||
+        !(await verifyPassword(input.password, credentials.passwordHash))
+      ) {
         throw new DomainError('INVALID_CREDENTIALS', '邮箱或密码不正确', 401)
       }
       return createSession(credentials.userId)
@@ -142,7 +153,7 @@ export function createAuthService(dependencies: {
       if (token) await dependencies.store.deleteSession(hashToken(token))
     },
     async requestPasswordReset(emailInput: string) {
-      const email = assertRequired(emailInput, 'email').toLowerCase()
+      const email = assertEmail(emailInput, 'email')
       const credentials = await dependencies.store.findCredentials(email)
       if (!credentials) return
 
@@ -154,15 +165,23 @@ export function createAuthService(dependencies: {
         expiresAt: new Date(timestamp.getTime() + 60 * 60 * 1000),
         now: timestamp
       })
-      await dependencies.mailer.send({
-        to: email,
-        kind: 'password-reset',
-        subject: '重置你的 Love Story 密码',
-        html: `<p>这个链接将在一小时后失效。</p><p><a href="${dependencies.appOrigin}/reset-password/${token}">重置密码</a></p>`
-      })
+      try {
+        await dependencies.mailer.send({
+          to: email,
+          kind: 'password-reset',
+          subject: '重置你的 Love Story 密码',
+          html: `<p>这个链接将在一小时后失效。</p><p><a href="${dependencies.appOrigin}/reset-password/${token}">重置密码</a></p>`
+        })
+      } catch {
+        console.error('Password reset email delivery failed')
+      }
     },
     async resetPassword(input: { token: string; password: string }) {
-      if (input.password.length < 10) {
+      if (
+        typeof input.password !== 'string' ||
+        input.password.length < 10 ||
+        input.password.length > 1024
+      ) {
         throw new DomainError('WEAK_PASSWORD', '密码至少需要 10 位', 400)
       }
       await dependencies.store.consumePasswordReset({
@@ -172,8 +191,12 @@ export function createAuthService(dependencies: {
       })
     },
     async acceptInvitation(input: AcceptInvitationInput) {
-      const displayName = assertRequired(input.displayName, 'displayName')
-      if (input.password.length < 10) {
+      const displayName = assertRequired(input.displayName, 'displayName', 80)
+      if (
+        typeof input.password !== 'string' ||
+        input.password.length < 10 ||
+        input.password.length > 1024
+      ) {
         throw new DomainError('WEAK_PASSWORD', '密码至少需要 10 位', 400, {
           password: '密码至少需要 10 位'
         })

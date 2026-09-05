@@ -2,6 +2,8 @@
 import { onMounted, reactive, ref } from 'vue'
 
 import { ApiError, api } from '@/services/api'
+import LoadState from '@/components/LoadState.vue'
+import { useLoad } from '@/utils/load'
 import { useSessionStore } from '@/stores/session'
 import { isoToShanghaiLocal, shanghaiLocalToIso } from '@/utils/date'
 
@@ -12,12 +14,13 @@ const message = ref('')
 const error = ref('')
 const busy = ref(false)
 
-onMounted(async () => {
+const { load, loading, loadError } = useLoad(async () => {
   const story = await api.story()
   form.title = story.space.title
   form.intro = story.space.intro
   form.relationshipStartedAt = isoToShanghaiLocal(story.space.relationshipStartedAt)
 })
+onMounted(load)
 async function save() {
   busy.value = true
   error.value = ''
@@ -36,12 +39,20 @@ async function save() {
   }
 }
 async function invite() {
+  busy.value = true
   error.value = ''
-  const result = await api.invitePartner(partnerEmail.value)
-  message.value =
-    result.invitationDelivery === 'sent'
-      ? '邀请邮件已发送。'
-      : '邀请已生成，但邮件发送失败，请稍后重试。'
+  message.value = ''
+  try {
+    const result = await api.invitePartner(partnerEmail.value)
+    message.value =
+      result.invitationDelivery === 'sent'
+        ? '邀请邮件已发送。'
+        : '邀请已生成，但邮件发送失败，请稍后重试。'
+  } catch (reason) {
+    error.value = reason instanceof ApiError ? reason.message : '暂时无法发送邀请'
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
@@ -56,7 +67,8 @@ async function invite() {
     </header>
     <p v-if="message" class="notice" role="status">{{ message }}</p>
     <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-    <form class="card card-pad stack" @submit.prevent="save">
+    <LoadState :loading="loading" :error="loadError" @retry="load" />
+    <form v-if="!loading && !loadError" class="card card-pad stack" @submit.prevent="save">
       <h2>故事资料</h2>
       <div class="field">
         <label for="settings-title">故事标题</label
@@ -84,7 +96,11 @@ async function invite() {
         <label for="settings-partner">伴侣邮箱</label
         ><input id="settings-partner" v-model="partnerEmail" type="email" required />
       </div>
-      <div><button class="button button--secondary" type="submit">重新生成并发送邀请</button></div>
+      <div>
+        <button class="button button--secondary" :disabled="busy" type="submit">
+          重新生成并发送邀请
+        </button>
+      </div>
     </form>
   </div>
 </template>

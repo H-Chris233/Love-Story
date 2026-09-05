@@ -1,5 +1,6 @@
 import type { Mailer } from './mailer.js'
 import type { ReminderKind, ReminderStore } from './store/reminder-store.js'
+import { DELIVERY_RETRY_MS } from './store/reminder-store.js'
 import { isLeapYear, parseCalendarDate } from './dates.js'
 import { escapeHtml } from './html.js'
 
@@ -42,6 +43,8 @@ export function createReminderService(dependencies: { store: ReminderStore; mail
       const today = getDateInTimeZone(now)
       const candidates = await dependencies.store.listReminderCandidates()
       let sent = 0
+      let failed = 0
+      let needsReview = 0
 
       for (const anniversary of candidates) {
         const occurrenceDate = getNextAnniversary(anniversary.originalDate, today)
@@ -61,7 +64,6 @@ export function createReminderService(dependencies: { store: ReminderStore; mail
             occurrenceDate,
             kind
           }
-          if (!(await dependencies.store.claimDelivery(key, now))) continue
           const idempotencyKey = [
             'anniversary',
             anniversary.anniversaryId,
@@ -69,30 +71,51 @@ export function createReminderService(dependencies: { store: ReminderStore; mail
             occurrenceDate,
             kind
           ].join(':')
-          try {
-            const timing = kind === 'today' ? '就是今天' : `还有 ${remaining} 天`
-            const safeName = escapeHtml(recipient.displayName)
-            const safeTitle = escapeHtml(anniversary.title)
-            const safeSpaceTitle = escapeHtml(anniversary.spaceTitle)
-            await dependencies.mailer.send({
+          const timing = kind === 'today' ? '就是今天' : `还有 ${remaining} 天`
+          const safeName = escapeHtml(recipient.displayName)
+          const safeTitle = escapeHtml(anniversary.title)
+          const safeSpaceTitle = escapeHtml(anniversary.spaceTitle)
+          await dependencies.store.enqueueDelivery(
+            key,
+            {
               to: recipient.email,
               kind: 'anniversary-reminder',
               subject: `${anniversary.title} · ${timing}`,
               html: `<p>${safeName}，你们的「${safeTitle}」${timing}。</p><p>愿「${safeSpaceTitle}」继续收下每一份温柔。</p>`,
               idempotencyKey
-            })
-            await dependencies.store.finishDelivery(key, {}, now)
-            sent += 1
-          } catch (error) {
-            await dependencies.store.finishDelivery(
-              key,
-              { error: error instanceof Error ? error.message : 'unknown error' },
-              now
-            )
-          }
+            },
+            now
+          )
         }
       }
-      return { sent }
+      for (const delivery of await dependencies.store.listPendingDeliveries()) {
+        if (
+          !delivery.message ||
+          (delivery.firstAttemptAt &&
+            now.getTime() - delivery.firstAttemptAt.getTime() >= DELIVERY_RETRY_MS)
+        ) {
+          needsReview++
+          continue
+        }
+        const lease = await dependencies.store.claimDelivery(delivery, now)
+        if (!lease) continue
+        try {
+          await dependencies.mailer.send(delivery.message)
+        } catch {
+          await dependencies.store.finishDelivery(
+            delivery,
+            { error: 'Delivery failed; retry with original payload' },
+            now,
+            lease
+          )
+          failed++
+          continue
+        }
+        // 落库失败保留 sending 租约；重试必须使用原邮件与幂等键。
+        await dependencies.store.finishDelivery(delivery, {}, now, lease)
+        sent++
+      }
+      return { sent, failed, needsReview }
     }
   }
 }

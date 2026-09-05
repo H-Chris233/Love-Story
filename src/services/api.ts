@@ -30,7 +30,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body && typeof init.body === 'string') headers.set('Content-Type', 'application/json')
-  const response = await fetch(path, { ...init, headers, credentials: 'same-origin' })
+  const response = await fetch(path, {
+    ...init,
+    headers,
+    credentials: 'same-origin',
+    signal:
+      init.signal ?? ((init.method ?? 'GET') === 'GET' ? AbortSignal.timeout(15000) : undefined)
+  })
   if (response.status === 204) return undefined as T
   const body = (await response.json()) as { data: T } | ErrorBody
   if (!response.ok || 'error' in body) {
