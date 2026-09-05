@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNull, ne, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, ne, lt, sql, or } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import type { MailMessage } from '../mailer.js'
 import { DELIVERY_LEASE_MS, DELIVERY_RETRY_MS } from './reminder-store.js'
@@ -60,6 +60,7 @@ function toSpace(row: SpaceRow): Space {
 
 function toMember(row: UserRow, position: number): Member {
   return {
+    username: row.username,
     id: row.id,
     email: row.email,
     displayName: row.displayName,
@@ -101,6 +102,7 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
           .insert(users)
           .values({
             email: input.email,
+            username: input.username,
             displayName: input.displayName,
             passwordHash: input.passwordHash,
             createdAt: input.now,
@@ -156,6 +158,26 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
       .where(eq(users.email, email))
       .limit(1)
     return row ?? null
+  }
+
+  async findLoginCredentials(identifier: string) {
+    const [row] = await this.db
+      .select({ userId: users.id, passwordHash: users.passwordHash })
+      .from(users)
+      .where(or(eq(users.email, identifier), eq(users.username, identifier)))
+      .limit(1)
+    return row ?? null
+  }
+  async updateUsername(userId: string, username: string): Promise<void> {
+    try {
+      await this.db
+        .update(users)
+        .set({ username, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new DomainError('USERNAME_TAKEN', '用户名已被使用', 409)
+      throw error
+    }
   }
 
   async deleteSession(tokenHash: string): Promise<void> {
@@ -235,6 +257,8 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
   }
 
   async acceptInvitation(input: {
+    username: string
+    email: string
     tokenHash: string
     displayName: string
     passwordHash: string
@@ -257,6 +281,14 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
         if (!invitation) {
           throw new DomainError('INVALID_INVITATION', '邀请链接无效或已过期', 400)
         }
+        if (invitation.email !== input.email)
+          throw new DomainError('INVALID_INVITATION', '邮箱与邀请不匹配', 400)
+        const [taken] = await transaction
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.username, input.username))
+          .limit(1)
+        if (taken) throw new DomainError('USERNAME_TAKEN', '用户名已被使用', 409)
 
         const [spaceRow] = await transaction
           .select()
@@ -269,6 +301,7 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
           .insert(users)
           .values({
             email: invitation.email,
+            username: input.username,
             displayName: input.displayName,
             passwordHash: input.passwordHash,
             createdAt: input.now,

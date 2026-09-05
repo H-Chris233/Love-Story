@@ -11,6 +11,7 @@ export interface Space {
 
 export interface Member {
   id: string
+  username: string | null
   email: string
   displayName: string
   position: 1 | 2

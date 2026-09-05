@@ -4,6 +4,7 @@ import { createTestApplication } from '../lib/testing/application.js'
 import { createReminderService, getDateInTimeZone } from '../lib/reminders.js'
 
 const input = {
+  username: 'owner_user',
   storyTitle: '纪念簿',
   displayName: '甲',
   email: 'a@example.com',
@@ -148,7 +149,10 @@ describe('shared rate limits', () => {
             'x-vercel-forwarded-for': `192.0.2.${i}`,
             'content-type': 'application/json'
           },
-          body: JSON.stringify({ email: `unknown${i}@example.com`, password: 'wrong-password' })
+          body: JSON.stringify({
+            identifier: `unknown${i}@example.com`,
+            password: 'wrong-password'
+          })
         })
       )
       expect(response.status).toBe(i < 20 ? 401 : 429)

@@ -7,6 +7,7 @@ import { createMemoryBlobStorage } from '../lib/testing/memory-blob.js'
 async function createStoryWithMemory() {
   const store = createMemoryStore()
   const owner = await store.bootstrap({
+    username: 'owner_user',
     storyTitle: '我们的山海日记',
     relationshipStartedAt: '2024-01-13T14:28:46.000Z',
     displayName: '小夏',

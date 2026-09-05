@@ -1,10 +1,69 @@
 import { describe, expect, it } from 'vitest'
 
 import { createAuthService } from '../lib/auth.js'
+import { createStoryService } from '../lib/story.js'
 import { createMemoryStore } from '../lib/store/memory.js'
 import { createRecordingMailer } from '../lib/testing/recording-mailer.js'
 
 describe('AuthService', () => {
+  it('requires username and email, supports both login identifiers and rejects duplicate usernames', async () => {
+    const store = createMemoryStore()
+    const mailer = createRecordingMailer()
+    const auth = createAuthService({ store, mailer, appOrigin: 'https://love.example.com' })
+    const input = {
+      username: 'Owner_One',
+      storyTitle: '我们的故事',
+      displayName: '甲',
+      email: 'owner@example.com',
+      partnerEmail: 'partner@example.com',
+      password: 'secure-password',
+      relationshipStartedAt: '2024-01-01T00:00:00Z'
+    }
+    await expect(auth.bootstrap({ ...input, username: '' })).rejects.toMatchObject({ status: 400 })
+    await expect(auth.bootstrap({ ...input, email: '' })).rejects.toMatchObject({ status: 400 })
+    await expect(auth.bootstrap({ ...input, username: 'has@sign' })).rejects.toMatchObject({
+      status: 400
+    })
+    const owner = await auth.bootstrap(input)
+    expect(owner.user.username).toBe('owner_one')
+    for (const identifier of ['OWNER_ONE', 'OWNER@example.com']) {
+      const token = await auth.login({ identifier, password: input.password })
+      expect((await auth.getSession(token))?.user.id).toBe(owner.user.id)
+    }
+    const token = /invite\/([^"<]+)/.exec(mailer.messages[0].html)![1]
+    const partner = {
+      token,
+      username: 'partner_one',
+      email: 'partner@example.com',
+      displayName: '乙',
+      password: 'partner-password'
+    }
+    await expect(
+      auth.acceptInvitation({ ...partner, email: 'wrong@example.com' })
+    ).rejects.toMatchObject({ code: 'INVALID_INVITATION' })
+    await expect(
+      auth.acceptInvitation({ ...partner, username: 'OWNER_ONE' })
+    ).rejects.toMatchObject({ code: 'USERNAME_TAKEN' })
+    const joined = await auth.acceptInvitation(partner)
+    await expect(auth.updateUsername(joined.user, 'OWNER_ONE')).rejects.toMatchObject({
+      code: 'USERNAME_TAKEN'
+    })
+    await auth.updateUsername(joined.user, 'partner_new')
+    expect((await auth.getSession(joined.sessionToken))?.user.username).toBe('partner_new')
+    expect(
+      (
+        await auth.getSession(
+          await auth.login({ identifier: 'partner_new', password: partner.password })
+        )
+      )?.user.id
+    ).toBe(joined.user.id)
+    await expect(
+      auth.login({ identifier: 'partner_one', password: partner.password })
+    ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' })
+    expect(JSON.stringify(await createStoryService({ store }).getPublicStory())).not.toContain(
+      'username'
+    )
+  })
   it('initializes the only space and sends a one-time partner invitation', async () => {
     const store = createMemoryStore()
     const mailer = createRecordingMailer()
@@ -16,6 +75,7 @@ describe('AuthService', () => {
     })
 
     const result = await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -49,6 +109,7 @@ describe('AuthService', () => {
       now: () => now
     })
     await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -59,6 +120,8 @@ describe('AuthService', () => {
     const token = /invite\/([^"<]+)/.exec(mailer.messages[0].html)?.[1]
 
     const result = await auth.acceptInvitation({
+      username: 'partner_user',
+      email: 'partner@example.com',
       token: token ?? '',
       displayName: '阿川',
       password: 'another-secure-password'
@@ -67,6 +130,8 @@ describe('AuthService', () => {
     expect(result.user.position).toBe(2)
     await expect(
       auth.acceptInvitation({
+        username: 'partner_user',
+        email: 'partner@example.com',
         token: token ?? '',
         displayName: '第三个人',
         password: 'third-secure-password'
@@ -85,6 +150,7 @@ describe('AuthService', () => {
       appOrigin: 'https://love.example.com'
     })
     await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -94,10 +160,10 @@ describe('AuthService', () => {
     })
 
     await expect(
-      auth.login({ email: 'owner@example.com', password: 'wrong-password' })
+      auth.login({ identifier: 'owner@example.com', password: 'wrong-password' })
     ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' })
     const sessionToken = await auth.login({
-      email: 'OWNER@example.com',
+      identifier: 'OWNER@example.com',
       password: 'a-secure-password'
     })
     expect(await auth.getSession(sessionToken)).not.toBeNull()
@@ -115,6 +181,7 @@ describe('AuthService', () => {
       now: () => new Date('2026-08-23T00:00:00.000Z')
     })
     await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -129,7 +196,7 @@ describe('AuthService', () => {
     await auth.resetPassword({ token, password: 'a-brand-new-password' })
 
     await expect(
-      auth.login({ email: 'owner@example.com', password: 'a-secure-password' })
+      auth.login({ identifier: 'owner@example.com', password: 'a-secure-password' })
     ).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' })
     await expect(
       auth.resetPassword({ token, password: 'another-new-password' })
@@ -151,6 +218,7 @@ describe('AuthService', () => {
       }
     })
     const result = await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -173,6 +241,7 @@ describe('AuthService', () => {
       appOrigin: 'https://love.example.com'
     })
     const input = {
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -207,6 +276,7 @@ describe('AuthService', () => {
       now: () => now
     })
     const result = await auth.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -219,6 +289,8 @@ describe('AuthService', () => {
     now = new Date('2026-08-31T00:00:00.000Z')
     await expect(
       auth.acceptInvitation({
+        username: 'partner_user',
+        email: 'partner@example.com',
         token: invitationToken,
         displayName: '阿川',
         password: 'another-secure-password'

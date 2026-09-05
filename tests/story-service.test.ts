@@ -7,6 +7,7 @@ describe('StoryService', () => {
   it('keeps new memories private until either member publishes them', async () => {
     const store = createMemoryStore()
     const owner = await store.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -40,6 +41,7 @@ describe('StoryService', () => {
   it('removes a published memory from its stable public URL when made private', async () => {
     const store = createMemoryStore()
     const owner = await store.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -66,6 +68,7 @@ describe('StoryService', () => {
   it('keeps anniversaries private by default and lets either member publish them', async () => {
     const store = createMemoryStore()
     const owner = await store.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
@@ -101,6 +104,7 @@ describe('StoryService', () => {
   it('rejects impossible calendar dates at the domain boundary', async () => {
     const store = createMemoryStore()
     const owner = await store.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',

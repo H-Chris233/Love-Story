@@ -13,6 +13,20 @@ const partnerEmail = ref('')
 const message = ref('')
 const error = ref('')
 const busy = ref(false)
+const username = ref(session.current?.user.username ?? '')
+async function saveUsername() {
+  busy.value = true
+  error.value = ''
+  try {
+    session.current = await api.updateUsername(username.value)
+    username.value = session.current.user.username ?? ''
+    message.value = '用户名已保存。'
+  } catch (reason) {
+    error.value = reason instanceof ApiError ? reason.message : '暂时无法保存用户名'
+  } finally {
+    busy.value = false
+  }
+}
 
 const { load, loading, loadError } = useLoad(async () => {
   const story = await api.story()
@@ -67,6 +81,22 @@ async function invite() {
     </header>
     <p v-if="message" class="notice" role="status">{{ message }}</p>
     <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+    <form class="card card-pad stack" @submit.prevent="saveUsername">
+      <h2>我的账号</h2>
+      <p>邮箱：{{ session.current?.user.email }}</p>
+      <label class="field"
+        >用户名<input
+          v-model="username"
+          autocomplete="username"
+          autocapitalize="none"
+          pattern="[A-Za-z0-9_]{3,32}"
+          minlength="3"
+          maxlength="32"
+          required
+      /></label>
+      <p class="muted">3–32 位字母、数字或下划线。公开昵称不会改变。</p>
+      <div><button class="button" type="submit" :disabled="busy">保存用户名</button></div>
+    </form>
     <LoadState :loading="loading" :error="loadError" @retry="load" />
     <form v-if="!loading && !loadError" class="card card-pad stack" @submit.prevent="save">
       <h2>故事资料</h2>

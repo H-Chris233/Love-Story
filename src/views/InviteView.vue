@@ -9,7 +9,7 @@ import { useSessionStore } from '@/stores/session'
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
-const form = reactive({ displayName: '', password: '' })
+const form = reactive({ displayName: '', password: '', username: '', email: '' })
 const error = ref('')
 const busy = ref(false)
 
@@ -38,6 +38,24 @@ async function submit() {
       </div>
       <p class="muted">邀请只能使用一次，有效期为 7 天。</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+      <div class="field">
+        <label for="invite-username">用户名</label
+        ><input
+          id="invite-username"
+          v-model="form.username"
+          autocomplete="username"
+          autocapitalize="none"
+          pattern="[A-Za-z0-9_]{3,32}"
+          minlength="3"
+          maxlength="32"
+          required
+        />
+      </div>
+      <div class="field">
+        <label for="invite-email">受邀邮箱</label
+        ><input id="invite-email" v-model="form.email" type="email" autocomplete="email" required />
+        <p class="muted">请填写收到邀请的邮箱。</p>
+      </div>
       <div class="field">
         <label for="invite-name">你的公开昵称</label
         ><input id="invite-name" v-model="form.displayName" autocomplete="name" required />

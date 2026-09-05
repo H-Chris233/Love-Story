@@ -29,6 +29,15 @@ export function assertEmail(value: unknown, field: string): string {
   return email
 }
 
+export function assertUsername(value: unknown): string {
+  const username = assertRequired(value, 'username', 32).toLowerCase()
+  if (!/^[a-z0-9_]{3,32}$/.test(username))
+    throw new DomainError('VALIDATION_ERROR', '用户名需为 3–32 位字母、数字或下划线', 400, {
+      username: '请输入 3–32 位字母、数字或下划线'
+    })
+  return username
+}
+
 export function assertPatch(
   value: unknown,
   fields: string[]

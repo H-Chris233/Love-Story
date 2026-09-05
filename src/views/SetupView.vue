@@ -15,6 +15,7 @@ const busy = ref(false)
 const error = ref('')
 const fields = ref<Record<string, string>>({})
 const form = reactive({
+  username: '',
   storyTitle: '',
   displayName: '',
   email: '',
@@ -61,6 +62,20 @@ async function submit() {
       </div>
       <p class="muted">首位成员完成初始化后，我们会向伴侣发送一封 7 天有效的邀请。</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+      <div class="field">
+        <label for="username">用户名</label
+        ><input
+          id="username"
+          v-model="form.username"
+          autocomplete="username"
+          autocapitalize="none"
+          pattern="[A-Za-z0-9_]{3,32}"
+          minlength="3"
+          maxlength="32"
+          required
+        />
+        <p class="muted">3–32 位字母、数字或下划线，用于登录，不作为公开昵称。</p>
+      </div>
       <div class="field">
         <label for="title">故事标题</label><input id="title" v-model="form.storyTitle" required />
         <p v-if="fields.storyTitle" class="field-error">{{ fields.storyTitle }}</p>

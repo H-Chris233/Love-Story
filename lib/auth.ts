@@ -1,4 +1,4 @@
-import { DomainError, assertRequired, assertEmail } from './errors.js'
+import { DomainError, assertRequired, assertEmail, assertUsername } from './errors.js'
 import { escapeHtml } from './html.js'
 import type { Mailer } from './mailer.js'
 import { createToken, hashPassword, hashToken, verifyPassword } from './security.js'
@@ -9,6 +9,7 @@ import type { Member, Space } from './types.js'
 const DAY = 24 * 60 * 60 * 1000
 
 export interface BootstrapInput {
+  username: string
   storyTitle: string
   relationshipStartedAt: string
   displayName: string
@@ -18,6 +19,8 @@ export interface BootstrapInput {
 }
 
 export interface AcceptInvitationInput {
+  username: string
+  email: string
   token: string
   displayName: string
   password: string
@@ -81,6 +84,7 @@ export function createAuthService(dependencies: {
 
       const storyTitle = assertRequired(input.storyTitle, 'storyTitle', 160)
       const displayName = assertRequired(input.displayName, 'displayName', 80)
+      const username = assertUsername(input.username)
       const email = assertEmail(input.email, 'email')
       const partnerEmail = assertEmail(input.partnerEmail, 'partnerEmail')
       const relationshipStartedAt = new Date(
@@ -106,6 +110,7 @@ export function createAuthService(dependencies: {
 
       const timestamp = now()
       const { space, user } = await dependencies.store.bootstrap({
+        username,
         storyTitle,
         relationshipStartedAt: relationshipStartedAt.toISOString(),
         displayName,
@@ -135,22 +140,24 @@ export function createAuthService(dependencies: {
       const invitationDelivery = await createInvitationAndSend(member, space, partnerEmail, now())
       return { invitationDelivery }
     },
-    async login(input: { email: string; password: string }) {
-      const credentials = await dependencies.store.findCredentials(
-        assertEmail(input.email, 'email')
-      )
+    async login(input: { identifier: string; password: string }) {
+      const identifier = assertRequired(input.identifier, 'identifier', 320).toLowerCase()
+      const credentials = await dependencies.store.findLoginCredentials(identifier)
       if (
         !credentials ||
         typeof input.password !== 'string' ||
         input.password.length > 1024 ||
         !(await verifyPassword(input.password, credentials.passwordHash))
       ) {
-        throw new DomainError('INVALID_CREDENTIALS', '邮箱或密码不正确', 401)
+        throw new DomainError('INVALID_CREDENTIALS', '用户名、邮箱或密码不正确', 401)
       }
       return createSession(credentials.userId)
     },
     async logout(token: string) {
       if (token) await dependencies.store.deleteSession(hashToken(token))
+    },
+    async updateUsername(member: Member, username: unknown) {
+      await dependencies.store.updateUsername(member.id, assertUsername(username))
     },
     async requestPasswordReset(emailInput: string) {
       const email = assertEmail(emailInput, 'email')
@@ -191,6 +198,8 @@ export function createAuthService(dependencies: {
       })
     },
     async acceptInvitation(input: AcceptInvitationInput) {
+      const username = assertUsername(input.username)
+      const email = assertEmail(input.email, 'email')
       const displayName = assertRequired(input.displayName, 'displayName', 80)
       if (
         typeof input.password !== 'string' ||
@@ -202,6 +211,8 @@ export function createAuthService(dependencies: {
         })
       }
       const { space, user } = await dependencies.store.acceptInvitation({
+        username,
+        email,
         tokenHash: hashToken(assertRequired(input.token, 'token')),
         displayName,
         passwordHash: await hashPassword(input.password),

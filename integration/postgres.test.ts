@@ -16,6 +16,7 @@ let store: DrizzleStore
 const now = new Date('2026-09-05T00:00:00Z')
 const bootstrap = () =>
   store.bootstrap({
+    username: 'owner_user',
     storyTitle: '真实数据库',
     displayName: '甲',
     email: 'a@example.com',
@@ -65,14 +66,25 @@ describe('PostgreSQL transactions and constraints', () => {
       store.createInvitation({ ...invitation, email: 'b@example.com', tokenHash: 'new1' }),
       store.createInvitation({ ...invitation, email: 'c@example.com', tokenHash: 'new2' })
     ])
-    const pending = await pool.query('select token_hash from invitations where accepted_at is null')
+    const pending = await pool.query(
+      'select token_hash, email from invitations where accepted_at is null'
+    )
     expect(pending.rows).toHaveLength(1)
     await expect(
-      store.acceptInvitation({ tokenHash: 'old', displayName: '乙', passwordHash: 'test', now })
+      store.acceptInvitation({
+        username: 'partner_user',
+        email: 'old@example.com',
+        tokenHash: 'old',
+        displayName: '乙',
+        passwordHash: 'test',
+        now
+      })
     ).rejects.toMatchObject({ code: 'INVALID_INVITATION' })
     const accepted = await Promise.allSettled(
       [1, 2].map(() =>
         store.acceptInvitation({
+          username: 'partner_user',
+          email: pending.rows[0].email,
           tokenHash: pending.rows[0].token_hash,
           displayName: '乙',
           passwordHash: 'test',

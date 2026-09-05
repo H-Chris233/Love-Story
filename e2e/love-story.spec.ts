@@ -100,6 +100,7 @@ test('both members edit shared memories and photos; anonymous access and reminde
   await page.goto('/setup')
   await page.getByLabel('故事标题').fill('山海之间')
   await page.getByLabel('你的公开昵称').fill('甲')
+  await page.getByLabel('用户名', { exact: true }).fill('owner_user')
   await page.getByLabel('你的邮箱').fill('a@example.com')
   await page.getByLabel('密码', { exact: true }).fill('secure-password')
   await page.getByLabel('伴侣邮箱').fill('b@example.com')
@@ -115,6 +116,8 @@ test('both members edit shared memories and photos; anonymous access and reminde
     const invite = /invite\/([^"<]+)/.exec(app.mailer.messages[0].html)![1]
     await partner.goto(`${origin}/invite/${invite}`)
     await partner.getByLabel('你的公开昵称').fill('乙')
+    await partner.getByLabel('用户名', { exact: true }).fill('partner_user')
+    await partner.getByLabel('受邀邮箱').fill('b@example.com')
     await partner.getByLabel('设置密码').fill('partner-password')
     await partner.getByRole('button', { name: '接受邀请' }).click()
     await expect(partner.getByRole('heading', { name: '山海之间' })).toBeVisible()
@@ -231,6 +234,10 @@ test('both members edit shared memories and photos; anonymous access and reminde
     await expect(visitor.getByRole('heading', { name: '密码已经更新' })).toBeVisible()
     await partner.goto(`${origin}/app`)
     await expect(partner).toHaveURL(/login/)
+    await partner.getByLabel('用户名或邮箱').fill('partner_user')
+    await partner.getByLabel('密码', { exact: true }).fill('changed-password')
+    await partner.getByRole('button', { name: '登录', exact: true }).click()
+    await expect(partner.getByRole('heading', { name: '山海之间' })).toBeVisible()
   } finally {
     await partnerContext.close()
     await visitorContext.close()

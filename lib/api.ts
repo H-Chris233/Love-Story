@@ -5,7 +5,7 @@ import type { createReminderService } from './reminders.js'
 import { DomainError } from './errors.js'
 import { apiError, getSessionToken, readJson, sessionCookie } from './http.js'
 import { rateLimit, type RateLimitStore } from './rate-limit.js'
-import { assertEmail } from './errors.js'
+import { assertEmail, assertRequired } from './errors.js'
 
 export interface ApiDependencies {
   auth: ReturnType<typeof createAuthService>
@@ -54,6 +54,7 @@ export function createApi(deps: ApiDependencies) {
           const result = await deps.auth.bootstrap(
             await json([
               'storyTitle',
+              'username',
               'relationshipStartedAt',
               'displayName',
               'email',
@@ -72,8 +73,17 @@ export function createApi(deps: ApiDependencies) {
       'auth/login': {
         methods: ['POST'],
         run: async () => {
-          const input = await json<{ email: string; password: string }>(['email', 'password'])
-          await limitEmail('login-email', input.email, 10, 900000)
+          const input = await json<{ identifier: string; password: string }>([
+            'identifier',
+            'password'
+          ])
+          await rateLimit(
+            deps.store,
+            'login-identifier',
+            assertRequired(input.identifier, 'identifier', 320).toLowerCase(),
+            10,
+            900000
+          )
           const token = await deps.auth.login(input)
           headers.set('Set-Cookie', sessionCookie(token))
           return deps.auth.getSession(token)
@@ -84,6 +94,17 @@ export function createApi(deps: ApiDependencies) {
         run: async () => {
           await deps.auth.logout(getSessionToken(request))
           headers.set('Set-Cookie', sessionCookie(''))
+        }
+      },
+      'auth/username': {
+        methods: ['PATCH'],
+        run: async () => {
+          const s = await session()
+          await deps.auth.updateUsername(
+            s.user,
+            (await json<{ username: string }>(['username'])).username
+          )
+          return deps.auth.getSession(getSessionToken(request))
         }
       },
       'auth/forgot-password': {
@@ -115,7 +136,7 @@ export function createApi(deps: ApiDependencies) {
         methods: ['POST'],
         run: async () => {
           const r = await deps.auth.acceptInvitation(
-            await json(['token', 'displayName', 'password'])
+            await json(['token', 'displayName', 'password', 'username', 'email'])
           )
           headers.set('Set-Cookie', sessionCookie(r.sessionToken))
           return { space: r.space, user: r.user }

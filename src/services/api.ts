@@ -57,6 +57,7 @@ export const api = {
     request<AnniversaryEntry>(`/api/public/anniversaries/${slug}`),
   session: () => request<SessionView>('/api/auth/session'),
   bootstrap: (input: {
+    username: string
     storyTitle: string
     relationshipStartedAt: string
     displayName: string
@@ -68,10 +69,18 @@ export const api = {
       method: 'POST',
       body: json(input)
     }),
-  login: (input: { email: string; password: string }) =>
+  login: (input: { identifier: string; password: string }) =>
     request<SessionView>('/api/auth/login', { method: 'POST', body: json(input) }),
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
-  acceptInvitation: (input: { token: string; displayName: string; password: string }) =>
+  updateUsername: (username: string) =>
+    request<SessionView>('/api/auth/username', { method: 'PATCH', body: json({ username }) }),
+  acceptInvitation: (input: {
+    token: string
+    displayName: string
+    password: string
+    username: string
+    email: string
+  }) =>
     request<SessionView>('/api/auth/invitations/accept', {
       method: 'POST',
       body: json(input)

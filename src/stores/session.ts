@@ -33,8 +33,8 @@ export const useSessionStore = defineStore('session', {
         this.loaded = true
       }
     },
-    async login(email: string, password: string) {
-      this.current = await api.login({ email, password })
+    async login(identifier: string, password: string) {
+      this.current = await api.login({ identifier, password })
       this.loaded = true
       this.error = ''
     },

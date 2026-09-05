@@ -72,6 +72,7 @@ export interface MemoryStore
 
 export function createMemoryStore(): MemoryStore {
   const memberView = (user: UserRecord): Member => ({
+    username: user.username,
     id: user.id,
     email: user.email,
     displayName: user.displayName,
@@ -141,6 +142,7 @@ export function createMemoryStore(): MemoryStore {
       const user: UserRecord = {
         id: randomUUID(),
         email: input.email,
+        username: input.username,
         displayName: input.displayName,
         position: 1,
         passwordHash: input.passwordHash,
@@ -172,6 +174,18 @@ export function createMemoryStore(): MemoryStore {
     async findCredentials(email) {
       const user = state.users.find((candidate) => candidate.email === email)
       return user ? { userId: user.id, passwordHash: user.passwordHash } : null
+    },
+    async findLoginCredentials(identifier) {
+      const user = state.users.find(
+        (row) => row.email === identifier || row.username === identifier
+      )
+      return user ? { userId: user.id, passwordHash: user.passwordHash } : null
+    },
+    async updateUsername(userId, username) {
+      if (state.users.some((row) => row.id !== userId && row.username === username))
+        throw new DomainError('USERNAME_TAKEN', '用户名已被使用', 409)
+      const user = state.users.find((row) => row.id === userId)
+      if (user) user.username = username
     },
     async deleteSession(tokenHash) {
       state.sessions.splice(
@@ -232,6 +246,10 @@ export function createMemoryStore(): MemoryStore {
       if (!invitation) {
         throw new DomainError('INVALID_INVITATION', '邀请链接无效或已过期', 400)
       }
+      if (invitation.email !== input.email)
+        throw new DomainError('INVALID_INVITATION', '邮箱与邀请不匹配', 400)
+      if (state.users.some((row) => row.username === input.username))
+        throw new DomainError('USERNAME_TAKEN', '用户名已被使用', 409)
       if (state.users.some((candidate) => candidate.email === invitation.email)) {
         throw new DomainError('INVALID_INVITATION', '邀请链接已被使用', 409)
       }
@@ -247,6 +265,7 @@ export function createMemoryStore(): MemoryStore {
       const user: UserRecord = {
         id: randomUUID(),
         email: invitation.email,
+        username: input.username,
         displayName: input.displayName,
         position: 2,
         passwordHash: input.passwordHash,
@@ -264,6 +283,7 @@ export function createMemoryStore(): MemoryStore {
         id: randomUUID(),
         email: input.email,
         displayName: input.displayName,
+        username: null,
         position: 2,
         passwordHash: 'unused',
         spaceId,

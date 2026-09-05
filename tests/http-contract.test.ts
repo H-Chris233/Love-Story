@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createTestApplication } from '../lib/testing/application.js'
 
 const input = {
+  username: 'owner_user',
   storyTitle: '纪念簿',
   displayName: '甲',
   email: 'a@example.com',
@@ -136,7 +137,13 @@ describe('real API handler', () => {
     const old = /invite\/([^"<]+)/.exec(app.mailer.messages[0].html)![1]
     await app.auth.invitePartner(owner.user, owner.space, 'new@example.com')
     await expect(
-      app.auth.acceptInvitation({ token: old, displayName: '乙', password: 'secure-password' })
+      app.auth.acceptInvitation({
+        username: 'partner_user',
+        email: 'partner@example.com',
+        token: old,
+        displayName: '乙',
+        password: 'secure-password'
+      })
     ).rejects.toMatchObject({ code: 'INVALID_INVITATION' })
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const send = vi.spyOn(app.mailer, 'send').mockRejectedValue(new Error('private provider error'))

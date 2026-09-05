@@ -15,6 +15,13 @@
       "when": 1788572524653,
       "tag": "0001_sharp_penance",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788629542514,
+      "tag": "0002_optimal_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

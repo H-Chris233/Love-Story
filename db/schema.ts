@@ -50,12 +50,16 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: varchar('email', { length: 320 }).notNull(),
+    username: varchar('username', { length: 32 }),
     displayName: varchar('display_name', { length: 80 }).notNull(),
     passwordHash: text('password_hash').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (table) => [uniqueIndex('users_email_idx').on(table.email)]
+  (table) => [
+    uniqueIndex('users_email_idx').on(table.email),
+    uniqueIndex('users_username_idx').on(table.username)
+  ]
 )
 
 export const memberships = pgTable(

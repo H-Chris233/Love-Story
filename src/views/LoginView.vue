@@ -6,7 +6,7 @@ import AuthShell from '@/components/AuthShell.vue'
 import { ApiError } from '@/services/api'
 import { useSessionStore } from '@/stores/session'
 
-const email = ref('')
+const identifier = ref('')
 const password = ref('')
 const error = ref('')
 const busy = ref(false)
@@ -18,7 +18,7 @@ async function submit() {
   busy.value = true
   error.value = ''
   try {
-    await session.login(email.value, password.value)
+    await session.login(identifier.value, password.value)
     await router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/app')
   } catch (reason) {
     error.value = reason instanceof ApiError ? reason.message : '暂时无法登录'
@@ -37,8 +37,14 @@ async function submit() {
       </div>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div class="field">
-        <label for="email">邮箱</label
-        ><input id="email" v-model="email" type="email" autocomplete="email" required />
+        <label for="identifier">用户名或邮箱</label
+        ><input
+          id="identifier"
+          v-model="identifier"
+          autocomplete="username"
+          autocapitalize="none"
+          required
+        />
       </div>
       <div class="field">
         <label for="password">密码</label

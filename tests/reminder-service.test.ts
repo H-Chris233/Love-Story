@@ -8,6 +8,7 @@ describe('ReminderService', () => {
   it('uses the Shanghai calendar and delivers each reminder to both members once', async () => {
     const store = createMemoryStore()
     const owner = await store.bootstrap({
+      username: 'owner_user',
       storyTitle: '我们的山海日记',
       relationshipStartedAt: '2024-01-13T14:28:46.000Z',
       displayName: '小夏',
