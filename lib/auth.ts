@@ -1,5 +1,5 @@
 import { DomainError, assertRequired, assertEmail, assertUsername } from './errors.js'
-import { escapeHtml } from './html.js'
+import { renderEmail } from './email-template.js'
 import type { Mailer } from './mailer.js'
 import { createToken, hashPassword, hashToken, verifyPassword } from './security.js'
 import type { AuthStore } from './store/auth-store.js'
@@ -62,13 +62,16 @@ export function createAuthService(dependencies: {
       now: timestamp
     })
     try {
-      const safeName = escapeHtml(member.displayName)
-      const safeTitle = escapeHtml(space.title)
       await dependencies.mailer.send({
         to: partnerEmail,
         kind: 'partner-invitation',
-        subject: `${member.displayName} 邀请你一起装订爱情纪念簿`,
-        html: `<p>${safeName} 邀请你加入「${safeTitle}」。</p><p><a href="${dependencies.appOrigin}/invite/${invitationToken}">接受邀请</a></p>`
+        subject: `${member.displayName} 邀请你加入双人纪念簿`,
+        html: renderEmail({
+          title: '有一份邀请，留给你',
+          message: `${member.displayName} 邀请你加入「${space.title}」，一起记录你们的日常。`,
+          note: '邀请链接 7 天内有效，仅限受邀邮箱使用一次，请勿转发。如果你不认识邀请人，可以忽略这封邮件。',
+          action: { label: '接受邀请', url: `${dependencies.appOrigin}/invite/${invitationToken}` }
+        })
       })
       return 'sent'
     } catch {
@@ -177,7 +180,12 @@ export function createAuthService(dependencies: {
           to: email,
           kind: 'password-reset',
           subject: '重置你的 Love Story 密码',
-          html: `<p>这个链接将在一小时后失效。</p><p><a href="${dependencies.appOrigin}/reset-password/${token}">重置密码</a></p>`
+          html: renderEmail({
+            title: '重置你的密码',
+            message: '我们收到了你的密码重置请求。点击下方按钮，设置一个新密码。',
+            note: '链接 1 小时内有效，且只能使用一次，请勿转发。如果不是你本人操作，请忽略这封邮件，你的密码不会改变。',
+            action: { label: '重置密码', url: `${dependencies.appOrigin}/reset-password/${token}` }
+          })
         })
       } catch {
         console.error('Password reset email delivery failed')

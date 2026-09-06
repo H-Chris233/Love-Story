@@ -41,6 +41,10 @@ describe('ReminderService', () => {
     await reminders.run(anniversaryDay)
 
     expect(mailer.messages).toHaveLength(4)
+    expect(mailer.messages.every(({ html }) => html.includes('<!doctype html>'))).toBe(true)
+    expect(mailer.messages[0].html).toContain('第一次旅行 · 还有 7 天')
+    expect(mailer.messages[2].html).toContain('第一次旅行 · 就是今天')
+    expect(mailer.messages.every(({ html }) => html.includes('2027-01-08（北京时间）'))).toBe(true)
     expect(mailer.messages.map(({ to }) => to).sort()).toEqual([
       'owner@example.com',
       'owner@example.com',

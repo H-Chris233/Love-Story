@@ -87,6 +87,9 @@ describe('AuthService', () => {
     expect(result.space.title).toBe('我们的山海日记')
     expect(result.user.position).toBe(1)
     expect(result.invitationDelivery).toBe('sent')
+    expect(mailer.messages[0].html).toContain('<!doctype html>')
+    expect(mailer.messages[0].html).toContain('邀请链接 7 天内有效')
+    expect(mailer.messages[0].html).toContain('小夏 邀请你加入「我们的山海日记」')
     expect(mailer.messages).toEqual([
       expect.objectContaining({
         to: 'partner@example.com',
@@ -192,6 +195,9 @@ describe('AuthService', () => {
     mailer.messages.length = 0
 
     await auth.requestPasswordReset('owner@example.com')
+    expect(mailer.messages[0].html).toContain('<!doctype html>')
+    expect(mailer.messages[0].html).toContain('链接 1 小时内有效')
+    expect(mailer.messages[0].html).toContain('如果不是你本人操作')
     const token = /reset-password\/([^"<]+)/.exec(mailer.messages[0].html)?.[1] ?? ''
     await auth.resetPassword({ token, password: 'a-brand-new-password' })
 

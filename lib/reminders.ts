@@ -2,7 +2,7 @@ import type { Mailer } from './mailer.js'
 import type { ReminderKind, ReminderStore } from './store/reminder-store.js'
 import { DELIVERY_RETRY_MS } from './store/reminder-store.js'
 import { isLeapYear, parseCalendarDate } from './dates.js'
-import { escapeHtml } from './html.js'
+import { renderEmail } from './email-template.js'
 
 function parseDate(value: string): { year: number; month: number; day: number } {
   return parseCalendarDate(value)
@@ -72,16 +72,17 @@ export function createReminderService(dependencies: { store: ReminderStore; mail
             kind
           ].join(':')
           const timing = kind === 'today' ? '就是今天' : `还有 ${remaining} 天`
-          const safeName = escapeHtml(recipient.displayName)
-          const safeTitle = escapeHtml(anniversary.title)
-          const safeSpaceTitle = escapeHtml(anniversary.spaceTitle)
           await dependencies.store.enqueueDelivery(
             key,
             {
               to: recipient.email,
               kind: 'anniversary-reminder',
               subject: `${anniversary.title} · ${timing}`,
-              html: `<p>${safeName}，你们的「${safeTitle}」${timing}。</p><p>愿「${safeSpaceTitle}」继续收下每一份温柔。</p>`,
+              html: renderEmail({
+                title: `${anniversary.title} · ${timing}`,
+                message: `${recipient.displayName}，记得为这个属于你们的日子留一点时间。`,
+                note: `${anniversary.spaceTitle} · ${occurrenceDate}（北京时间）`
+              }),
               idempotencyKey
             },
             now
