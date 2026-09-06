@@ -4,6 +4,7 @@ import { onMounted, reactive, ref } from 'vue'
 import VisibilityField from '@/components/VisibilityField.vue'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
+import { useNotificationStore } from '@/stores/notification'
 import { ApiError, api } from '@/services/api'
 import type { AnniversaryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
@@ -11,6 +12,7 @@ import { formatShanghaiDate } from '@/utils/date'
 const anniversaries = ref<AnniversaryEntry[]>([])
 const form = reactive({ title: '', originalDate: '', reminderDays: 7, isPublic: false })
 const error = ref('')
+const notification = useNotificationStore()
 const busy = ref(false)
 const editing = ref<string | null>(null)
 const draft = reactive({ title: '', originalDate: '', reminderDays: 7 })
@@ -29,7 +31,7 @@ async function act(action: () => Promise<unknown>) {
     await action()
     await load()
   } catch (reason) {
-    error.value = reason instanceof ApiError ? reason.message : '操作失败，请重试'
+    notification.show(reason instanceof ApiError ? reason.message : '操作失败，请重试', 'error')
   } finally {
     busy.value = false
   }

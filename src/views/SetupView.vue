@@ -7,10 +7,12 @@ import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
 import { ApiError, api } from '@/services/api'
 import { useSessionStore } from '@/stores/session'
+import { useNotificationStore } from '@/stores/notification'
 import { isoToShanghaiLocal, shanghaiLocalToIso } from '@/utils/date'
 
 const router = useRouter()
 const session = useSessionStore()
+const notification = useNotificationStore()
 const busy = ref(false)
 const error = ref('')
 const fields = ref<Record<string, string>>({})
@@ -40,7 +42,13 @@ async function submit() {
     })
     session.current = { space: result.space, user: result.user }
     session.loaded = true
-    await router.push({ name: 'dashboard', query: { invitation: result.invitationDelivery } })
+    notification.show(
+      result.invitationDelivery === 'sent'
+        ? '纪念簿已创建，邀请邮件已发送。'
+        : '空间已成功创建，但邀请邮件发送失败。可以在设置里重新发送。',
+      result.invitationDelivery === 'sent' ? 'success' : 'warning'
+    )
+    await router.push({ name: 'dashboard' })
   } catch (reason) {
     if (reason instanceof ApiError) {
       error.value = reason.message

@@ -9,7 +9,6 @@ import type { StoryView } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
 const story = ref<StoryView | null>(null)
-const invitation = new URLSearchParams(window.location.search).get('invitation')
 const latest = computed(() => story.value?.memories.slice(0, 3) ?? [])
 
 const { load, loading, loadError } = useLoad(async () => (story.value = await api.story()))
@@ -19,9 +18,6 @@ onMounted(load)
 <template>
   <LoadState :loading="loading" :error="loadError" @retry="load" />
   <div v-if="story" class="page">
-    <p v-if="invitation === 'failed'" class="notice" role="status">
-      空间已成功创建，但邀请邮件发送失败。可以在设置里重新发送。
-    </p>
     <header class="page-heading">
       <div>
         <p class="eyebrow">Our little archive</p>

@@ -3,6 +3,38 @@ import { createTestApplication } from '../lib/testing/application.js'
 import { getDateInTimeZone } from '../lib/reminders.js'
 
 const origin = 'http://127.0.0.1:5173'
+test('settings invitation feedback stays in the top-right viewport after scrolling', async ({
+  page
+}) => {
+  const app = createTestApplication(origin)
+  await app.auth.bootstrap({
+    username: 'toast_owner',
+    email: 'owner@example.com',
+    partnerEmail: 'partner@example.com',
+    displayName: '甲',
+    password: 'secure-password',
+    storyTitle: '通知测试',
+    relationshipStartedAt: '2024-01-01T00:00:00Z'
+  })
+  await bridge(page.context(), app)
+  await page.goto('/login')
+  await page.getByLabel('用户名或邮箱').fill('toast_owner')
+  await page.getByLabel('密码', { exact: true }).fill('secure-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '通知测试' })).toBeVisible()
+  await page.goto('/app/settings')
+  await page.getByLabel('伴侣邮箱').fill('partner@example.com')
+  await page.getByRole('button', { name: '重新生成并发送邀请' }).click()
+  const toast = page.locator('.notification-toast')
+  await expect(toast).toContainText('邀请邮件已发送')
+  const bounds = await toast.boundingBox()
+  expect(bounds!.y).toBeLessThan(60)
+  expect(Math.abs(page.viewportSize()!.width - bounds!.x - bounds!.width - 16)).toBeLessThan(2)
+  await expect(page.locator('.private-main .notice')).toHaveCount(0)
+  await page.screenshot({ path: test.info().outputPath('notification.png') })
+  await page.getByRole('button', { name: '关闭通知' }).click()
+  await expect(toast).toHaveCount(0)
+})
 test('recovers failed initial session and setup checks without uncaught page errors', async ({
   page
 }) => {

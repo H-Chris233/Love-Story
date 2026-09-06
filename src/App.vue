@@ -3,10 +3,12 @@ import { computed, ref } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 
 import { useSessionStore } from '@/stores/session'
+import NotificationToast from '@/components/NotificationToast.vue'
+import { useNotificationStore } from '@/stores/notification'
 
 const session = useSessionStore()
 const router = useRouter()
-const error = ref('')
+const notification = useNotificationStore()
 const busy = ref(false)
 async function retrySession() {
   busy.value = true
@@ -27,17 +29,17 @@ const links = [
 const privateArea = computed(() => router.currentRoute.value.meta.requiresAuth === true)
 
 async function logout() {
-  error.value = ''
   try {
     await session.logout()
     await router.push('/')
   } catch {
-    error.value = '退出失败，请重试'
+    notification.show('退出失败，请重试', 'error')
   }
 }
 </script>
 
 <template>
+  <NotificationToast />
   <div :class="['app-shell', { 'app-shell--private': privateArea }]">
     <header v-if="privateArea" class="site-header">
       <RouterLink class="brand" to="/app" aria-label="返回总览">
@@ -51,7 +53,6 @@ async function logout() {
     </header>
 
     <main :class="{ 'private-main': privateArea }">
-      <p v-if="error" role="alert" class="form-error">{{ error }}</p>
       <div v-if="session.error" role="alert" class="card card-pad">
         <p>{{ session.error }}</p>
         <button type="button" class="button" :disabled="busy" @click="retrySession">重试</button>

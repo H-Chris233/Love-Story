@@ -10,7 +10,7 @@ export default defineConfigWithVueTs(
     files: ['**/*.{ts,mts,tsx,vue}']
   },
 
-  globalIgnores(['**/dist/**', '**/coverage/**', '**/drizzle/**']),
+  globalIgnores(['**/dist/**', '**/coverage/**', '**/drizzle/**', '.vercel/**']),
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,

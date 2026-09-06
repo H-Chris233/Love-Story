@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import VisibilityField from '@/components/VisibilityField.vue'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
+import { useNotificationStore } from '@/stores/notification'
 import { ApiError, api } from '@/services/api'
 import type { MemoryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
@@ -17,7 +18,7 @@ const previews = ref<Array<{ name: string; url: string }>>([])
 const form = reactive({ title: '', body: '', occurredOn: '', isPublic: false })
 const editing = ref<string | null>(null)
 const draft = reactive({ title: '', body: '', occurredOn: '' })
-const notice = ref('')
+const notification = useNotificationStore()
 
 function edit(memory: MemoryEntry) {
   editing.value = memory.id
@@ -30,7 +31,7 @@ async function act(action: () => Promise<unknown>) {
     await action()
     await load()
   } catch (reason) {
-    error.value = reason instanceof ApiError ? reason.message : '操作失败，请重试'
+    notification.show(reason instanceof ApiError ? reason.message : '操作失败，请重试', 'error')
   } finally {
     busy.value = false
   }
@@ -50,7 +51,7 @@ async function uploadFiles(memoryId: string, files: File[]) {
       failed++
     }
   }
-  notice.value = failed ? '部分照片失败，可继续补传。回忆和成功上传的照片已保存。' : ''
+  if (failed) notification.show('部分照片失败，可继续补传。回忆和成功上传的照片已保存。', 'warning')
 }
 async function addPhotos(memory: MemoryEntry, event: Event) {
   const input = event.target as HTMLInputElement
@@ -133,7 +134,6 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
         <p class="lede">新内容默认只对你们两个人可见。</p>
       </div>
     </header>
-    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
 
     <form class="card card-pad stack" @submit.prevent="submit">
       <h2>写下这一页</h2>

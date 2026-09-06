@@ -10,6 +10,7 @@ import SetupView from '../src/views/SetupView.vue'
 import DashboardView from '../src/views/DashboardView.vue'
 import GalleryView from '../src/views/GalleryView.vue'
 import { useSessionStore } from '../src/stores/session'
+import { useNotificationStore } from '../src/stores/notification'
 import { createAppRouter } from '../src/router/index'
 
 describe('Vue application contracts', () => {
@@ -70,7 +71,10 @@ describe('Vue application contracts', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(create).toHaveBeenCalledOnce()
-    expect(wrapper.text()).toContain('部分照片失败，可继续补传')
+    expect(useNotificationStore().current).toMatchObject({
+      tone: 'warning',
+      message: expect.stringContaining('部分照片失败，可继续补传')
+    })
     expect((wrapper.get('#memory-title').element as HTMLInputElement).value).toBe('')
     expect(wrapper.find('[aria-label="照片预览"]').exists()).toBe(false)
     wrapper.unmount()

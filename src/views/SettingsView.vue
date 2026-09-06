@@ -5,24 +5,23 @@ import { ApiError, api } from '@/services/api'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
 import { useSessionStore } from '@/stores/session'
+import { useNotificationStore } from '@/stores/notification'
 import { isoToShanghaiLocal, shanghaiLocalToIso } from '@/utils/date'
 
 const session = useSessionStore()
 const form = reactive({ title: '', intro: '', relationshipStartedAt: '' })
 const partnerEmail = ref('')
-const message = ref('')
-const error = ref('')
+const notification = useNotificationStore()
 const busy = ref(false)
 const username = ref(session.current?.user.username ?? '')
 async function saveUsername() {
   busy.value = true
-  error.value = ''
   try {
     session.current = await api.updateUsername(username.value)
     username.value = session.current.user.username ?? ''
-    message.value = '用户名已保存。'
+    notification.show('用户名已保存。')
   } catch (reason) {
-    error.value = reason instanceof ApiError ? reason.message : '暂时无法保存用户名'
+    notification.show(reason instanceof ApiError ? reason.message : '暂时无法保存用户名', 'error')
   } finally {
     busy.value = false
   }
@@ -37,7 +36,6 @@ const { load, loading, loadError } = useLoad(async () => {
 onMounted(load)
 async function save() {
   busy.value = true
-  error.value = ''
   try {
     const space = await api.updateSettings({
       title: form.title,
@@ -45,25 +43,25 @@ async function save() {
       relationshipStartedAt: shanghaiLocalToIso(form.relationshipStartedAt)
     })
     if (session.current) session.current.space = space
-    message.value = '空间资料已保存。'
+    notification.show('空间资料已保存。')
   } catch (reason) {
-    error.value = reason instanceof ApiError ? reason.message : '暂时无法保存设置'
+    notification.show(reason instanceof ApiError ? reason.message : '暂时无法保存设置', 'error')
   } finally {
     busy.value = false
   }
 }
 async function invite() {
   busy.value = true
-  error.value = ''
-  message.value = ''
   try {
     const result = await api.invitePartner(partnerEmail.value)
-    message.value =
+    notification.show(
       result.invitationDelivery === 'sent'
         ? '邀请邮件已发送。'
-        : '邀请已生成，但邮件发送失败，请稍后重试。'
+        : '邀请已生成，但邮件发送失败，请稍后重试。',
+      result.invitationDelivery === 'sent' ? 'success' : 'warning'
+    )
   } catch (reason) {
-    error.value = reason instanceof ApiError ? reason.message : '暂时无法发送邀请'
+    notification.show(reason instanceof ApiError ? reason.message : '暂时无法发送邀请', 'error')
   } finally {
     busy.value = false
   }
@@ -79,8 +77,6 @@ async function invite() {
         <p class="lede">两位成员拥有完全相同的内容权限。</p>
       </div>
     </header>
-    <p v-if="message" class="notice" role="status">{{ message }}</p>
-    <p v-if="error" class="form-error" role="alert">{{ error }}</p>
     <form class="card card-pad stack" @submit.prevent="saveUsername">
       <h2>我的账号</h2>
       <p>邮箱：{{ session.current?.user.email }}</p>
