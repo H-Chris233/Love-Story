@@ -21,9 +21,7 @@ onMounted(load)
   <div class="page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Gallery</p>
-        <h1>照片相册</h1>
-        <p class="lede">相册直接来自回忆中的照片，没有第二套数据源。</p>
+        <h1>我们的相册</h1>
       </div>
     </header>
     <LoadState :loading="loading" :error="loadError" @retry="load" />

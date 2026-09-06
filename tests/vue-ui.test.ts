@@ -14,6 +14,42 @@ import { useNotificationStore } from '../src/stores/notification'
 import { createAppRouter } from '../src/router/index'
 
 describe('Vue application contracts', () => {
+  it('keeps the couple and live timer central without decorative subtitles', async () => {
+    const startedAt = '2024-01-13T00:00:00Z'
+    vi.spyOn(Date, 'now').mockReturnValue(
+      Date.parse(startedAt) + (966 * 86400 + 11 * 3600 + 24 * 60 + 59) * 1000
+    )
+    vi.spyOn(api, 'story').mockResolvedValue({
+      space: {
+        title: '我们的小窝',
+        intro: '不再展示的首页副标题',
+        relationshipStartedAt: startedAt
+      },
+      members: [
+        { id: 'one', displayName: '小林' },
+        { id: 'two', displayName: '小夏' }
+      ],
+      memories: [],
+      anniversaries: []
+    } as never)
+    const wrapper = mount(DashboardView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    expect(wrapper.get('h1').text()).toBe('我们的小窝')
+    expect(wrapper.findAll('.couple-names__member').map((member) => member.text())).toEqual([
+      '小林',
+      '小夏'
+    ])
+    expect(wrapper.findAll('.timer__value').map((unit) => unit.text())).toEqual([
+      '966',
+      '11',
+      '24',
+      '59'
+    ])
+    expect(wrapper.text()).not.toContain('不再展示的首页副标题')
+    expect(wrapper.find('.eyebrow').exists()).toBe(false)
+    expect(wrapper.get('.together-card__art').attributes('src')).toBe('/together-rabbits.png')
+    wrapper.unmount()
+  })
   it.each([DashboardView, GalleryView])(
     'shows load failure and retries instead of displaying an empty state',
     async (view) => {

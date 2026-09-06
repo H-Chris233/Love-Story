@@ -28,14 +28,12 @@ async function submit() {
 <template>
   <AuthShell>
     <div v-if="completed" class="auth-form stack">
-      <p class="eyebrow">Updated</p>
       <h2>密码已经更新</h2>
       <p class="muted">所有旧会话均已撤销，请重新登录。</p>
       <RouterLink class="button" to="/login">去登录</RouterLink>
     </div>
     <form v-else class="auth-form stack" @submit.prevent="submit">
       <div>
-        <p class="eyebrow">New password</p>
         <h2>设置新密码</h2>
       </div>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>

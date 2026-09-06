@@ -31,8 +31,7 @@ onMounted(load)
   </div>
   <div v-else-if="!story" class="public-hero">
     <div class="public-hero__inner stack">
-      <p class="eyebrow">Love Story</p>
-      <h1>{{ initialized ? '故事正在安静地生长' : '从今天开始记录' }}</h1>
+      <h1>{{ initialized ? '还没有公开的回忆' : '创建我们的纪念簿' }}</h1>
       <p class="lede">
         {{
           initialized
@@ -61,10 +60,7 @@ onMounted(load)
     <div class="public-content page">
       <section class="page">
         <div class="page-heading">
-          <div>
-            <p class="eyebrow">Published memories</p>
-            <h2>公开回忆</h2>
-          </div>
+          <h2>公开回忆</h2>
         </div>
         <div v-if="story.memories.length" class="grid grid--2">
           <article v-for="memory in story.memories" :key="memory.id" class="card memory-card">
@@ -91,8 +87,7 @@ onMounted(load)
 
       <section v-if="story.anniversaries.length" class="page">
         <div>
-          <p class="eyebrow">Anniversaries</p>
-          <h2>值得记住的日子</h2>
+          <h2>纪念日</h2>
         </div>
         <div class="stack">
           <article v-for="item in story.anniversaries" :key="item.id" class="card anniversary-row">

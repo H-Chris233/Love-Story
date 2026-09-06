@@ -65,7 +65,6 @@ async function submit() {
     <LoadState :loading="loading" :error="loadError" @retry="load" />
     <form v-if="!loading && !loadError" class="auth-form stack" @submit.prevent="submit">
       <div>
-        <p class="eyebrow">First chapter</p>
         <h2>创建双人纪念簿</h2>
       </div>
       <p class="muted">首位成员完成初始化后，我们会向伴侣发送一封 7 天有效的邀请。</p>
@@ -117,7 +116,7 @@ async function submit() {
         ><input id="partner-email" v-model="form.partnerEmail" type="email" required />
       </div>
       <button class="button" :disabled="busy" type="submit">
-        {{ busy ? '正在装订…' : '创建纪念簿' }}
+        {{ busy ? '创建中…' : '创建纪念簿' }}
       </button>
     </form>
   </AuthShell>

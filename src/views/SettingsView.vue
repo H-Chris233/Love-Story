@@ -72,9 +72,7 @@ async function invite() {
   <div class="page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Settings</p>
         <h1>空间设置</h1>
-        <p class="lede">两位成员拥有完全相同的内容权限。</p>
       </div>
     </header>
     <form class="card card-pad stack" @submit.prevent="saveUsername">

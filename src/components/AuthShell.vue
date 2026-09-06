@@ -2,11 +2,11 @@
   <div class="auth-page">
     <aside class="auth-art">
       <RouterLink class="brand" to="/">
-        <span class="brand__mark" aria-hidden="true">L</span>
+        <span class="brand__mark" aria-hidden="true">♥</span>
         <span>Love Story</span>
       </RouterLink>
-      <h1>把相爱的日子，慢慢装订成册。</h1>
-      <p>只属于两个人的温暖纪念簿</p>
+      <img class="auth-art__image" src="/together-rabbits.png" alt="" width="320" height="320" />
+      <h1>和你，<br />每一天都算数。</h1>
     </aside>
     <main class="auth-panel"><slot /></main>
   </div>

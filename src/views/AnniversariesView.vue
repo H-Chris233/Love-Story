@@ -84,9 +84,7 @@ onMounted(load)
   <div class="page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Anniversaries</p>
         <h1>纪念日</h1>
-        <p class="lede">每天北京时间 07:00 检查提前提醒和当天提醒。</p>
       </div>
     </header>
     <form class="card card-pad stack" @submit.prevent="submit">
@@ -174,7 +172,6 @@ onMounted(load)
       </article>
       <div v-if="!anniversaries.length && !loading && !loadError" class="card empty">
         <h3>还没有纪念日</h3>
-        <p>那些值得每年期待的日子，会在这里等你们。</p>
       </div>
     </section>
   </div>

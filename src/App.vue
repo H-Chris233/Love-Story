@@ -20,8 +20,8 @@ async function retrySession() {
   }
 }
 const links = [
-  { to: '/app', label: '总览', icon: '⌂' },
-  { to: '/app/memories', label: '回忆', icon: '✦' },
+  { to: '/app', label: '我们', icon: '♡' },
+  { to: '/app/memories', label: '回忆', icon: '✎' },
   { to: '/app/gallery', label: '相册', icon: '▧' },
   { to: '/app/anniversaries', label: '纪念日', icon: '○' },
   { to: '/app/settings', label: '设置', icon: '⚙' }
@@ -42,12 +42,15 @@ async function logout() {
   <NotificationToast />
   <div :class="['app-shell', { 'app-shell--private': privateArea }]">
     <header v-if="privateArea" class="site-header">
-      <RouterLink class="brand" to="/app" aria-label="返回总览">
-        <span class="brand__mark" aria-hidden="true">L</span>
+      <RouterLink class="brand" to="/app" aria-label="返回我们的首页">
+        <span class="brand__mark" aria-hidden="true">♥</span>
         <span>Love Story</span>
       </RouterLink>
       <nav class="desktop-nav" aria-label="主导航">
-        <RouterLink v-for="link in links" :key="link.to" :to="link.to">{{ link.label }}</RouterLink>
+        <RouterLink v-for="link in links" :key="link.to" :to="link.to">
+          <span aria-hidden="true">{{ link.icon }}</span
+          >{{ link.label }}
+        </RouterLink>
       </nav>
       <button class="text-button" type="button" @click="logout">退出</button>
     </header>

@@ -17,27 +17,37 @@ onMounted(load)
 
 <template>
   <LoadState :loading="loading" :error="loadError" @retry="load" />
-  <div v-if="story" class="page">
+  <div v-if="story" class="page dashboard">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Our little archive</p>
         <h1>{{ story.space.title }}</h1>
-        <p class="lede">{{ story.space.intro }}</p>
       </div>
-      <RouterLink class="button" to="/app/memories">写一条回忆</RouterLink>
+      <RouterLink class="button" to="/app/memories"
+        ><span aria-hidden="true">＋</span> 写一条回忆</RouterLink
+      >
     </header>
-    <section class="card card-pad" style="text-align: center">
-      <p class="muted">从 {{ formatShanghaiDate(story.space.relationshipStartedAt) }} 开始</p>
-      <LoveTimer :started-at="story.space.relationshipStartedAt" />
-      <p>{{ story.members.map((member) => member.displayName).join(' 与 ') }}</p>
+    <section class="together-card" aria-label="我们的恋爱时光">
+      <div class="together-card__content">
+        <div class="couple-names">
+          <template v-for="(member, index) in story.members" :key="member.id">
+            <span v-if="index" class="couple-names__heart" aria-hidden="true">♥</span>
+            <span class="couple-names__member">{{ member.displayName }}</span>
+          </template>
+        </div>
+        <h2 class="together-card__label">我们在一起</h2>
+        <LoveTimer :started-at="story.space.relationshipStartedAt" />
+        <p class="together-card__date">
+          {{ formatShanghaiDate(story.space.relationshipStartedAt) }} 起
+        </p>
+      </div>
+      <img class="together-card__art" src="/together-rabbits.png" alt="" width="320" height="320" />
     </section>
     <section class="page">
       <div class="page-heading">
-        <div>
-          <p class="eyebrow">Latest</p>
-          <h2>最近的回忆</h2>
-        </div>
-        <RouterLink to="/app/memories">查看全部</RouterLink>
+        <h2>最近的回忆</h2>
+        <RouterLink class="section-link" to="/app/memories"
+          >查看全部 <span aria-hidden="true">→</span></RouterLink
+        >
       </div>
       <div v-if="latest.length" class="grid grid--3">
         <article v-for="memory in latest" :key="memory.id" class="card memory-card">
@@ -48,15 +58,16 @@ onMounted(load)
             :alt="memory.title"
           />
           <div class="memory-card__body">
-            <p class="eyebrow">{{ formatShanghaiDate(memory.occurredOn) }}</p>
+            <p class="memory-card__meta">{{ formatShanghaiDate(memory.occurredOn) }}</p>
             <h3>{{ memory.title }}</h3>
             <p>{{ memory.body }}</p>
           </div>
         </article>
       </div>
-      <div v-else class="card empty">
-        <h3>第一页还是空白</h3>
-        <p>写下此刻最想留住的事情吧。</p>
+      <div v-else class="card empty dashboard-empty">
+        <span class="empty__mark" aria-hidden="true">♡</span>
+        <h3>还没有回忆</h3>
+        <RouterLink class="section-link" to="/app/memories">记下我们的第一件小事 →</RouterLink>
       </div>
     </section>
   </div>

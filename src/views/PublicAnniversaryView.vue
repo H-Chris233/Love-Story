@@ -32,12 +32,10 @@ watch(() => route.params.slug, load, { immediate: true })
       <LoadState :loading="loading" :error="loadError" @retry="load" />
       <template v-if="anniversary">
         <p class="eyebrow">
-          Anniversary · {{ anniversary.originalDate.slice(5).replace('-', '.') }}
+          {{ anniversary.originalDate.slice(5).replace('-', '.') }}
         </p>
         <h1>{{ anniversary.title }}</h1>
-        <p class="lede">
-          始于 {{ formatShanghaiDate(anniversary.originalDate) }}，以后每一年都值得期待。
-        </p>
+        <p class="lede">始于 {{ formatShanghaiDate(anniversary.originalDate) }}</p>
       </template>
       <template v-else-if="error"
         ><h1>没有找到</h1>

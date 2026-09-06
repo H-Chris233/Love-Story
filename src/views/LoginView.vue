@@ -32,7 +32,6 @@ async function submit() {
   <AuthShell>
     <form class="auth-form stack" @submit.prevent="submit">
       <div>
-        <p class="eyebrow">Welcome back</p>
         <h2>回到我们的故事</h2>
       </div>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>

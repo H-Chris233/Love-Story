@@ -26,7 +26,6 @@ async function submit() {
 <template>
   <AuthShell>
     <div v-if="sent" class="auth-form stack">
-      <p class="eyebrow">Check your inbox</p>
       <h2>请检查邮箱</h2>
       <p class="muted">如果该邮箱属于空间成员，你会收到一封 1 小时有效的重置邮件。</p>
       <RouterLink class="button button--secondary" to="/login">返回登录</RouterLink>
@@ -34,10 +33,8 @@ async function submit() {
     <form v-else class="auth-form stack" @submit.prevent="submit">
       <p v-if="error" role="alert" class="form-error">{{ error }}</p>
       <div>
-        <p class="eyebrow">Password</p>
         <h2>找回密码</h2>
       </div>
-      <p class="muted">无论邮箱是否存在，接口都会返回相同结果。</p>
       <div class="field">
         <label for="forgot-email">邮箱</label
         ><input id="forgot-email" v-model="email" type="email" autocomplete="email" required />

@@ -33,7 +33,6 @@ async function submit() {
   <AuthShell>
     <form class="auth-form stack" @submit.prevent="submit">
       <div>
-        <p class="eyebrow">Together</p>
         <h2>加入你们的纪念簿</h2>
       </div>
       <p class="muted">邀请只能使用一次，有效期为 7 天。</p>

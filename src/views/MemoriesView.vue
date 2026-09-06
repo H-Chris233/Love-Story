@@ -129,14 +129,12 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
   <div class="page">
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Memories</p>
-        <h1>回忆时间线</h1>
-        <p class="lede">新内容默认只对你们两个人可见。</p>
+        <h1>我们的回忆</h1>
       </div>
     </header>
 
     <form class="card card-pad stack" @submit.prevent="submit">
-      <h2>写下这一页</h2>
+      <h2>写一条回忆</h2>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div class="grid grid--2">
         <div class="field">
@@ -275,7 +273,6 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
       </div>
       <div v-else-if="!loading && !loadError" class="card empty">
         <h3>时间线还是空白</h3>
-        <p>从一件小事开始，也很好。</p>
       </div>
     </section>
   </div>
