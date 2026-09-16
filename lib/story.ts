@@ -2,8 +2,60 @@ import { randomUUID } from 'node:crypto'
 
 import { parseCalendarDate } from './dates.js'
 import { DomainError, assertRequired, assertUuid, assertPatch } from './errors.js'
-import type { StoryStore } from './store/story-store.js'
+import type { GalleryCursor, MemoryCursor, StoryStore } from './store/story-store.js'
 import type { Member, Space, Visibility } from './types.js'
+
+const PRIVATE_MEMORY_PAGE_SIZE = 20
+const PUBLIC_MEMORY_PAGE_SIZE = 20
+const GALLERY_PAGE_SIZE = 30
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function decodeCursor<T>(value: string | null, validate: (input: unknown) => input is T): T | null {
+  if (value === null) return null
+  try {
+    if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error()
+    const input: unknown = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'))
+    if (!validate(input)) throw new Error()
+    return input
+  } catch {
+    throw new DomainError('VALIDATION_ERROR', '分页游标无效', 400)
+  }
+}
+
+function isMemoryCursor(input: unknown): input is MemoryCursor {
+  if (!input || typeof input !== 'object') return false
+  const value = input as Record<string, unknown>
+  if (
+    Object.keys(value).length !== 3 ||
+    typeof value.occurredOn !== 'string' ||
+    typeof value.createdAt !== 'string' ||
+    typeof value.id !== 'string' ||
+    !UUID.test(value.id)
+  )
+    return false
+  try {
+    parseCalendarDate(value.occurredOn)
+    return new Date(value.createdAt).toISOString() === value.createdAt
+  } catch {
+    return false
+  }
+}
+
+function isGalleryCursor(input: unknown): input is GalleryCursor {
+  if (!input || typeof input !== 'object') return false
+  const value = input as Record<string, unknown>
+  return (
+    Object.keys(value).length === 5 &&
+    isMemoryCursor({ occurredOn: value.occurredOn, createdAt: value.createdAt, id: value.id }) &&
+    Number.isInteger(value.sortOrder) &&
+    (value.sortOrder as number) >= 0 &&
+    typeof value.assetId === 'string' &&
+    UUID.test(value.assetId)
+  )
+}
+
+const encodeCursor = (value: object | null) =>
+  value ? Buffer.from(JSON.stringify(value)).toString('base64url') : null
 
 function assertDate(value: string, field: string): string {
   try {
@@ -48,9 +100,23 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
 
   return {
     async getPublicStory() {
-      const story = await dependencies.store.getStory(undefined, 'public')
-      if (!story) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
-      return story
+      const metadata = await dependencies.store.getStoryMetadata()
+      if (!metadata) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
+      return {
+        ...metadata,
+        anniversaries: await dependencies.store.listAnniversaries(metadata.space.id, 'public')
+      }
+    },
+    async getPublicMemories(cursor: string | null) {
+      const metadata = await dependencies.store.getStoryMetadata()
+      if (!metadata) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
+      const page = await dependencies.store.listMemoryCards(
+        metadata.space.id,
+        'public',
+        decodeCursor(cursor, isMemoryCursor),
+        PUBLIC_MEMORY_PAGE_SIZE
+      )
+      return { items: page.items, nextCursor: encodeCursor(page.nextCursor) }
     },
     async getPublicMemory(slug: string) {
       const memory = await dependencies.store.getMemoryBySlug(slug, 'public')
@@ -66,9 +132,32 @@ export function createStoryService(dependencies: { store: StoryStore; now?: () =
     },
     async getPrivateStory(member: Member, space: Space) {
       await assertMembership(member, space)
-      const story = await dependencies.store.getStory(space.id)
-      if (!story) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
-      return story
+      const metadata = await dependencies.store.getStoryMetadata(space.id)
+      if (!metadata) throw new DomainError('STORY_NOT_FOUND', '故事尚未开始', 404)
+      const memories = await dependencies.store.listMemoryCards(space.id, undefined, null, 3)
+      return { ...metadata, memories: memories.items }
+    },
+    async getMemories(member: Member, space: Space, cursor: string | null) {
+      await assertMembership(member, space)
+      const page = await dependencies.store.listMemories(
+        space.id,
+        decodeCursor(cursor, isMemoryCursor),
+        PRIVATE_MEMORY_PAGE_SIZE
+      )
+      return { items: page.items, nextCursor: encodeCursor(page.nextCursor) }
+    },
+    async getGallery(member: Member, space: Space, cursor: string | null) {
+      await assertMembership(member, space)
+      const page = await dependencies.store.listGallery(
+        space.id,
+        decodeCursor(cursor, isGalleryCursor),
+        GALLERY_PAGE_SIZE
+      )
+      return { items: page.items, nextCursor: encodeCursor(page.nextCursor) }
+    },
+    async getAnniversaries(member: Member, space: Space) {
+      await assertMembership(member, space)
+      return dependencies.store.listAnniversaries(space.id)
     },
     async createMemory(
       member: Member,

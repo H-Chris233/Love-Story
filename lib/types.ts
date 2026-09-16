@@ -48,6 +48,29 @@ export interface MemoryEntry {
   updatedAt: string
 }
 
+export interface Page<T> {
+  items: T[]
+  nextCursor: string | null
+}
+
+export interface MemoryCard {
+  id: string
+  authorName: string
+  title: string
+  body: string
+  occurredOn: string
+  slug: string
+  cover: MemoryAsset | null
+  createdAt: string
+}
+
+export interface GalleryItem {
+  asset: MemoryAsset
+  memoryId: string
+  memoryTitle: string
+  occurredOn: string
+}
+
 export interface AnniversaryEntry {
   id: string
   spaceId: string
@@ -61,9 +84,24 @@ export interface AnniversaryEntry {
   updatedAt: string
 }
 
-export interface StoryView {
+export interface StorySummary {
   space: Space
   members: Array<Pick<Member, 'id' | 'displayName'>>
-  memories: MemoryEntry[]
+  memories: MemoryCard[]
+}
+
+export interface PublicStory {
+  space: Space
+  members: Array<Pick<Member, 'id' | 'displayName'>>
   anniversaries: AnniversaryEntry[]
+}
+
+export interface ReminderIssue {
+  id: string
+  title: string
+  recipient: string
+  occurrenceDate: string
+  kind: 'advance' | 'today'
+  firstAttemptAt: string | null
+  status: 'retryable' | 'needsReview'
 }

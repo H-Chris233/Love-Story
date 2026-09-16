@@ -10,6 +10,7 @@ const busy = ref(false)
 const error = ref('')
 
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {

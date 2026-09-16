@@ -165,7 +165,7 @@ export function createApi(deps: ApiDependencies) {
         run: async () => {
           const s = await session()
           return method === 'GET'
-            ? (await deps.story.getPrivateStory(s.user, s.space)).memories
+            ? deps.story.getMemories(s.user, s.space, url.searchParams.get('cursor'))
             : deps.story.createMemory(
                 s.user,
                 s.space,
@@ -173,12 +173,19 @@ export function createApi(deps: ApiDependencies) {
               )
         }
       },
+      gallery: {
+        methods: ['GET'],
+        run: async () => {
+          const s = await session()
+          return deps.story.getGallery(s.user, s.space, url.searchParams.get('cursor'))
+        }
+      },
       anniversaries: {
         methods: ['GET', 'POST'],
         run: async () => {
           const s = await session()
           return method === 'GET'
-            ? (await deps.story.getPrivateStory(s.user, s.space)).anniversaries
+            ? deps.story.getAnniversaries(s.user, s.space)
             : deps.story.createAnniversary(
                 s.user,
                 s.space,
@@ -187,6 +194,17 @@ export function createApi(deps: ApiDependencies) {
         }
       },
       'public/story': { methods: ['GET'], run: () => deps.story.getPublicStory() },
+      'public/memories': {
+        methods: ['GET'],
+        run: () => deps.story.getPublicMemories(url.searchParams.get('cursor'))
+      },
+      'reminders/status': {
+        methods: ['GET'],
+        run: async () => {
+          const s = await session()
+          return deps.reminders.status(s.user, s.space)
+        }
+      },
       'cron/reminders': {
         methods: ['GET'],
         run: async () => {
@@ -197,7 +215,11 @@ export function createApi(deps: ApiDependencies) {
             throw new DomainError('UNAUTHENTICATED', '无效的定时任务凭据', 401)
           const cleanup = await deps.media.retryDeletions()
           await deps.store.pruneRateLimits(new Date())
-          return { ...(await deps.reminders.run()), cleanup }
+          const result = { ...(await deps.reminders.run()), cleanup }
+          return Response.json(
+            { data: result },
+            { status: result.failed || result.needsReview || cleanup.failed ? 503 : 200 }
+          )
         }
       },
       'media/upload-token': {
@@ -232,6 +254,16 @@ export function createApi(deps: ApiDependencies) {
     }
     const parts = path.split('/')
     let route = Object.hasOwn(routes, path) ? routes[path] : undefined
+    if (!route && parts.length === 3 && parts[0] === 'reminders' && parts[2] === 'retry')
+      route = {
+        methods: ['POST'],
+        run: async () => {
+          const s = await session()
+          await rateLimit(deps.store, 'reminder-retry-member', s.user.id, 10, 3600000)
+          const input = await json<{ confirmDuplicateRisk?: boolean }>(['confirmDuplicateRisk'])
+          return deps.reminders.retry(s.user, s.space, parts[1], input.confirmDuplicateRisk)
+        }
+      }
     if (
       !route &&
       parts.length === 3 &&
@@ -297,7 +329,10 @@ export function createApi(deps: ApiDependencies) {
       )
         await rateLimit(deps.store, 'auth-ip', ip, 20, 900000)
       const result = await route.run()
-      if (result instanceof Response) return result
+      if (result instanceof Response) {
+        headers.forEach((value, key) => result.headers.set(key, value))
+        return result
+      }
       return result === undefined
         ? new Response(null, { status: 204, headers })
         : Response.json({ data: result }, { headers })

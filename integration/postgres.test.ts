@@ -5,6 +5,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest'
 import * as schema from '../db/schema.js'
 import { DrizzleStore } from '../lib/store/drizzle.js'
+import { createReminderService } from '../lib/reminders.js'
 
 const connectionString = process.env.TEST_DATABASE_URL
 if (!connectionString || !['localhost', '127.0.0.1'].includes(new URL(connectionString).hostname))
@@ -196,5 +197,97 @@ describe('PostgreSQL transactions and constraints', () => {
     expect(await store.listPendingDeliveries()).toHaveLength(1)
     await other.finishDelivery(key, {}, now, newLease!)
     expect(await store.listPendingDeliveries()).toHaveLength(0)
+  })
+
+  it('keeps tied memory and gallery cursor pages stable without exposing private cards', async () => {
+    const owner = await bootstrap()
+    const created = []
+    for (let index = 0; index < 25; index++) {
+      created.push(
+        await store.createMemory({
+          space: owner.space,
+          author: owner.user,
+          title: `回忆 ${index}`,
+          body: '相同日期和创建时间',
+          occurredOn: '2026-09-05',
+          visibility: index % 2 ? 'private' : 'public',
+          slug: `memory-${index}`,
+          now
+        })
+      )
+    }
+    const first = await store.listMemories(owner.space.id, null, 20)
+    const second = await store.listMemories(owner.space.id, first.nextCursor, 20)
+    expect(first.items).toHaveLength(20)
+    expect(second.items).toHaveLength(5)
+    expect(new Set([...first.items, ...second.items].map(({ id }) => id)).size).toBe(25)
+    expect((await store.listMemoryCards(owner.space.id, 'public', null, 20)).items).toHaveLength(13)
+
+    for (const [memoryIndex, memory] of created.slice(0, 4).entries()) {
+      for (let sortOrder = 0; sortOrder < 8; sortOrder++) {
+        await store.createAsset({
+          memoryId: memory.id,
+          pathname: `gallery/${memoryIndex}/${sortOrder}`,
+          originalName: `${memoryIndex}-${sortOrder}.png`,
+          mimeType: 'image/png',
+          byteSize: 8,
+          sortOrder,
+          now
+        })
+      }
+    }
+    const galleryFirst = await store.listGallery(owner.space.id, null, 30)
+    const gallerySecond = await store.listGallery(owner.space.id, galleryFirst.nextCursor, 30)
+    const gallery = [...galleryFirst.items, ...gallerySecond.items]
+    expect(galleryFirst.items).toHaveLength(30)
+    expect(gallerySecond.items).toHaveLength(2)
+    expect(new Set(gallery.map(({ asset }) => asset.id)).size).toBe(32)
+    for (let index = 1; index < gallery.length; index++) {
+      if (gallery[index - 1].memoryId === gallery[index].memoryId) {
+        expect(gallery[index - 1].asset.sortOrder).toBeLessThan(gallery[index].asset.sortOrder)
+      }
+    }
+  })
+
+  it('lets only one instance hold a manual reminder retry lease', async () => {
+    const owner = await bootstrap()
+    const anniversary = await store.createAnniversary({
+      space: owner.space,
+      author: owner.user,
+      title: '今天',
+      originalDate: '2026-09-05',
+      reminderDays: 7,
+      visibility: 'private',
+      slug: 'manual-retry',
+      now
+    })
+    await store.enqueueDelivery(
+      {
+        anniversaryId: anniversary.id,
+        userId: owner.user.id,
+        occurrenceDate: '2026-09-05',
+        kind: 'today'
+      },
+      {
+        to: owner.user.email,
+        subject: '标题',
+        html: '正文',
+        kind: 'anniversary-reminder',
+        idempotencyKey: 'manual-once'
+      },
+      now
+    )
+    const otherStore = new DrizzleStore(drizzle(pool, { schema }))
+    let sends = 0
+    const mailer = { send: async () => void sends++ }
+    const first = createReminderService({ store, mailer })
+    const second = createReminderService({ store: otherStore, mailer })
+    const [issue] = await first.status(owner.user, owner.space, now)
+    const results = await Promise.allSettled([
+      first.retry(owner.user, owner.space, issue.id, false, now),
+      second.retry(owner.user, owner.space, issue.id, false, now)
+    ])
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1)
+    expect(sends).toBe(1)
   })
 })

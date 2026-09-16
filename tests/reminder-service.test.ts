@@ -53,4 +53,100 @@ describe('ReminderService', () => {
     ])
     expect(mailer.messages.every(({ idempotencyKey }) => idempotencyKey)).toBe(true)
   })
+
+  it('tries a failed Cron delivery three times with the original message', async () => {
+    const store = createMemoryStore()
+    const owner = await store.bootstrap({
+      username: 'owner_user',
+      storyTitle: '我们的山海日记',
+      relationshipStartedAt: '2024-01-13T14:28:46.000Z',
+      displayName: '小夏',
+      email: 'owner@example.com',
+      passwordHash: 'unused',
+      now: new Date('2026-09-16T00:00:00.000Z')
+    })
+    await store.createAnniversary({
+      space: owner.space,
+      author: owner.user,
+      title: '今天',
+      originalDate: '2026-09-16',
+      reminderDays: 7,
+      visibility: 'private',
+      slug: 'today',
+      now: new Date('2026-09-16T00:00:00.000Z')
+    })
+    const messages: string[] = []
+    const reminders = createReminderService({
+      store,
+      mailer: {
+        async send(message) {
+          messages.push(JSON.stringify(message))
+          throw new Error('temporary')
+        }
+      },
+      sleep: async () => {}
+    })
+
+    expect(await reminders.run(new Date('2026-09-16T00:00:00.000Z'))).toMatchObject({
+      sent: 0,
+      failed: 1,
+      needsReview: 0
+    })
+    expect(messages).toHaveLength(3)
+    expect(new Set(messages).size).toBe(1)
+  })
+
+  it('requires duplicate-risk confirmation after 23 hours and clears a successful retry', async () => {
+    const store = createMemoryStore()
+    const owner = await store.bootstrap({
+      username: 'owner_user',
+      storyTitle: '我们的山海日记',
+      relationshipStartedAt: '2024-01-13T14:28:46.000Z',
+      displayName: '小夏',
+      email: 'owner@example.com',
+      passwordHash: 'unused',
+      now: new Date('2026-09-16T00:00:00.000Z')
+    })
+    const anniversary = await store.createAnniversary({
+      space: owner.space,
+      author: owner.user,
+      title: '今天',
+      originalDate: '2026-09-16',
+      reminderDays: 7,
+      visibility: 'private',
+      slug: 'today',
+      now: new Date('2026-09-16T00:00:00.000Z')
+    })
+    const now = new Date('2026-09-16T00:00:00.000Z')
+    const key = {
+      anniversaryId: anniversary.id,
+      userId: owner.user.id,
+      occurrenceDate: '2026-09-16',
+      kind: 'today' as const
+    }
+    await store.enqueueDelivery(
+      key,
+      {
+        to: owner.user.email,
+        subject: '标题',
+        html: '正文',
+        kind: 'anniversary-reminder',
+        idempotencyKey: 'stable'
+      },
+      now
+    )
+    const lease = await store.claimDelivery(key, now)
+    await store.finishDelivery(key, { error: 'failed' }, now, lease!)
+    const mailer = createRecordingMailer()
+    const reminders = createReminderService({ store, mailer })
+    const later = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+    const [issue] = await reminders.status(owner.user, owner.space, later)
+    expect(issue.status).toBe('needsReview')
+    await expect(
+      reminders.retry(owner.user, owner.space, issue.id, false, later)
+    ).rejects.toMatchObject({ code: 'DUPLICATE_RISK_CONFIRMATION_REQUIRED' })
+    await reminders.retry(owner.user, owner.space, issue.id, true, later)
+    expect(mailer.messages).toHaveLength(1)
+    expect(await reminders.status(owner.user, owner.space, later)).toEqual([])
+  })
 })

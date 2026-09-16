@@ -17,6 +17,7 @@ const busy = ref(false)
 const editing = ref<string | null>(null)
 const draft = reactive({ title: '', originalDate: '', reminderDays: 7 })
 function edit(item: AnniversaryEntry) {
+  if (busy.value) return
   editing.value = item.id
   Object.assign(draft, {
     title: item.title,
@@ -25,6 +26,7 @@ function edit(item: AnniversaryEntry) {
   })
 }
 async function act(action: () => Promise<unknown>) {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {
@@ -47,6 +49,7 @@ const { load, loading, loadError } = useLoad(async () => {
   anniversaries.value = await api.anniversaries()
 })
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {
@@ -65,6 +68,7 @@ async function submit() {
   }
 }
 async function toggle(item: AnniversaryEntry) {
+  if (busy.value) return
   if (item.visibility === 'private' && !window.confirm('公开后，访客可以看到这个纪念日。继续吗？'))
     return
   await act(() =>
@@ -74,6 +78,7 @@ async function toggle(item: AnniversaryEntry) {
   )
 }
 async function remove(item: AnniversaryEntry) {
+  if (busy.value) return
   if (!window.confirm(`确定删除「${item.title}」吗？`)) return
   await act(() => api.deleteAnniversary(item.id))
 }
@@ -138,9 +143,21 @@ onMounted(load)
           >
             编辑纪念日
           </button>
-          <button class="button button--secondary" type="button" @click="toggle(item)">
+          <button
+            class="button button--secondary"
+            type="button"
+            :disabled="busy"
+            @click="toggle(item)"
+          >
             {{ item.visibility === 'public' ? '改回私密' : '公开' }}</button
-          ><button class="button button--danger" type="button" @click="remove(item)">删除</button>
+          ><button
+            class="button button--danger"
+            type="button"
+            :disabled="busy"
+            @click="remove(item)"
+          >
+            删除
+          </button>
         </div>
         <form v-if="editing === item.id" class="stack" @submit.prevent="saveEdit(item.id)">
           <label class="field"

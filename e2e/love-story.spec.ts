@@ -52,6 +52,9 @@ test('recovers failed initial session and setup checks without uncaught page err
       })
     } else await route.fallback()
   })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: '创建我们的纪念簿' })).toBeVisible()
+  await expect(page.locator('main')).toHaveCount(1)
   await page.goto('/login')
   await expect(page.getByRole('alert')).toContainText('暂时无法连接服务')
   await page.getByRole('button', { name: '重试' }).click()
@@ -153,12 +156,19 @@ test('both members edit shared memories and photos; anonymous access and reminde
     await partner.getByLabel('设置密码').fill('partner-password')
     await partner.getByRole('button', { name: '接受邀请' }).click()
     await expect(partner.getByRole('heading', { name: '山海之间' })).toBeVisible()
+    await partner.goto(`${origin}/app/settings`)
+    await expect(partner.getByText('两位成员已加入')).toBeVisible()
+    await expect(partner.getByLabel('伴侣邮箱')).toHaveCount(0)
     await page.goto('/app/memories')
     await page.getByLabel('标题', { exact: true }).fill('海边')
     await page.getByLabel('发生日期').fill('2025-05-20')
     await page.getByLabel('故事', { exact: true }).fill('第一篇')
-    await page.getByRole('button', { name: '保存回忆' }).click()
+    await page.getByRole('button', { name: '保存回忆' }).evaluate((button: HTMLButtonElement) => {
+      button.click()
+      button.click()
+    })
     await expect(page.getByRole('heading', { name: '海边', exact: true })).toBeVisible()
+    expect(app.store.state.memories).toHaveLength(1)
     await partner.goto(`${origin}/app/memories`)
     await partner.getByRole('button', { name: '编辑回忆' }).click()
     await partner.getByLabel('编辑标题').fill('海边新篇')
@@ -274,4 +284,83 @@ test('both members edit shared memories and photos; anonymous access and reminde
     await partnerContext.close()
     await visitorContext.close()
   }
+})
+
+test('loads private memories and gallery by page and exposes retryable reminder status', async ({
+  page
+}) => {
+  const app = createTestApplication(origin)
+  const owner = await app.auth.bootstrap({
+    username: 'page_owner',
+    email: 'owner@example.com',
+    partnerEmail: 'partner@example.com',
+    displayName: '甲',
+    password: 'secure-password',
+    storyTitle: '分页测试',
+    relationshipStartedAt: '2024-01-01T00:00:00Z'
+  })
+  const memories = []
+  for (let index = 0; index < 21; index++) {
+    memories.push(
+      await app.story.createMemory(owner.user, owner.space, {
+        title: `回忆 ${index}`,
+        body: '正文',
+        occurredOn: '2025-01-01'
+      })
+    )
+  }
+  for (const [memoryIndex, memory] of memories.slice(0, 4).entries()) {
+    for (let sortOrder = 0; sortOrder < 8; sortOrder++) {
+      await app.store.createAsset({
+        memoryId: memory.id,
+        pathname: `gallery/${memoryIndex}/${sortOrder}`,
+        originalName: `${memoryIndex}-${sortOrder}.png`,
+        mimeType: 'image/png',
+        byteSize: 8,
+        sortOrder,
+        now: new Date()
+      })
+    }
+  }
+  const anniversary = await app.story.createAnniversary(owner.user, owner.space, {
+    title: '待重试提醒',
+    originalDate: '2025-01-01'
+  })
+  await app.store.enqueueDelivery(
+    {
+      anniversaryId: anniversary.id,
+      userId: owner.user.id,
+      occurrenceDate: '2027-01-01',
+      kind: 'advance'
+    },
+    {
+      to: owner.user.email,
+      subject: '标题',
+      html: '正文',
+      kind: 'anniversary-reminder',
+      idempotencyKey: 'e2e-retry'
+    },
+    new Date()
+  )
+  await bridge(page.context(), app)
+  await page.goto('/login')
+  await page.getByLabel('用户名或邮箱').fill('page_owner')
+  await page.getByLabel('密码', { exact: true }).fill('secure-password')
+  await page.getByRole('button', { name: '登录', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '分页测试' })).toBeVisible()
+
+  await page.goto('/app/memories')
+  await expect(page.locator('article.memory-card')).toHaveCount(20)
+  await page.getByRole('button', { name: '加载更多' }).click()
+  await expect(page.locator('article.memory-card')).toHaveCount(21)
+
+  await page.goto('/app/gallery')
+  await expect(page.locator('.gallery figure')).toHaveCount(30)
+  await page.getByRole('button', { name: '加载更多' }).click()
+  await expect(page.locator('.gallery figure')).toHaveCount(32)
+
+  await page.goto('/app/settings')
+  await expect(page.getByRole('heading', { name: '待重试提醒' })).toBeVisible()
+  await page.getByRole('button', { name: '重试发送' }).click()
+  await expect(page.getByText('当前没有需要处理的提醒')).toBeVisible()
 })

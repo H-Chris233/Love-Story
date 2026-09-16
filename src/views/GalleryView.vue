@@ -1,19 +1,36 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 
 import { api } from '@/services/api'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
-import type { StoryView } from '@/types/domain'
+import type { GalleryItem } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
-const story = ref<StoryView | null>(null)
-const photos = computed(() =>
-  (story.value?.memories ?? []).flatMap((memory) =>
-    memory.assets.map((asset) => ({ asset, memory }))
-  )
-)
-const { load, loading, loadError } = useLoad(async () => (story.value = await api.story()))
+const photos = ref<GalleryItem[]>([])
+const nextCursor = ref<string | null>(null)
+const moreLoading = ref(false)
+const moreError = ref('')
+const { load, loading, loadError } = useLoad(async () => {
+  const page = await api.gallery()
+  photos.value = page.items
+  nextCursor.value = page.nextCursor
+  moreError.value = ''
+})
+async function loadMore() {
+  if (!nextCursor.value || moreLoading.value) return
+  moreLoading.value = true
+  moreError.value = ''
+  try {
+    const page = await api.gallery(nextCursor.value)
+    photos.value.push(...page.items)
+    nextCursor.value = page.nextCursor
+  } catch {
+    moreError.value = '暂时无法加载更多照片'
+  } finally {
+    moreLoading.value = false
+  }
+}
 onMounted(load)
 </script>
 
@@ -27,9 +44,14 @@ onMounted(load)
     <LoadState :loading="loading" :error="loadError" @retry="load" />
     <div v-if="photos.length" class="gallery">
       <figure v-for="photo in photos" :key="photo.asset.id">
-        <img :src="photo.asset.url" :alt="photo.asset.originalName" />
+        <img
+          :src="photo.asset.url"
+          :alt="photo.asset.originalName"
+          loading="lazy"
+          decoding="async"
+        />
         <figcaption>
-          {{ photo.memory.title }} · {{ formatShanghaiDate(photo.memory.occurredOn) }}
+          {{ photo.memoryTitle }} · {{ formatShanghaiDate(photo.occurredOn) }}
         </figcaption>
       </figure>
     </div>
@@ -37,6 +59,17 @@ onMounted(load)
       <h3>还没有照片</h3>
       <p>在回忆页面添加照片后，它们会自动出现在这里。</p>
       <RouterLink class="button button--secondary" to="/app/memories">去写回忆</RouterLink>
+    </div>
+    <div v-if="nextCursor || moreError" class="stack" style="justify-items: center">
+      <p v-if="moreError" class="form-error" role="alert">{{ moreError }}</p>
+      <button
+        class="button button--secondary"
+        type="button"
+        :disabled="moreLoading"
+        @click="loadMore"
+      >
+        {{ moreLoading ? '加载中…' : moreError ? '重试加载' : '加载更多' }}
+      </button>
     </div>
   </div>
 </template>

@@ -6,16 +6,17 @@ import { DELIVERY_LEASE_MS, DELIVERY_RETRY_MS } from './reminder-store.js'
 import { DomainError } from '../errors.js'
 import type {
   AnniversaryEntry,
+  GalleryItem,
   Member,
+  MemoryCard,
   MemoryEntry,
   SessionView,
-  Space,
-  StoryView
+  Space
 } from '../types.js'
 import type { AuthStore, BootstrapRecord, InvitationRecord } from './auth-store.js'
 import type { MediaStore, StoredAsset } from './media-store.js'
 import type { ReminderDeliveryKey, ReminderStore } from './reminder-store.js'
-import type { StoryStore } from './story-store.js'
+import type { GalleryCursor, MemoryCursor, StoryStore } from './story-store.js'
 
 interface UserRecord extends Member {
   passwordHash: string
@@ -40,11 +41,43 @@ interface PasswordResetRecord {
 }
 
 interface MemoryDelivery extends ReminderDeliveryKey {
+  id: string
   status: 'sending' | 'sent' | 'failed'
   message: MailMessage | null
   firstAttemptAt: Date | null
   updatedAt: Date
   leaseToken: string | null
+}
+
+function afterMemoryCursor(memory: MemoryEntry, cursor: MemoryCursor | null): boolean {
+  return (
+    !cursor ||
+    memory.occurredOn < cursor.occurredOn ||
+    (memory.occurredOn === cursor.occurredOn && memory.createdAt < cursor.createdAt) ||
+    (memory.occurredOn === cursor.occurredOn &&
+      memory.createdAt === cursor.createdAt &&
+      memory.id < cursor.id)
+  )
+}
+
+function memoryCursor(memory: MemoryEntry): MemoryCursor {
+  return { occurredOn: memory.occurredOn, createdAt: memory.createdAt, id: memory.id }
+}
+
+function memoryCard(memory: MemoryEntry): MemoryCard {
+  return {
+    id: memory.id,
+    authorName: memory.authorName,
+    title: memory.title,
+    body: memory.body,
+    occurredOn: memory.occurredOn,
+    slug: memory.slug,
+    cover:
+      memory.assets
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))[0] ?? null,
+    createdAt: memory.createdAt
+  }
 }
 
 export interface MemoryStore
@@ -352,7 +385,7 @@ export function createMemoryStore(): MemoryStore {
         ) ?? null
       )
     },
-    async getStory(spaceId, visibility) {
+    async getStoryMetadata(spaceId) {
       const space = spaceId
         ? state.spaces.find((candidate) => candidate.id === spaceId)
         : state.spaces[0]
@@ -360,15 +393,107 @@ export function createMemoryStore(): MemoryStore {
       const members = state.users
         .filter((candidate) => candidate.spaceId === space.id)
         .map(({ id, displayName }) => ({ id, displayName }))
-      const memories = state.memories.filter(
-        (candidate) =>
-          candidate.spaceId === space.id && (!visibility || candidate.visibility === visibility)
-      )
-      const anniversaries = state.anniversaries.filter(
-        (candidate) =>
-          candidate.spaceId === space.id && (!visibility || candidate.visibility === visibility)
-      )
-      return { space, members, memories, anniversaries } satisfies StoryView
+      return { space, members }
+    },
+    async listMemories(spaceId, cursor, limit) {
+      const rows = state.memories
+        .filter((memory) => memory.spaceId === spaceId && afterMemoryCursor(memory, cursor))
+        .sort(
+          (a, b) =>
+            b.occurredOn.localeCompare(a.occurredOn) ||
+            b.createdAt.localeCompare(a.createdAt) ||
+            b.id.localeCompare(a.id)
+        )
+      const items = rows.slice(0, limit)
+      return {
+        items,
+        nextCursor: rows.length > limit ? memoryCursor(items.at(-1)!) : null
+      }
+    },
+    async listMemoryCards(spaceId, visibility, cursor, limit) {
+      const rows = state.memories
+        .filter(
+          (memory) =>
+            memory.spaceId === spaceId &&
+            (!visibility || memory.visibility === visibility) &&
+            afterMemoryCursor(memory, cursor)
+        )
+        .sort(
+          (a, b) =>
+            b.occurredOn.localeCompare(a.occurredOn) ||
+            b.createdAt.localeCompare(a.createdAt) ||
+            b.id.localeCompare(a.id)
+        )
+      const items = rows.slice(0, limit)
+      return {
+        items: items.map(memoryCard),
+        nextCursor: rows.length > limit ? memoryCursor(items.at(-1)!) : null
+      }
+    },
+    async listGallery(spaceId, cursor, limit) {
+      const rows = state.memories
+        .filter((memory) => memory.spaceId === spaceId)
+        .flatMap((memory) =>
+          memory.assets.map((asset) => ({
+            asset,
+            memoryId: memory.id,
+            memoryTitle: memory.title,
+            occurredOn: memory.occurredOn,
+            createdAt: memory.createdAt
+          }))
+        )
+        .filter(
+          (item) =>
+            !cursor ||
+            item.occurredOn < cursor.occurredOn ||
+            (item.occurredOn === cursor.occurredOn && item.createdAt < cursor.createdAt) ||
+            (item.occurredOn === cursor.occurredOn &&
+              item.createdAt === cursor.createdAt &&
+              item.memoryId < cursor.id) ||
+            (item.occurredOn === cursor.occurredOn &&
+              item.createdAt === cursor.createdAt &&
+              item.memoryId === cursor.id &&
+              item.asset.sortOrder > cursor.sortOrder) ||
+            (item.occurredOn === cursor.occurredOn &&
+              item.createdAt === cursor.createdAt &&
+              item.memoryId === cursor.id &&
+              item.asset.sortOrder === cursor.sortOrder &&
+              item.asset.id > cursor.assetId)
+        )
+        .sort(
+          (a, b) =>
+            b.occurredOn.localeCompare(a.occurredOn) ||
+            b.createdAt.localeCompare(a.createdAt) ||
+            b.memoryId.localeCompare(a.memoryId) ||
+            a.asset.sortOrder - b.asset.sortOrder ||
+            a.asset.id.localeCompare(b.asset.id)
+        )
+      const page = rows.slice(0, limit)
+      const last = page.at(-1)
+      return {
+        items: page.map(
+          ({ asset, memoryId, memoryTitle, occurredOn }) =>
+            ({ asset, memoryId, memoryTitle, occurredOn }) satisfies GalleryItem
+        ),
+        nextCursor:
+          rows.length > limit && last
+            ? ({
+                occurredOn: last.occurredOn,
+                createdAt: last.createdAt,
+                id: last.memoryId,
+                sortOrder: last.asset.sortOrder,
+                assetId: last.asset.id
+              } satisfies GalleryCursor)
+            : null
+      }
+    },
+    async listAnniversaries(spaceId, visibility) {
+      return state.anniversaries
+        .filter(
+          (candidate) =>
+            candidate.spaceId === spaceId && (!visibility || candidate.visibility === visibility)
+        )
+        .sort((a, b) => a.originalDate.localeCompare(b.originalDate))
     },
     async createAnniversary(input) {
       const timestamp = input.now.toISOString()
@@ -509,6 +634,7 @@ export function createMemoryStore(): MemoryStore {
         )
       )
         state.deliveries.push({
+          id: randomUUID(),
           ...key,
           message: structuredClone(message),
           firstAttemptAt: null,
@@ -520,7 +646,32 @@ export function createMemoryStore(): MemoryStore {
     async listPendingDeliveries() {
       return state.deliveries.filter((row) => row.status !== 'sent')
     },
-    async claimDelivery(key, now) {
+    async listReminderIssues(spaceId) {
+      return state.deliveries
+        .filter((delivery) => {
+          const anniversary = state.anniversaries.find(
+            (candidate) => candidate.id === delivery.anniversaryId
+          )
+          const user = state.users.find((candidate) => candidate.id === delivery.userId)
+          return (
+            anniversary?.spaceId === spaceId &&
+            user?.spaceId === spaceId &&
+            delivery.status !== 'sent'
+          )
+        })
+        .map((delivery) => ({
+          ...delivery,
+          status: delivery.status === 'sending' ? 'sending' : 'failed',
+          title: state.anniversaries.find((item) => item.id === delivery.anniversaryId)!.title,
+          recipient: state.users.find((user) => user.id === delivery.userId)!.displayName
+        }))
+    },
+    async getReminderIssue(spaceId, deliveryId) {
+      return (
+        (await this.listReminderIssues(spaceId)).find((issue) => issue.id === deliveryId) ?? null
+      )
+    },
+    async claimDelivery(key, now, allowExpired = false) {
       const existing = state.deliveries.find(
         (candidate) =>
           candidate.anniversaryId === key.anniversaryId &&
@@ -530,6 +681,7 @@ export function createMemoryStore(): MemoryStore {
       )
       if (!existing || !existing.message || existing.status === 'sent') return null
       if (
+        !allowExpired &&
         existing.firstAttemptAt &&
         now.getTime() - existing.firstAttemptAt.getTime() >= DELIVERY_RETRY_MS
       )

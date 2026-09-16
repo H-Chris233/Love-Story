@@ -5,11 +5,11 @@ import LoveTimer from '@/components/LoveTimer.vue'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
 import { api } from '@/services/api'
-import type { StoryView } from '@/types/domain'
+import type { StorySummary } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
-const story = ref<StoryView | null>(null)
-const latest = computed(() => story.value?.memories.slice(0, 3) ?? [])
+const story = ref<StorySummary | null>(null)
+const latest = computed(() => story.value?.memories ?? [])
 
 const { load, loading, loadError } = useLoad(async () => (story.value = await api.story()))
 onMounted(load)
@@ -52,10 +52,12 @@ onMounted(load)
       <div v-if="latest.length" class="grid grid--3">
         <article v-for="memory in latest" :key="memory.id" class="card memory-card">
           <img
-            v-if="memory.assets[0]"
+            v-if="memory.cover"
             class="memory-card__photo"
-            :src="memory.assets[0].url"
+            :src="memory.cover.url"
             :alt="memory.title"
+            loading="lazy"
+            decoding="async"
           />
           <div class="memory-card__body">
             <p class="memory-card__meta">{{ formatShanghaiDate(memory.occurredOn) }}</p>

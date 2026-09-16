@@ -14,6 +14,7 @@ const error = ref('')
 const busy = ref(false)
 
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {

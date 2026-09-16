@@ -26,7 +26,7 @@ watch(() => route.params.slug, load, { immediate: true })
 </script>
 
 <template>
-  <main class="public-hero">
+  <section class="public-hero">
     <div class="public-hero__inner stack">
       <RouterLink to="/" class="muted">← 返回故事</RouterLink>
       <LoadState :loading="loading" :error="loadError" @retry="load" />
@@ -42,5 +42,5 @@ watch(() => route.params.slug, load, { immediate: true })
         <p class="lede">{{ error }}</p></template
       >
     </div>
-  </main>
+  </section>
 </template>

@@ -26,7 +26,7 @@ watch(() => route.params.slug, load, { immediate: true })
 </script>
 
 <template>
-  <main class="public-content page" style="padding-top: 70px">
+  <div class="public-content page" style="padding-top: 70px">
     <RouterLink to="/" class="muted">← 返回故事</RouterLink>
     <LoadState :loading="loading" :error="loadError" @retry="load" />
     <div v-if="error" class="card empty">
@@ -39,11 +39,16 @@ watch(() => route.params.slug, load, { immediate: true })
         <h1>{{ memory.title }}</h1>
       </header>
       <div v-if="memory.assets.length" class="gallery">
-        <figure v-for="asset in memory.assets" :key="asset.id">
-          <img :src="asset.url" :alt="asset.originalName" />
+        <figure v-for="(asset, index) in memory.assets" :key="asset.id">
+          <img
+            :src="asset.url"
+            :alt="asset.originalName"
+            :loading="index === 0 ? 'eager' : 'lazy'"
+            decoding="async"
+          />
         </figure>
       </div>
       <p style="white-space: pre-wrap">{{ memory.body }}</p>
     </article>
-  </main>
+  </div>
 </template>

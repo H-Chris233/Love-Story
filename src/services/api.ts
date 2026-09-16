@@ -2,11 +2,16 @@ import { put as putClientBlob } from '@vercel/blob/client'
 
 import type {
   AnniversaryEntry,
+  GalleryItem,
   MemoryAsset,
+  MemoryCard,
   MemoryEntry,
+  Page,
+  PublicStory,
+  ReminderIssue,
   SessionView,
   Space,
-  StoryView,
+  StorySummary,
   Visibility
 } from '@/types/domain'
 
@@ -51,7 +56,11 @@ const json = (value: unknown) => JSON.stringify(value)
 
 export const api = {
   status: () => request<{ initialized: boolean }>('/api/system/status'),
-  publicStory: () => request<StoryView>('/api/public/story'),
+  publicStory: () => request<PublicStory>('/api/public/story'),
+  publicMemories: (cursor?: string | null) =>
+    request<Page<MemoryCard>>(
+      `/api/public/memories${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`
+    ),
   publicMemory: (slug: string) => request<MemoryEntry>(`/api/public/memories/${slug}`),
   publicAnniversary: (slug: string) =>
     request<AnniversaryEntry>(`/api/public/anniversaries/${slug}`),
@@ -100,10 +109,17 @@ export const api = {
       method: 'POST',
       body: json({ token, password })
     }),
-  story: () => request<StoryView>('/api/story'),
+  story: () => request<StorySummary>('/api/story'),
   updateSettings: (patch: Partial<Pick<Space, 'title' | 'intro' | 'relationshipStartedAt'>>) =>
     request<Space>('/api/story/settings', { method: 'PATCH', body: json(patch) }),
-  memories: () => request<MemoryEntry[]>('/api/memories'),
+  memories: (cursor?: string | null) =>
+    request<Page<MemoryEntry>>(
+      `/api/memories${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`
+    ),
+  gallery: (cursor?: string | null) =>
+    request<Page<GalleryItem>>(
+      `/api/gallery${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`
+    ),
   createMemory: (input: {
     title: string
     body: string
@@ -154,5 +170,12 @@ export const api = {
       method: 'PATCH',
       body: json(patch)
     }),
-  deleteAnniversary: (id: string) => request<void>(`/api/anniversaries/${id}`, { method: 'DELETE' })
+  deleteAnniversary: (id: string) =>
+    request<void>(`/api/anniversaries/${id}`, { method: 'DELETE' }),
+  reminderStatus: () => request<ReminderIssue[]>('/api/reminders/status'),
+  retryReminder: (id: string, confirmDuplicateRisk = false) =>
+    request<{ sent: true }>(`/api/reminders/${id}/retry`, {
+      method: 'POST',
+      body: json({ confirmDuplicateRisk })
+    })
 }

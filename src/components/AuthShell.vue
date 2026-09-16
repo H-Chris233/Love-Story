@@ -8,6 +8,6 @@
       <img class="auth-art__image" src="/together-rabbits.png" alt="" width="320" height="320" />
       <h1>和你，<br />每一天都算数。</h1>
     </aside>
-    <main class="auth-panel"><slot /></main>
+    <div class="auth-panel"><slot /></div>
   </div>
 </template>

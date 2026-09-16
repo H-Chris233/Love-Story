@@ -52,6 +52,7 @@ describe('real API handler', () => {
         await call('memories', 'POST', { title: '海边', body: '故事', occurredOn: '2025-01-01' })
       ).json()
     ).data
+    expect((await call('memories?cursor=bad!cursor')).status).toBe(400)
     for (const patch of [
       {},
       { authorId: 'fake' },
@@ -164,5 +165,56 @@ describe('real API handler', () => {
     const token = /reset-password\/([^"<]+)/.exec(app.mailer.messages.at(-1)!.html)![1]
     await app.auth.resetPassword({ token, password: 'changed-password' })
     expect(await app.auth.getSession(owner.sessionToken)).toBeNull()
+  })
+
+  it('returns 503 for unresolved Cron work and rate-limits manual retries per member', async () => {
+    const app = createTestApplication()
+    const owner = await app.auth.bootstrap(input)
+    const anniversary = await app.story.createAnniversary(owner.user, owner.space, {
+      title: '今天',
+      originalDate: '2026-09-16'
+    })
+    const now = new Date('2026-09-16T00:00:00.000Z')
+    await app.store.enqueueDelivery(
+      {
+        anniversaryId: anniversary.id,
+        userId: owner.user.id,
+        occurrenceDate: '2026-09-16',
+        kind: 'today'
+      },
+      {
+        to: owner.user.email,
+        subject: '标题',
+        html: '正文',
+        kind: 'anniversary-reminder',
+        idempotencyKey: 'stable'
+      },
+      now
+    )
+    const send = vi.spyOn(app.mailer, 'send').mockRejectedValue(new Error('provider unavailable'))
+    const cron = await app.handler(
+      new Request('http://localhost:5173/api/cron/reminders', {
+        headers: { authorization: 'Bearer test-cron' }
+      })
+    )
+    expect(cron.status).toBe(503)
+    expect(await cron.json()).toMatchObject({ data: { failed: 1, needsReview: 0 } })
+    expect(send).toHaveBeenCalledTimes(3)
+
+    const [issue] = await app.store.listReminderIssues(owner.space.id)
+    const retry = () =>
+      app.handler(
+        new Request(`http://localhost:5173/api/reminders/${issue.id}/retry`, {
+          method: 'POST',
+          headers: {
+            origin: 'http://localhost:5173',
+            cookie: `love_story_session=${owner.sessionToken}`,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({ confirmDuplicateRisk: false })
+        })
+      )
+    for (let attempt = 0; attempt < 10; attempt++) expect((await retry()).status).toBe(503)
+    expect((await retry()).status).toBe(429)
   })
 })

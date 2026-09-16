@@ -15,6 +15,7 @@ const route = useRoute()
 const router = useRouter()
 
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {

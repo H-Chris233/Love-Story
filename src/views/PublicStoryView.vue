@@ -5,15 +5,23 @@ import LoveTimer from '@/components/LoveTimer.vue'
 import LoadState from '@/components/LoadState.vue'
 import { useLoad } from '@/utils/load'
 import { ApiError, api } from '@/services/api'
-import type { StoryView } from '@/types/domain'
+import type { MemoryCard, PublicStory } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
-const story = ref<StoryView | null>(null)
+const story = ref<PublicStory | null>(null)
+const memories = ref<MemoryCard[]>([])
+const nextCursor = ref<string | null>(null)
+const moreLoading = ref(false)
+const moreError = ref('')
 const initialized = ref(true)
 
 const { load, loading, loadError } = useLoad(async () => {
   try {
     story.value = await api.publicStory()
+    const page = await api.publicMemories()
+    memories.value = page.items
+    nextCursor.value = page.nextCursor
+    moreError.value = ''
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       initialized.value = (await api.status()).initialized
@@ -22,6 +30,20 @@ const { load, loading, loadError } = useLoad(async () => {
     }
   }
 })
+async function loadMore() {
+  if (!nextCursor.value || moreLoading.value) return
+  moreLoading.value = true
+  moreError.value = ''
+  try {
+    const page = await api.publicMemories(nextCursor.value)
+    memories.value.push(...page.items)
+    nextCursor.value = page.nextCursor
+  } catch {
+    moreError.value = '暂时无法加载更多回忆'
+  } finally {
+    moreLoading.value = false
+  }
+}
 onMounted(load)
 </script>
 
@@ -62,13 +84,15 @@ onMounted(load)
         <div class="page-heading">
           <h2>公开回忆</h2>
         </div>
-        <div v-if="story.memories.length" class="grid grid--2">
-          <article v-for="memory in story.memories" :key="memory.id" class="card memory-card">
+        <div v-if="memories.length" class="grid grid--2">
+          <article v-for="memory in memories" :key="memory.id" class="card memory-card">
             <img
-              v-if="memory.assets[0]"
+              v-if="memory.cover"
               class="memory-card__photo"
-              :src="memory.assets[0].url"
+              :src="memory.cover.url"
               :alt="memory.title"
+              loading="lazy"
+              decoding="async"
             />
             <div class="memory-card__body">
               <div class="memory-card__meta">
@@ -83,6 +107,17 @@ onMounted(load)
           </article>
         </div>
         <div v-else class="card empty"><p>还没有公开的回忆。</p></div>
+        <div v-if="nextCursor || moreError" class="stack" style="justify-items: center">
+          <p v-if="moreError" class="form-error" role="alert">{{ moreError }}</p>
+          <button
+            class="button button--secondary"
+            type="button"
+            :disabled="moreLoading"
+            @click="loadMore"
+          >
+            {{ moreLoading ? '加载中…' : moreError ? '重试加载' : '加载更多' }}
+          </button>
+        </div>
       </section>
 
       <section v-if="story.anniversaries.length" class="page">

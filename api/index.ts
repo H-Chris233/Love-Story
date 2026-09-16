@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client'
 import { createApi } from '../lib/api.js'
-import { runtime } from '../lib/runtime.js'
+import { appOrigin, cronSecret, runtime } from '../lib/runtime.js'
 import { DomainError } from '../lib/errors.js'
 export default {
   fetch: createApi({
@@ -10,8 +10,8 @@ export default {
       process.env.VERCEL
         ? request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
         : 'local',
-    appOrigin: process.env.APP_ORIGIN!,
-    cronSecret: process.env.CRON_SECRET!,
+    appOrigin,
+    cronSecret,
     async uploadToken(memoryId, declaredType) {
       const extensions: Record<string, string> = {
         'image/jpeg': 'jpg',

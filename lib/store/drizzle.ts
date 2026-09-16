@@ -22,18 +22,19 @@ import {
 import { DomainError } from '../errors.js'
 import type {
   AnniversaryEntry,
+  GalleryItem,
   Member,
   MemoryAsset,
+  MemoryCard,
   MemoryEntry,
   SessionView,
   Space,
-  StoryView,
   Visibility
 } from '../types.js'
 import type { AuthStore, BootstrapRecord, InvitationRecord } from './auth-store.js'
 import type { MediaStore, StoredAsset } from './media-store.js'
 import type { ReminderCandidate, ReminderDeliveryKey, ReminderStore } from './reminder-store.js'
-import type { StoryStore } from './story-store.js'
+import type { GalleryCursor, MemoryCursor, StoryStore } from './story-store.js'
 
 type Database = PgDatabase<PgQueryResultHKT, typeof schema>
 type SpaceRow = typeof spaces.$inferSelect
@@ -430,7 +431,9 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
     return row ? this.toAnniversary(row) : null
   }
 
-  async getStory(spaceId?: string, visibility?: Visibility): Promise<StoryView | null> {
+  async getStoryMetadata(
+    spaceId?: string
+  ): Promise<{ space: Space; members: Array<Pick<Member, 'id' | 'displayName'>> } | null> {
     const [spaceRow] = spaceId
       ? await this.db.select().from(spaces).where(eq(spaces.id, spaceId)).limit(1)
       : await this.db.select().from(spaces).limit(1)
@@ -442,35 +445,174 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
       .innerJoin(users, eq(users.id, memberships.userId))
       .where(eq(memberships.spaceId, spaceRow.id))
       .orderBy(asc(memberships.position))
-    const memoryRows = await this.db
+    return { space: toSpace(spaceRow), members: memberRows }
+  }
+
+  private queryMemories(
+    spaceId: string,
+    visibility: Visibility | undefined,
+    cursor: MemoryCursor | null,
+    limit: number
+  ) {
+    return this.db
       .select({ memory: memories, authorName: users.displayName })
       .from(memories)
       .innerJoin(users, eq(users.id, memories.authorId))
       .where(
-        visibility
-          ? and(eq(memories.spaceId, spaceRow.id), eq(memories.visibility, visibility))
-          : eq(memories.spaceId, spaceRow.id)
+        and(
+          eq(memories.spaceId, spaceId),
+          visibility ? eq(memories.visibility, visibility) : undefined,
+          cursor
+            ? or(
+                lt(memories.occurredOn, cursor.occurredOn),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  lt(memories.createdAt, new Date(cursor.createdAt))
+                ),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  eq(memories.createdAt, new Date(cursor.createdAt)),
+                  lt(memories.id, cursor.id)
+                )
+              )
+            : undefined
+        )
       )
-      .orderBy(desc(memories.occurredOn), desc(memories.createdAt))
-    const media = await this.loadAssets(memoryRows.map(({ memory }) => memory.id))
-    const anniversaryRows = await this.db
+      .orderBy(desc(memories.occurredOn), desc(memories.createdAt), desc(memories.id))
+      .limit(limit + 1)
+  }
+
+  async listMemories(spaceId: string, cursor: MemoryCursor | null, limit: number) {
+    const rows = await this.queryMemories(spaceId, undefined, cursor, limit)
+    const pageRows = rows.slice(0, limit)
+    const media = await this.loadAssets(pageRows.map(({ memory }) => memory.id))
+    const items = pageRows.map(({ memory, authorName }) =>
+      this.toMemory(memory, authorName, media.get(memory.id) ?? [])
+    )
+    return {
+      items,
+      nextCursor: rows.length > limit ? this.toMemoryCursor(pageRows.at(-1)!.memory) : null
+    }
+  }
+
+  async listMemoryCards(
+    spaceId: string,
+    visibility: Visibility | undefined,
+    cursor: MemoryCursor | null,
+    limit: number
+  ) {
+    const rows = await this.queryMemories(spaceId, visibility, cursor, limit)
+    const pageRows = rows.slice(0, limit)
+    const media = await this.loadAssets(pageRows.map(({ memory }) => memory.id))
+    const items: MemoryCard[] = pageRows.map(({ memory, authorName }) => ({
+      id: memory.id,
+      authorName,
+      title: memory.title,
+      body: memory.body,
+      occurredOn: memory.occurredOn,
+      slug: memory.slug,
+      cover: media.get(memory.id)?.[0] ?? null,
+      createdAt: memory.createdAt.toISOString()
+    }))
+    return {
+      items,
+      nextCursor: rows.length > limit ? this.toMemoryCursor(pageRows.at(-1)!.memory) : null
+    }
+  }
+
+  async listGallery(spaceId: string, cursor: GalleryCursor | null, limit: number) {
+    const rows = await this.db
+      .select({
+        asset: assets,
+        memoryId: memories.id,
+        memoryTitle: memories.title,
+        occurredOn: memories.occurredOn,
+        createdAt: memories.createdAt
+      })
+      .from(assets)
+      .innerJoin(memories, eq(memories.id, assets.memoryId))
+      .where(
+        and(
+          eq(memories.spaceId, spaceId),
+          cursor
+            ? or(
+                lt(memories.occurredOn, cursor.occurredOn),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  lt(memories.createdAt, new Date(cursor.createdAt))
+                ),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  eq(memories.createdAt, new Date(cursor.createdAt)),
+                  lt(memories.id, cursor.id)
+                ),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  eq(memories.createdAt, new Date(cursor.createdAt)),
+                  eq(memories.id, cursor.id),
+                  gt(assets.sortOrder, cursor.sortOrder)
+                ),
+                and(
+                  eq(memories.occurredOn, cursor.occurredOn),
+                  eq(memories.createdAt, new Date(cursor.createdAt)),
+                  eq(memories.id, cursor.id),
+                  eq(assets.sortOrder, cursor.sortOrder),
+                  gt(assets.id, cursor.assetId)
+                )
+              )
+            : undefined
+        )
+      )
+      .orderBy(
+        desc(memories.occurredOn),
+        desc(memories.createdAt),
+        desc(memories.id),
+        asc(assets.sortOrder),
+        asc(assets.id)
+      )
+      .limit(limit + 1)
+    const pageRows = rows.slice(0, limit)
+    const items: GalleryItem[] = pageRows.map((row) => ({
+      asset: {
+        id: row.asset.id,
+        memoryId: row.asset.memoryId,
+        originalName: row.asset.originalName,
+        mimeType: row.asset.mimeType,
+        byteSize: row.asset.byteSize,
+        sortOrder: row.asset.sortOrder,
+        url: `/api/media/${row.asset.id}`
+      },
+      memoryId: row.memoryId,
+      memoryTitle: row.memoryTitle,
+      occurredOn: row.occurredOn
+    }))
+    const last = pageRows.at(-1)
+    return {
+      items,
+      nextCursor:
+        rows.length > limit && last
+          ? {
+              occurredOn: last.occurredOn,
+              createdAt: last.createdAt.toISOString(),
+              id: last.memoryId,
+              sortOrder: last.asset.sortOrder,
+              assetId: last.asset.id
+            }
+          : null
+    }
+  }
+
+  async listAnniversaries(spaceId: string, visibility?: Visibility): Promise<AnniversaryEntry[]> {
+    const rows = await this.db
       .select()
       .from(anniversaries)
       .where(
         visibility
-          ? and(eq(anniversaries.spaceId, spaceRow.id), eq(anniversaries.visibility, visibility))
-          : eq(anniversaries.spaceId, spaceRow.id)
+          ? and(eq(anniversaries.spaceId, spaceId), eq(anniversaries.visibility, visibility))
+          : eq(anniversaries.spaceId, spaceId)
       )
       .orderBy(asc(anniversaries.originalDate))
-
-    return {
-      space: toSpace(spaceRow),
-      members: memberRows,
-      memories: memoryRows.map(({ memory, authorName }) =>
-        this.toMemory(memory, authorName, media.get(memory.id) ?? [])
-      ),
-      anniversaries: anniversaryRows.map((row) => this.toAnniversary(row))
-    }
+    return rows.map((row) => this.toAnniversary(row))
   }
 
   async createAnniversary(
@@ -742,7 +884,44 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
       .where(ne(notificationDeliveries.status, 'sent'))
       .orderBy(asc(notificationDeliveries.createdAt))
   }
-  async claimDelivery(key: ReminderDeliveryKey, now: Date): Promise<string | null> {
+  async listReminderIssues(spaceId: string) {
+    return this.db
+      .select({
+        id: notificationDeliveries.id,
+        anniversaryId: notificationDeliveries.anniversaryId,
+        userId: notificationDeliveries.userId,
+        occurrenceDate: notificationDeliveries.occurrenceDate,
+        kind: notificationDeliveries.kind,
+        status: notificationDeliveries.status,
+        message: notificationDeliveries.message,
+        firstAttemptAt: notificationDeliveries.firstAttemptAt,
+        title: anniversaries.title,
+        recipient: users.displayName
+      })
+      .from(notificationDeliveries)
+      .innerJoin(anniversaries, eq(anniversaries.id, notificationDeliveries.anniversaryId))
+      .innerJoin(users, eq(users.id, notificationDeliveries.userId))
+      .innerJoin(
+        memberships,
+        and(
+          eq(memberships.userId, notificationDeliveries.userId),
+          eq(memberships.spaceId, anniversaries.spaceId)
+        )
+      )
+      .where(and(eq(anniversaries.spaceId, spaceId), ne(notificationDeliveries.status, 'sent')))
+      .orderBy(asc(notificationDeliveries.createdAt))
+  }
+
+  async getReminderIssue(spaceId: string, deliveryId: string) {
+    const rows = await this.listReminderIssues(spaceId)
+    return rows.find((row) => row.id === deliveryId) ?? null
+  }
+
+  async claimDelivery(
+    key: ReminderDeliveryKey,
+    now: Date,
+    allowExpired = false
+  ): Promise<string | null> {
     return await this.db.transaction(async (transaction) => {
       const [existing] = await transaction
         .select()
@@ -759,6 +938,7 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
         .limit(1)
       if (!existing || !existing.message || existing.status === 'sent') return null
       if (
+        !allowExpired &&
         existing.firstAttemptAt &&
         now.getTime() - existing.firstAttemptAt.getTime() >= DELIVERY_RETRY_MS
       )
@@ -875,6 +1055,10 @@ export class DrizzleStore implements AuthStore, StoryStore, MediaStore, Reminder
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString()
     }
+  }
+
+  private toMemoryCursor(row: typeof memories.$inferSelect): MemoryCursor {
+    return { occurredOn: row.occurredOn, createdAt: row.createdAt.toISOString(), id: row.id }
   }
 
   private toAnniversary(row: typeof anniversaries.$inferSelect): AnniversaryEntry {

@@ -1,10 +1,15 @@
 export type {
   AnniversaryEntry,
+  GalleryItem,
   Member,
   MemoryAsset,
+  MemoryCard,
   MemoryEntry,
+  Page,
+  PublicStory,
+  ReminderIssue,
   SessionView,
   Space,
-  StoryView,
+  StorySummary,
   Visibility
 } from '../../lib/types'

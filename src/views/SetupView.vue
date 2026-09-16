@@ -32,6 +32,7 @@ const { load, loading, loadError } = useLoad(async () => {
 onMounted(load)
 
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   fields.value = {}

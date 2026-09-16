@@ -10,6 +10,9 @@ import type { MemoryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
 const memories = ref<MemoryEntry[]>([])
+const nextCursor = ref<string | null>(null)
+const moreLoading = ref(false)
+const moreError = ref('')
 const busy = ref(false)
 const error = ref('')
 const fields = ref<Record<string, string>>({})
@@ -21,10 +24,12 @@ const draft = reactive({ title: '', body: '', occurredOn: '' })
 const notification = useNotificationStore()
 
 function edit(memory: MemoryEntry) {
+  if (busy.value) return
   editing.value = memory.id
   Object.assign(draft, { title: memory.title, body: memory.body, occurredOn: memory.occurredOn })
 }
 async function act(action: () => Promise<unknown>) {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   try {
@@ -54,18 +59,38 @@ async function uploadFiles(memoryId: string, files: File[]) {
   if (failed) notification.show('部分照片失败，可继续补传。回忆和成功上传的照片已保存。', 'warning')
 }
 async function addPhotos(memory: MemoryEntry, event: Event) {
+  if (busy.value) return
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files ?? []).slice(0, 10 - memory.assets.length)
   await act(() => uploadFiles(memory.id, files))
   input.value = ''
 }
 async function removePhoto(id: string) {
+  if (busy.value) return
   if (window.confirm('确定删除这张照片吗？')) await act(() => api.deleteAsset(id))
 }
 
 const { load, loading, loadError } = useLoad(async () => {
-  memories.value = await api.memories()
+  const page = await api.memories()
+  memories.value = page.items
+  nextCursor.value = page.nextCursor
+  moreError.value = ''
 })
+
+async function loadMore() {
+  if (!nextCursor.value || moreLoading.value) return
+  moreLoading.value = true
+  moreError.value = ''
+  try {
+    const page = await api.memories(nextCursor.value)
+    memories.value.push(...page.items)
+    nextCursor.value = page.nextCursor
+  } catch (reason) {
+    moreError.value = reason instanceof ApiError ? reason.message : '暂时无法加载更多回忆'
+  } finally {
+    moreLoading.value = false
+  }
+}
 
 function chooseFiles(event: Event) {
   for (const preview of previews.value) URL.revokeObjectURL(preview.url)
@@ -77,6 +102,7 @@ function chooseFiles(event: Event) {
 }
 
 async function submit() {
+  if (busy.value) return
   busy.value = true
   error.value = ''
   fields.value = {}
@@ -104,6 +130,7 @@ async function submit() {
 }
 
 async function toggleVisibility(memory: MemoryEntry) {
+  if (busy.value) return
   if (
     memory.visibility === 'private' &&
     !window.confirm('公开后，访客可以看到这条回忆及其中照片。继续吗？')
@@ -117,6 +144,7 @@ async function toggleVisibility(memory: MemoryEntry) {
 }
 
 async function remove(memory: MemoryEntry) {
+  if (busy.value) return
   if (!window.confirm(`确定删除「${memory.title}」吗？`)) return
   await act(() => api.deleteMemory(memory.id))
 }
@@ -171,6 +199,7 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
           <img
             :src="preview.url"
             :alt="`${preview.name} 预览`"
+            decoding="async"
             style="display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover"
           />
         </figure>
@@ -187,13 +216,19 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
       <LoadState :loading="loading" :error="loadError" @retry="load" />
       <div class="page-heading">
         <h2>所有回忆</h2>
-        <span class="muted">{{ memories.length }} 页</span>
+        <span class="muted">{{ memories.length }} 条</span>
       </div>
       <div v-if="memories.length" class="grid grid--2">
         <article v-for="memory in memories" :key="memory.id" class="card memory-card">
           <div class="grid grid--2">
             <figure v-for="asset in memory.assets" :key="asset.id">
-              <img class="memory-card__photo" :src="asset.url" :alt="asset.originalName" />
+              <img
+                class="memory-card__photo"
+                :src="asset.url"
+                :alt="asset.originalName"
+                loading="lazy"
+                decoding="async"
+              />
               <button
                 type="button"
                 class="button button--danger"
@@ -273,6 +308,17 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
       </div>
       <div v-else-if="!loading && !loadError" class="card empty">
         <h3>时间线还是空白</h3>
+      </div>
+      <div v-if="nextCursor || moreError" class="stack" style="justify-items: center">
+        <p v-if="moreError" class="form-error" role="alert">{{ moreError }}</p>
+        <button
+          class="button button--secondary"
+          type="button"
+          :disabled="moreLoading || busy"
+          @click="loadMore"
+        >
+          {{ moreLoading ? '加载中…' : moreError ? '重试加载' : '加载更多' }}
+        </button>
       </div>
     </section>
   </div>

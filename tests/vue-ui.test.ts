@@ -9,9 +9,12 @@ import MemoriesView from '../src/views/MemoriesView.vue'
 import SetupView from '../src/views/SetupView.vue'
 import DashboardView from '../src/views/DashboardView.vue'
 import GalleryView from '../src/views/GalleryView.vue'
+import SettingsView from '../src/views/SettingsView.vue'
+import App from '../src/App.vue'
 import { useSessionStore } from '../src/stores/session'
 import { useNotificationStore } from '../src/stores/notification'
 import { createAppRouter } from '../src/router/index'
+import type { MemoryEntry } from '../src/types/domain'
 
 describe('Vue application contracts', () => {
   it('keeps the couple and live timer central without decorative subtitles', async () => {
@@ -53,14 +56,23 @@ describe('Vue application contracts', () => {
   it.each([DashboardView, GalleryView])(
     'shows load failure and retries instead of displaying an empty state',
     async (view) => {
-      vi.spyOn(api, 'story')
-        .mockRejectedValueOnce(new Error('offline'))
-        .mockResolvedValue({
-          space: { title: '恢复成功', intro: '', relationshipStartedAt: '2024-01-01T00:00:00Z' },
-          members: [],
-          memories: [],
-          anniversaries: []
-        } as never)
+      if (view === GalleryView) {
+        vi.spyOn(api, 'gallery')
+          .mockRejectedValueOnce(new Error('offline'))
+          .mockResolvedValue({ items: [], nextCursor: null })
+      } else {
+        vi.spyOn(api, 'story')
+          .mockRejectedValueOnce(new Error('offline'))
+          .mockResolvedValue({
+            space: {
+              title: '恢复成功',
+              intro: '',
+              relationshipStartedAt: '2024-01-01T00:00:00Z'
+            },
+            members: [],
+            memories: []
+          } as never)
+      }
       const wrapper = mount(view, { global: { stubs: { RouterLink: true } } })
       await flushPromises()
       expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法加载')
@@ -86,7 +98,7 @@ describe('Vue application contracts', () => {
     expect(store.isAuthenticated).toBe(true)
   })
   it('keeps a created memory when a photo fails and does not offer a duplicate submission', async () => {
-    vi.spyOn(api, 'memories').mockResolvedValue([])
+    vi.spyOn(api, 'memories').mockResolvedValue({ items: [], nextCursor: null })
     const create = vi.spyOn(api, 'createMemory').mockResolvedValue({ id: 'created' } as never)
     vi.spyOn(api, 'uploadMemoryImage').mockRejectedValue(new Error('upload failed'))
     vi.stubGlobal('URL', {
@@ -133,6 +145,21 @@ describe('Vue application contracts', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/app/memories')
   })
 
+  it('does not load a session for public routes and keeps session failures on guarded routes', async () => {
+    const session = vi.spyOn(api, 'session').mockRejectedValue(new Error('offline'))
+    window.scrollTo = vi.fn()
+    const router = createAppRouter(createMemoryHistory())
+    await router.push('/story/public-slug')
+    await router.isReady()
+    expect(router.currentRoute.value.name).toBe('public-memory')
+    expect(session).not.toHaveBeenCalled()
+
+    await router.push('/app')
+    expect(session).toHaveBeenCalledOnce()
+    expect(router.currentRoute.value.name).toBe('dashboard')
+    expect(useSessionStore().error).toBeTruthy()
+  })
+
   it('shows an explicit warning before content is published', async () => {
     const wrapper = mount(VisibilityField, { props: { modelValue: false } })
     await wrapper.get('input').setValue(true)
@@ -140,7 +167,7 @@ describe('Vue application contracts', () => {
   })
 
   it('previews selected files and renders the empty memory state', async () => {
-    vi.spyOn(api, 'memories').mockResolvedValue([])
+    vi.spyOn(api, 'memories').mockResolvedValue({ items: [], nextCursor: null })
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:preview'),
@@ -157,6 +184,110 @@ describe('Vue application contracts', () => {
     })
     await input.trigger('change')
     expect(wrapper.get('img[alt="海边.png 预览"]').attributes('src')).toBe('blob:preview')
+  })
+
+  it('keeps loaded memories when loading more fails and allows a retry', async () => {
+    const memory = (id: string): MemoryEntry => ({
+      id,
+      spaceId: 'space',
+      authorId: 'author',
+      authorName: '甲',
+      title: id,
+      body: '正文',
+      occurredOn: '2025-01-01',
+      visibility: 'private',
+      slug: id,
+      assets: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    })
+    vi.spyOn(api, 'memories')
+      .mockResolvedValueOnce({ items: [memory('first')], nextCursor: 'next' })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ items: [memory('second')], nextCursor: null })
+    const wrapper = mount(MemoriesView)
+    await flushPromises()
+    await wrapper.get('button.button--secondary:last-child').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('first')
+    expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法加载更多')
+    await wrapper.get('button.button--secondary:last-child').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('second')
+    expect(wrapper.text()).not.toContain('加载更多')
+  })
+
+  it('hides partner invitations after the second member joins', async () => {
+    const session = useSessionStore()
+    session.current = {
+      user: { id: 'one', email: 'one@example.com', username: 'one' },
+      space: {}
+    } as never
+    vi.spyOn(api, 'story').mockResolvedValue({
+      space: {
+        title: '两个人',
+        intro: '',
+        relationshipStartedAt: '2024-01-01T00:00:00.000Z'
+      },
+      members: [
+        { id: 'one', displayName: '甲' },
+        { id: 'two', displayName: '乙' }
+      ],
+      memories: []
+    } as never)
+    vi.spyOn(api, 'reminderStatus').mockResolvedValue([])
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.text()).toContain('两位成员已加入')
+    expect(wrapper.find('#settings-partner').exists()).toBe(false)
+  })
+
+  it('ignores a second submit while a memory write is pending', async () => {
+    vi.spyOn(api, 'memories').mockResolvedValue({ items: [], nextCursor: null })
+    let finish!: (value: never) => void
+    const pending = new Promise<never>((resolve) => (finish = resolve))
+    const create = vi.spyOn(api, 'createMemory').mockReturnValue(pending)
+    const wrapper = mount(MemoriesView)
+    await flushPromises()
+    await wrapper.get('#memory-title').setValue('只保存一次')
+    await wrapper.get('#memory-body').setValue('正文')
+    await wrapper.get('#memory-date').setValue('2025-01-01')
+    void wrapper.get('form').trigger('submit')
+    await Promise.resolve()
+    await wrapper.get('form').trigger('submit')
+    expect(create).toHaveBeenCalledOnce()
+    finish({ id: 'created' } as never)
+    await flushPromises()
+  })
+
+  it('renders exactly one main landmark on public and authentication routes', async () => {
+    vi.spyOn(api, 'publicMemory').mockResolvedValue({
+      id: 'memory',
+      spaceId: 'space',
+      authorId: 'author',
+      authorName: '甲',
+      title: '公开回忆',
+      body: '正文',
+      occurredOn: '2025-01-01',
+      visibility: 'public',
+      slug: 'public',
+      assets: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    })
+    vi.spyOn(api, 'session').mockRejectedValue(new ApiError('UNAUTHENTICATED', '请先登录', 401))
+    window.scrollTo = vi.fn()
+    for (const path of ['/story/public', '/login']) {
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const router = createAppRouter(createMemoryHistory())
+      await router.push(path)
+      await router.isReady()
+      const wrapper = mount(App, { global: { plugins: [pinia, router] } })
+      await flushPromises()
+      expect(wrapper.findAll('main')).toHaveLength(1)
+      wrapper.unmount()
+    }
   })
 
   it('checks initialization status and renders server field errors', async () => {

@@ -53,8 +53,11 @@ it('restarts the timeout for a new message, pauses on hover/focus, and supports 
 it('shows settings invitation results in the global toast, not the settings layout', async () => {
   vi.useRealTimers()
   vi.spyOn(api, 'story').mockResolvedValue({
-    space: { title: '标题', intro: '', relationshipStartedAt: '2024-01-01T00:00:00Z' }
+    space: { title: '标题', intro: '', relationshipStartedAt: '2024-01-01T00:00:00Z' },
+    members: [{ id: 'one', displayName: '甲' }],
+    memories: []
   } as never)
+  vi.spyOn(api, 'reminderStatus').mockResolvedValue([])
   vi.spyOn(api, 'invitePartner').mockResolvedValue({ invitationDelivery: 'sent' })
   const pinia = createPinia()
   const host = mount(NotificationToast, { global: { plugins: [pinia] } })

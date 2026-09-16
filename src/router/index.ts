@@ -85,9 +85,10 @@ export function createAppRouter(
   })
 
   router.beforeEach(async (to) => {
+    if (!to.meta.requiresAuth && !to.meta.guestOnly) return
     const session = useSessionStore()
     await session.ensureLoaded()
-    if (session.error) return false
+    if (session.error) return
     if (to.meta.requiresAuth && !session.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }

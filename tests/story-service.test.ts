@@ -30,11 +30,11 @@ describe('StoryService', () => {
       occurredOn: '2025-05-20'
     })
     expect(memory.visibility).toBe('private')
-    expect((await story.getPublicStory()).memories).toHaveLength(0)
+    expect((await story.getPublicMemories(null)).items).toHaveLength(0)
 
     await story.updateMemory(partner, owner.space, memory.id, { visibility: 'public' })
-    expect((await story.getPublicStory()).memories).toEqual([
-      expect.objectContaining({ id: memory.id, visibility: 'public' })
+    expect((await story.getPublicMemories(null)).items).toEqual([
+      expect.objectContaining({ id: memory.id })
     ])
   })
 
@@ -121,5 +121,44 @@ describe('StoryService', () => {
         occurredOn: '2025-02-30'
       })
     ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' })
+  })
+
+  it('paginates tied memories without gaps and rejects invalid cursors', async () => {
+    const store = createMemoryStore()
+    const owner = await store.bootstrap({
+      username: 'owner_user',
+      storyTitle: '分页故事',
+      relationshipStartedAt: '2024-01-13T14:28:46.000Z',
+      displayName: '小夏',
+      email: 'owner@example.com',
+      passwordHash: 'unused',
+      now: new Date('2026-08-23T00:00:00.000Z')
+    })
+    const story = createStoryService({
+      store,
+      now: () => new Date('2026-08-23T00:00:00.000Z')
+    })
+    for (let index = 0; index < 21; index++) {
+      await story.createMemory(owner.user, owner.space, {
+        title: `回忆 ${index}`,
+        body: '相同排序字段',
+        occurredOn: '2025-05-20',
+        visibility: index % 2 ? 'private' : 'public'
+      })
+    }
+
+    const first = await story.getMemories(owner.user, owner.space, null)
+    const second = await story.getMemories(owner.user, owner.space, first.nextCursor)
+    expect(first.items).toHaveLength(20)
+    expect(second.items).toHaveLength(1)
+    expect(new Set([...first.items, ...second.items].map(({ id }) => id)).size).toBe(21)
+    expect((await story.getPublicMemories(null)).items).toHaveLength(11)
+    await expect(story.getMemories(owner.user, owner.space, 'bad!cursor')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      status: 400
+    })
+    await expect(story.getMemories(owner.user, owner.space, '')).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR'
+    })
   })
 })

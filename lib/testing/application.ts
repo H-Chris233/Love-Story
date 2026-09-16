@@ -17,7 +17,7 @@ export function createTestApplication(appOrigin = 'http://localhost:5173') {
   const auth = createAuthService({ store, mailer, appOrigin })
   const story = createStoryService({ store })
   const media = createMediaService({ store, blob })
-  const reminders = createReminderService({ store, mailer })
+  const reminders = createReminderService({ store, mailer, sleep: async () => {} })
   const handler = createApi({
     store,
     auth,

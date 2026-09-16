@@ -7,14 +7,18 @@ import { useLoad } from '@/utils/load'
 import { useSessionStore } from '@/stores/session'
 import { useNotificationStore } from '@/stores/notification'
 import { isoToShanghaiLocal, shanghaiLocalToIso } from '@/utils/date'
+import type { ReminderIssue } from '@/types/domain'
 
 const session = useSessionStore()
 const form = reactive({ title: '', intro: '', relationshipStartedAt: '' })
 const partnerEmail = ref('')
 const notification = useNotificationStore()
 const busy = ref(false)
+const membersJoined = ref(0)
+const reminderIssues = ref<ReminderIssue[]>([])
 const username = ref(session.current?.user.username ?? '')
 async function saveUsername() {
+  if (busy.value) return
   busy.value = true
   try {
     session.current = await api.updateUsername(username.value)
@@ -28,13 +32,16 @@ async function saveUsername() {
 }
 
 const { load, loading, loadError } = useLoad(async () => {
-  const story = await api.story()
+  const [story, issues] = await Promise.all([api.story(), api.reminderStatus()])
   form.title = story.space.title
   form.intro = story.space.intro
   form.relationshipStartedAt = isoToShanghaiLocal(story.space.relationshipStartedAt)
+  membersJoined.value = story.members.length
+  reminderIssues.value = issues
 })
 onMounted(load)
 async function save() {
+  if (busy.value) return
   busy.value = true
   try {
     const space = await api.updateSettings({
@@ -51,6 +58,7 @@ async function save() {
   }
 }
 async function invite() {
+  if (busy.value) return
   busy.value = true
   try {
     const result = await api.invitePartner(partnerEmail.value)
@@ -62,6 +70,23 @@ async function invite() {
     )
   } catch (reason) {
     notification.show(reason instanceof ApiError ? reason.message : '暂时无法发送邀请', 'error')
+  } finally {
+    busy.value = false
+  }
+}
+async function retryReminder(issue: ReminderIssue) {
+  if (busy.value) return
+  const confirmDuplicateRisk =
+    issue.status === 'needsReview' &&
+    window.confirm('这条提醒已超过安全重试窗口，重新发送可能造成重复邮件。仍要继续吗？')
+  if (issue.status === 'needsReview' && !confirmDuplicateRisk) return
+  busy.value = true
+  try {
+    await api.retryReminder(issue.id, confirmDuplicateRisk)
+    reminderIssues.value = await api.reminderStatus()
+    notification.show('提醒已重新发送。')
+  } catch (reason) {
+    notification.show(reason instanceof ApiError ? reason.message : '提醒重试失败', 'error')
   } finally {
     busy.value = false
   }
@@ -113,7 +138,11 @@ async function invite() {
       </div>
       <div><button class="button" :disabled="busy" type="submit">保存设置</button></div>
     </form>
-    <form class="card card-pad stack" @submit.prevent="invite">
+    <form
+      v-if="!loading && !loadError && membersJoined < 2"
+      class="card card-pad stack"
+      @submit.prevent="invite"
+    >
       <h2>伴侣邀请</h2>
       <p class="muted">旧邀请会失效，新链接有效 7 天且只能使用一次。</p>
       <div class="field">
@@ -126,5 +155,40 @@ async function invite() {
         </button>
       </div>
     </form>
+    <section v-else-if="!loading && !loadError" class="card card-pad stack">
+      <h2>伴侣邀请</h2>
+      <p>两位成员已加入</p>
+    </section>
+    <section v-if="!loading && !loadError" class="card card-pad stack">
+      <h2>提醒投递状态</h2>
+      <p v-if="!reminderIssues.length" class="muted">当前没有需要处理的提醒。</p>
+      <article v-for="issue in reminderIssues" :key="issue.id" class="stack notice">
+        <h3>{{ issue.title }}</h3>
+        <p>
+          接收成员：{{ issue.recipient }} · 日期：{{ issue.occurrenceDate }} ·
+          {{ issue.kind === 'today' ? '当天提醒' : '提前提醒' }}
+        </p>
+        <p class="muted">
+          首次尝试：{{
+            issue.firstAttemptAt
+              ? isoToShanghaiLocal(issue.firstAttemptAt).replace('T', ' ')
+              : '尚未尝试'
+          }}
+        </p>
+        <p v-if="issue.status === 'needsReview'" class="form-error">
+          已超过安全重试窗口，重发可能产生重复邮件。
+        </p>
+        <div>
+          <button
+            class="button button--secondary"
+            type="button"
+            :disabled="busy"
+            @click="retryReminder(issue)"
+          >
+            重试发送
+          </button>
+        </div>
+      </article>
+    </section>
   </div>
 </template>
