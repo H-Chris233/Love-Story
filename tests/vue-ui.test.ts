@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import VisibilityField from '../src/components/VisibilityField.vue'
 import { ApiError, api } from '../src/services/api'
 import MemoriesView from '../src/views/MemoriesView.vue'
+import AnniversariesView from '../src/views/AnniversariesView.vue'
 import SetupView from '../src/views/SetupView.vue'
 import DashboardView from '../src/views/DashboardView.vue'
 import GalleryView from '../src/views/GalleryView.vue'
@@ -186,6 +187,30 @@ describe('Vue application contracts', () => {
     expect(wrapper.get('img[alt="海边.png 预览"]').attributes('src')).toBe('blob:preview')
   })
 
+  it('keeps the memory composer closed until the top action opens it', async () => {
+    vi.spyOn(api, 'memories').mockResolvedValue({ items: [], nextCursor: null })
+    const wrapper = mount(MemoriesView)
+    await flushPromises()
+    const dialog = wrapper.get('dialog')
+    Object.defineProperties(dialog.element, {
+      showModal: {
+        value: vi.fn(() => dialog.element.setAttribute('open', ''))
+      },
+      close: {
+        value: vi.fn(() => dialog.element.removeAttribute('open'))
+      }
+    })
+
+    expect(dialog.attributes('open')).toBeUndefined()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('写回忆'))!
+      .trigger('click')
+    expect(dialog.attributes('open')).toBe('')
+    await wrapper.get('[aria-label="关闭写回忆弹窗"]').trigger('click')
+    expect(dialog.attributes('open')).toBeUndefined()
+  })
+
   it('keeps loaded memories when loading more fails and allows a retry', async () => {
     const memory = (id: string): MemoryEntry => ({
       id,
@@ -207,14 +232,124 @@ describe('Vue application contracts', () => {
       .mockResolvedValueOnce({ items: [memory('second')], nextCursor: null })
     const wrapper = mount(MemoriesView)
     await flushPromises()
-    await wrapper.get('button.button--secondary:last-child').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '加载更多')!
+      .trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('first')
     expect(wrapper.get('[role="alert"]').text()).toContain('暂时无法加载更多')
-    await wrapper.get('button.button--secondary:last-child').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '重试加载')!
+      .trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('second')
     expect(wrapper.text()).not.toContain('加载更多')
+  })
+
+  it('shows memory mutation controls only while editing and uses an image-corner delete button', async () => {
+    vi.spyOn(api, 'memories').mockResolvedValue({
+      items: [
+        {
+          id: 'memory',
+          spaceId: 'space',
+          authorId: 'author',
+          authorName: '甲',
+          title: '海边',
+          body: '正文',
+          occurredOn: '2025-01-01',
+          visibility: 'private',
+          slug: 'memory',
+          assets: [
+            {
+              id: 'asset',
+              memoryId: 'memory',
+              originalName: 'photo.png',
+              mimeType: 'image/png',
+              byteSize: 8,
+              sortOrder: 0,
+              url: '/api/media/asset'
+            }
+          ],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }
+      ],
+      nextCursor: null
+    })
+    const wrapper = mount(MemoriesView)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('补传照片')
+    expect(wrapper.find('[aria-label="删除照片 photo.png"]').exists()).toBe(false)
+    expect(wrapper.find('.button--danger').exists()).toBe(false)
+
+    await wrapper.get('button.button--secondary').trigger('click')
+    expect(wrapper.text()).toContain('补传照片')
+    expect(wrapper.get('[aria-label="删除照片 photo.png"]').text()).toBe('×')
+    expect(wrapper.get('[aria-label="删除照片 photo.png"]').classes()).toContain(
+      'memory-photo__delete'
+    )
+    expect(wrapper.get('.button--danger').text()).toBe('删除')
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '取消')!
+      .trigger('click')
+    expect(wrapper.text()).not.toContain('补传照片')
+    expect(wrapper.find('[aria-label="删除照片 photo.png"]').exists()).toBe(false)
+  })
+
+  it('keeps anniversary creation and mutation controls behind their explicit actions', async () => {
+    vi.spyOn(api, 'anniversaries').mockResolvedValue([
+      {
+        id: 'anniversary',
+        spaceId: 'space',
+        authorId: 'author',
+        title: '相遇',
+        originalDate: '2025-01-01',
+        reminderDays: 7,
+        visibility: 'private',
+        slug: 'anniversary',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      }
+    ])
+    const wrapper = mount(AnniversariesView)
+    await flushPromises()
+    const dialog = wrapper.get('dialog')
+    Object.defineProperties(dialog.element, {
+      showModal: {
+        value: vi.fn(() => dialog.element.setAttribute('open', ''))
+      },
+      close: {
+        value: vi.fn(() => dialog.element.removeAttribute('open'))
+      }
+    })
+
+    expect(dialog.attributes('open')).toBeUndefined()
+    expect(wrapper.find('.button--danger').exists()).toBe(false)
+    expect(wrapper.findAll('button').some((button) => button.text() === '公开')).toBe(false)
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('记纪念日'))!
+      .trigger('click')
+    expect(dialog.attributes('open')).toBe('')
+    await wrapper.get('[aria-label="关闭纪念日弹窗"]').trigger('click')
+    expect(dialog.attributes('open')).toBeUndefined()
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '编辑纪念日')!
+      .trigger('click')
+    expect(wrapper.get('.button--danger').text()).toBe('删除')
+    expect(wrapper.findAll('button').some((button) => button.text() === '公开')).toBe(true)
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === '取消')!
+      .trigger('click')
+    expect(wrapper.find('.button--danger').exists()).toBe(false)
   })
 
   it('hides partner invitations after the second member joins', async () => {

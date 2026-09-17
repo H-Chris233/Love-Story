@@ -10,12 +10,22 @@ import type { AnniversaryEntry } from '@/types/domain'
 import { formatShanghaiDate } from '@/utils/date'
 
 const anniversaries = ref<AnniversaryEntry[]>([])
+const composer = ref<HTMLDialogElement | null>(null)
 const form = reactive({ title: '', originalDate: '', reminderDays: 7, isPublic: false })
 const error = ref('')
 const notification = useNotificationStore()
 const busy = ref(false)
 const editing = ref<string | null>(null)
 const draft = reactive({ title: '', originalDate: '', reminderDays: 7 })
+function openComposer() {
+  if (!busy.value && composer.value && !composer.value.open) composer.value.showModal()
+}
+function closeComposer() {
+  if (!busy.value && composer.value?.open) composer.value.close()
+}
+function cancelComposer(event: Event) {
+  if (busy.value) event.preventDefault()
+}
 function edit(item: AnniversaryEntry) {
   if (busy.value) return
   editing.value = item.id
@@ -61,6 +71,7 @@ async function submit() {
     })
     Object.assign(form, { title: '', originalDate: '', reminderDays: 7, isPublic: false })
     await load()
+    if (composer.value?.open) composer.value.close()
   } catch (reason) {
     error.value = reason instanceof ApiError ? reason.message : '暂时无法保存纪念日'
   } finally {
@@ -91,34 +102,55 @@ onMounted(load)
       <div>
         <h1>纪念日</h1>
       </div>
+      <button class="button" type="button" :disabled="busy" @click="openComposer">
+        <span aria-hidden="true">＋</span> 记纪念日
+      </button>
     </header>
-    <form class="card card-pad stack" @submit.prevent="submit">
-      <h2>记住一个日子</h2>
-      <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <div class="grid grid--3">
-        <div class="field">
-          <label for="anniversary-title">名称</label
-          ><input id="anniversary-title" v-model="form.title" required />
+    <dialog
+      ref="composer"
+      class="entry-composer"
+      aria-labelledby="anniversary-composer-title"
+      @cancel="cancelComposer"
+    >
+      <form class="entry-composer__form stack" @submit.prevent="submit">
+        <header class="entry-composer__header">
+          <h2 id="anniversary-composer-title">记住一个日子</h2>
+          <button
+            class="entry-composer__close"
+            type="button"
+            :disabled="busy"
+            aria-label="关闭纪念日弹窗"
+            @click="closeComposer"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+        <div class="grid grid--3">
+          <div class="field">
+            <label for="anniversary-title">名称</label
+            ><input id="anniversary-title" v-model="form.title" required />
+          </div>
+          <div class="field">
+            <label for="anniversary-date">最初日期</label
+            ><input id="anniversary-date" v-model="form.originalDate" type="date" required />
+          </div>
+          <div class="field">
+            <label for="reminder-days">提前提醒天数</label
+            ><input
+              id="reminder-days"
+              v-model.number="form.reminderDays"
+              type="number"
+              min="0"
+              max="365"
+              required
+            />
+          </div>
         </div>
-        <div class="field">
-          <label for="anniversary-date">最初日期</label
-          ><input id="anniversary-date" v-model="form.originalDate" type="date" required />
-        </div>
-        <div class="field">
-          <label for="reminder-days">提前提醒天数</label
-          ><input
-            id="reminder-days"
-            v-model.number="form.reminderDays"
-            type="number"
-            min="0"
-            max="365"
-            required
-          />
-        </div>
-      </div>
-      <VisibilityField v-model="form.isPublic" />
-      <div><button class="button" :disabled="busy" type="submit">保存纪念日</button></div>
-    </form>
+        <VisibilityField v-model="form.isPublic" />
+        <div><button class="button" :disabled="busy" type="submit">保存纪念日</button></div>
+      </form>
+    </dialog>
     <section class="stack">
       <LoadState :loading="loading" :error="loadError" @retry="load" />
       <article v-for="item in anniversaries" :key="item.id" class="card anniversary-row">
@@ -136,6 +168,7 @@ onMounted(load)
         </div>
         <div class="cluster">
           <button
+            v-if="editing !== item.id"
             class="button button--secondary"
             type="button"
             :disabled="busy"
@@ -143,21 +176,23 @@ onMounted(load)
           >
             编辑纪念日
           </button>
-          <button
-            class="button button--secondary"
-            type="button"
-            :disabled="busy"
-            @click="toggle(item)"
-          >
-            {{ item.visibility === 'public' ? '改回私密' : '公开' }}</button
-          ><button
-            class="button button--danger"
-            type="button"
-            :disabled="busy"
-            @click="remove(item)"
-          >
-            删除
-          </button>
+          <template v-else>
+            <button
+              class="button button--secondary"
+              type="button"
+              :disabled="busy"
+              @click="toggle(item)"
+            >
+              {{ item.visibility === 'public' ? '改回私密' : '公开' }}</button
+            ><button
+              class="button button--danger"
+              type="button"
+              :disabled="busy"
+              @click="remove(item)"
+            >
+              删除
+            </button>
+          </template>
         </div>
         <form v-if="editing === item.id" class="stack" @submit.prevent="saveEdit(item.id)">
           <label class="field"

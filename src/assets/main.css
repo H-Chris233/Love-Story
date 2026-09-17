@@ -77,8 +77,8 @@ a {
 }
 .brand__mark {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 13px;
   color: #fff;
@@ -499,12 +499,91 @@ input::file-selector-button {
 .memory-card {
   overflow: hidden;
 }
+.entry-composer {
+  width: min(760px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 24px 80px #422b3540;
+}
+.entry-composer::backdrop {
+  background: #422b3566;
+  backdrop-filter: blur(4px);
+}
+.entry-composer__form {
+  max-height: calc(100dvh - 32px);
+  padding: clamp(22px, 4vw, 36px);
+  overflow-y: auto;
+}
+.entry-composer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.entry-composer__close {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--paper-deep);
+  cursor: pointer;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.entry-composer__close:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+.entry-composer__close:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
 .memory-card__photo {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: var(--paper-deep);
+}
+.memory-photo {
+  position: relative;
+  margin: 0;
+}
+.memory-photo__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #ffffff80;
+  border-radius: 50%;
+  color: #fff;
+  background: #422b35cc;
+  box-shadow: 0 2px 8px #422b3540;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.memory-photo__delete:hover {
+  background: #8a3838;
+}
+.memory-photo__delete:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 .memory-card__body {
   padding: 22px;

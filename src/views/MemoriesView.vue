@@ -18,10 +18,23 @@ const error = ref('')
 const fields = ref<Record<string, string>>({})
 const selectedFiles = ref<File[]>([])
 const previews = ref<Array<{ name: string; url: string }>>([])
+const composer = ref<HTMLDialogElement | null>(null)
 const form = reactive({ title: '', body: '', occurredOn: '', isPublic: false })
 const editing = ref<string | null>(null)
 const draft = reactive({ title: '', body: '', occurredOn: '' })
 const notification = useNotificationStore()
+
+function openComposer() {
+  if (!busy.value && composer.value && !composer.value.open) composer.value.showModal()
+}
+
+function closeComposer() {
+  if (!busy.value && composer.value?.open) composer.value.close()
+}
+
+function cancelComposer(event: Event) {
+  if (busy.value) event.preventDefault()
+}
 
 function edit(memory: MemoryEntry) {
   if (busy.value) return
@@ -119,6 +132,7 @@ async function submit() {
     for (const preview of previews.value) URL.revokeObjectURL(preview.url)
     previews.value = []
     await load()
+    if (composer.value?.open) composer.value.close()
   } catch (reason) {
     if (reason instanceof ApiError) {
       error.value = reason.message
@@ -159,58 +173,79 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
       <div>
         <h1>我们的回忆</h1>
       </div>
+      <button class="button" type="button" :disabled="busy" @click="openComposer">
+        <span aria-hidden="true">＋</span> 写回忆
+      </button>
     </header>
 
-    <form class="card card-pad stack" @submit.prevent="submit">
-      <h2>写一条回忆</h2>
-      <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <div class="grid grid--2">
-        <div class="field">
-          <label for="memory-title">标题</label
-          ><input id="memory-title" v-model="form.title" required />
-          <p v-if="fields.title" class="field-error">{{ fields.title }}</p>
+    <dialog
+      ref="composer"
+      class="entry-composer"
+      aria-labelledby="memory-composer-title"
+      @cancel="cancelComposer"
+    >
+      <form class="entry-composer__form stack" @submit.prevent="submit">
+        <header class="entry-composer__header">
+          <h2 id="memory-composer-title">写一条回忆</h2>
+          <button
+            class="entry-composer__close"
+            type="button"
+            :disabled="busy"
+            aria-label="关闭写回忆弹窗"
+            @click="closeComposer"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        <p v-if="error" class="form-error" role="alert">{{ error }}</p>
+        <div class="grid grid--2">
+          <div class="field">
+            <label for="memory-title">标题</label
+            ><input id="memory-title" v-model="form.title" required />
+            <p v-if="fields.title" class="field-error">{{ fields.title }}</p>
+          </div>
+          <div class="field">
+            <label for="memory-date">发生日期</label
+            ><input id="memory-date" v-model="form.occurredOn" type="date" required />
+          </div>
         </div>
         <div class="field">
-          <label for="memory-date">发生日期</label
-          ><input id="memory-date" v-model="form.occurredOn" type="date" required />
+          <label for="memory-body">故事</label
+          ><textarea id="memory-body" v-model="form.body" required />
         </div>
-      </div>
-      <div class="field">
-        <label for="memory-body">故事</label
-        ><textarea id="memory-body" v-model="form.body" required />
-      </div>
-      <div class="field">
-        <label for="memory-images">照片（最多 10 张，每张不超过 5 MB）</label>
-        <input
-          id="memory-images"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          multiple
-          @change="chooseFiles"
-        />
-      </div>
-      <div v-if="previews.length" class="grid grid--3" aria-label="照片预览">
-        <figure
-          v-for="preview in previews"
-          :key="preview.url"
-          class="card"
-          style="overflow: hidden; margin: 0"
-        >
-          <img
-            :src="preview.url"
-            :alt="`${preview.name} 预览`"
-            decoding="async"
-            style="display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover"
+        <div class="field">
+          <label for="memory-images">照片（最多 10 张，每张不超过 5 MB）</label>
+          <input
+            id="memory-images"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            @change="chooseFiles"
           />
-        </figure>
-      </div>
-      <VisibilityField v-model="form.isPublic" />
-      <div>
-        <button class="button" :disabled="busy" type="submit">
-          {{ busy ? '保存中…' : '保存回忆' }}
-        </button>
-      </div>
-    </form>
+        </div>
+        <div v-if="previews.length" class="grid grid--3" aria-label="照片预览">
+          <figure
+            v-for="preview in previews"
+            :key="preview.url"
+            class="card"
+            style="overflow: hidden; margin: 0"
+          >
+            <img
+              :src="preview.url"
+              :alt="`${preview.name} 预览`"
+              decoding="async"
+              style="display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover"
+            />
+          </figure>
+        </div>
+        <VisibilityField v-model="form.isPublic" />
+        <div>
+          <button class="button" :disabled="busy" type="submit">
+            {{ busy ? '保存中…' : '保存回忆' }}
+          </button>
+        </div>
+      </form>
+    </dialog>
 
     <section class="page">
       <LoadState :loading="loading" :error="loadError" @retry="load" />
@@ -221,7 +256,7 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
       <div v-if="memories.length" class="grid grid--2">
         <article v-for="memory in memories" :key="memory.id" class="card memory-card">
           <div class="grid grid--2">
-            <figure v-for="asset in memory.assets" :key="asset.id">
+            <figure v-for="asset in memory.assets" :key="asset.id" class="memory-photo">
               <img
                 class="memory-card__photo"
                 :src="asset.url"
@@ -230,79 +265,87 @@ onBeforeUnmount(() => previews.value.forEach(({ url }) => URL.revokeObjectURL(ur
                 decoding="async"
               />
               <button
+                v-if="editing === memory.id"
                 type="button"
-                class="button button--danger"
+                class="memory-photo__delete"
                 :disabled="busy"
                 :aria-label="`删除照片 ${asset.originalName}`"
+                title="删除照片"
                 @click="removePhoto(asset.id)"
               >
-                删除照片
+                <span aria-hidden="true">×</span>
               </button>
             </figure>
           </div>
           <div class="memory-card__body stack">
-            <form v-if="editing === memory.id" class="stack" @submit.prevent="saveEdit(memory.id)">
-              <label class="field"
-                >编辑标题<input v-model="draft.title" required maxlength="160"
+            <template v-if="editing === memory.id">
+              <form class="stack" @submit.prevent="saveEdit(memory.id)">
+                <label class="field"
+                  >编辑标题<input v-model="draft.title" required maxlength="160"
+                /></label>
+                <label class="field"
+                  >编辑日期<input v-model="draft.occurredOn" type="date" required
+                /></label>
+                <label class="field">编辑故事<textarea v-model="draft.body" required /></label>
+                <div class="cluster">
+                  <button class="button" :disabled="busy" type="submit">保存修改</button
+                  ><button
+                    class="button button--secondary"
+                    :disabled="busy"
+                    type="button"
+                    @click="editing = null"
+                  >
+                    取消
+                  </button>
+                </div>
+              </form>
+              <label v-if="memory.assets.length < 10" class="field"
+                >补传照片（还可添加 {{ 10 - memory.assets.length }} 张）<input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  multiple
+                  :disabled="busy"
+                  @change="addPhotos(memory, $event)"
               /></label>
-              <label class="field"
-                >编辑日期<input v-model="draft.occurredOn" type="date" required
-              /></label>
-              <label class="field">编辑故事<textarea v-model="draft.body" required /></label>
               <div class="cluster">
-                <button class="button" :disabled="busy" type="submit">保存修改</button
-                ><button
+                <button
+                  class="button button--secondary"
+                  type="button"
+                  :disabled="busy"
+                  @click="toggleVisibility(memory)"
+                >
+                  {{ memory.visibility === 'public' ? '改回私密' : '公开' }}
+                </button>
+                <button
+                  class="button button--danger"
+                  :disabled="busy"
+                  type="button"
+                  @click="remove(memory)"
+                >
+                  删除
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="memory-card__meta">
+                <span>{{ formatShanghaiDate(memory.occurredOn) }}</span
+                ><span :class="['badge', { 'badge--public': memory.visibility === 'public' }]">{{
+                  memory.visibility === 'public' ? '已公开' : '仅两人可见'
+                }}</span>
+              </div>
+              <h3>{{ memory.title }}</h3>
+              <p style="white-space: pre-wrap">{{ memory.body }}</p>
+              <div class="cluster">
+                <button
                   class="button button--secondary"
                   :disabled="busy"
                   type="button"
-                  @click="editing = null"
+                  @click="edit(memory)"
                 >
-                  取消
+                  编辑回忆
                 </button>
               </div>
-            </form>
-            <div class="memory-card__meta">
-              <span>{{ formatShanghaiDate(memory.occurredOn) }}</span
-              ><span :class="['badge', { 'badge--public': memory.visibility === 'public' }]">{{
-                memory.visibility === 'public' ? '已公开' : '仅两人可见'
-              }}</span>
-            </div>
-            <h3>{{ memory.title }}</h3>
-            <p style="white-space: pre-wrap">{{ memory.body }}</p>
-            <div class="cluster">
-              <button
-                class="button button--secondary"
-                :disabled="busy"
-                type="button"
-                @click="edit(memory)"
-              >
-                编辑回忆
-              </button>
-              <button
-                class="button button--secondary"
-                type="button"
-                :disabled="busy"
-                @click="toggleVisibility(memory)"
-              >
-                {{ memory.visibility === 'public' ? '改回私密' : '公开' }}
-              </button>
-              <button
-                class="button button--danger"
-                :disabled="busy"
-                type="button"
-                @click="remove(memory)"
-              >
-                删除
-              </button>
-            </div>
-            <label v-if="memory.assets.length < 10" class="field"
-              >补传照片（还可添加 {{ 10 - memory.assets.length }} 张）<input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                multiple
-                :disabled="busy"
-                @change="addPhotos(memory, $event)"
-            /></label>
+            </template>
           </div>
         </article>
       </div>
